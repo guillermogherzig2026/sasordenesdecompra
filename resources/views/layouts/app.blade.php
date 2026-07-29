@@ -362,6 +362,9 @@
                 .topbar { align-items: flex-start; flex-direction: column; }
                 .topbar-right { width: 100%; justify-content: space-between; margin-left: 0; }
             }
+            .ejemplo{
+                color:red;
+            }
         </style>
     </head>
     <body>
