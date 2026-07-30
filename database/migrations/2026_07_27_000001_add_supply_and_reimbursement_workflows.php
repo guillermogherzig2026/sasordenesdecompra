@@ -38,7 +38,7 @@ return new class extends Migration
             $table->decimal('minimum_quantity', 12, 2)->default(0);
             $table->timestamps();
 
-            $table->unique(['warehouse_catalog_item_id', 'warehouse']);
+            $table->unique(['warehouse_catalog_item_id', 'warehouse'], 'warehouse_item_warehouse_unique');
         });
 
         Schema::create('supply_orders', function (Blueprint $table) {

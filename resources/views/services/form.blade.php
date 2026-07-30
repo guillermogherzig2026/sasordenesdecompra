@@ -102,7 +102,7 @@
                 <label>Periodo — Fecha de corte
                     <div style="display:flex;gap:6px">
                         <select name="cutoff_day" required style="flex:1" onchange="recalcDueDate()">
-                            @foreach (range(1, 28) as $d)
+                            @foreach (range(1, 31) as $d)
                                 <option value="{{ $d }}" @selected((int) $selectedCutoffDay === $d)>{{ $d }}</option>
                             @endforeach
                         </select>
@@ -174,6 +174,13 @@
                     const lapse = parseInt(paymentLapse.value, 10) || 30;
                     const cMonth = parseInt(cutoffMonth.value, 10) - 1;
                     const cYear = parseInt(cutoffYear.value, 10);
+                    const daysInCutoffMonth = new Date(cYear, cMonth + 1, 0).getDate();
+
+                    if (cDay > daysInCutoffMonth) {
+                        dueDateDisplay.value = '';
+                        return;
+                    }
+
                     let cutoff = new Date(cYear, cMonth, cDay);
                     const due = new Date(cutoff);
                     due.setDate(due.getDate() + lapse);
@@ -193,4 +200,3 @@
         </script>
     </x-app-shell>
 @endsection
-

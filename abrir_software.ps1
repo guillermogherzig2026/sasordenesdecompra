@@ -12,9 +12,9 @@ if (-not (Test-Path -LiteralPath $php)) {
     exit 1
 }
 
-if (-not (Test-Path -LiteralPath (Join-Path $projectRoot 'database\database.sqlite'))) {
-    Write-Host 'No se encontro la base local database\database.sqlite.'
-    Write-Host 'Abre este proyecto con Codex para reconstruirla desde el SQL.'
+if (-not (Test-Path -LiteralPath (Join-Path $projectRoot '.env'))) {
+    Write-Host 'No se encontro el archivo de configuracion .env.'
+    Write-Host 'Abre este proyecto con Codex para configurarlo.'
     Read-Host 'Presiona Enter para cerrar'
     exit 1
 }
@@ -33,8 +33,7 @@ if (-not $alreadyRunning) {
         '-d', 'extension=openssl',
         '-d', 'extension=mbstring',
         '-d', 'extension=fileinfo',
-        '-d', 'extension=pdo_sqlite',
-        '-d', 'extension=sqlite3',
+        '-d', 'extension=pdo_mysql',
         '-d', 'extension=curl',
         '-d', 'extension=zip',
         '-S', '127.0.0.1:8000',

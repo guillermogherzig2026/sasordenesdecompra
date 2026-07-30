@@ -70,7 +70,20 @@
                                     </details>
                                 </td>
                                 <td>
-                                    <a class="button ghost small" href="{{ route('services.edit', $service) }}">Editar</a>
+                                    <div class="item-actions">
+                                        @if ($service->status === 'active')
+                                            <form class="inline-form" method="POST" action="{{ route('services.status', [$service, 'paused']) }}">
+                                                @csrf @method('PATCH')
+                                                <button class="button ghost small" type="submit">Pausar</button>
+                                            </form>
+                                        @elseif ($service->status === 'paused')
+                                            <form class="inline-form" method="POST" action="{{ route('services.status', [$service, 'active']) }}">
+                                                @csrf @method('PATCH')
+                                                <button class="button primary small" type="submit">Reactivar</button>
+                                            </form>
+                                        @endif
+                                        <a class="button ghost small" href="{{ route('services.edit', $service) }}">Editar</a>
+                                    </div>
                                 </td>
                             </tr>
                         @empty

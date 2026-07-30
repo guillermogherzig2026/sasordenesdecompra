@@ -12,6 +12,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Validation\ValidationException;
 
 class ServiceController extends Controller
 {
@@ -396,10 +397,26 @@ class ServiceController extends Controller
         $validated['payment_interval_days'] = (int) $paymentLapse;
 
         if ($startDay && $startMonth && $startYear) {
+            if (! checkdate((int) $startMonth, (int) $startDay, (int) $startYear)) {
+                throw ValidationException::withMessages([
+                    'start_day' => 'La fecha de inicio seleccionada no es valida.',
+                ]);
+            }
+
             $validated['start_date'] = Carbon::create($startYear, $startMonth, $startDay)->toDateString();
         }
 
         if ($request->has('cutoff_day')) {
+            if (! checkdate(
+                (int) $request->input('cutoff_month'),
+                (int) $request->input('cutoff_day'),
+                (int) $request->input('cutoff_year')
+            )) {
+                throw ValidationException::withMessages([
+                    'cutoff_day' => 'La fecha de corte seleccionada no es valida.',
+                ]);
+            }
+
             $validated['cutoff_day'] = (int) $request->input('cutoff_day');
             $validated['cutoff_month'] = (int) $request->input('cutoff_month');
             $validated['cutoff_year'] = (int) $request->input('cutoff_year');
@@ -450,7 +467,7 @@ class ServiceController extends Controller
             'start_day' => ['required', 'integer', 'min:1', 'max:31'],
             'start_month' => ['required', 'integer', 'min:1', 'max:12'],
             'start_year' => ['required', 'integer', 'min:2020', 'max:2100'],
-            'cutoff_day' => ['required', 'integer', 'min:1', 'max:28'],
+            'cutoff_day' => ['required', 'integer', 'min:1', 'max:31'],
             'cutoff_month' => ['required', 'integer', 'min:1', 'max:12'],
             'cutoff_year' => ['required', 'integer', 'min:2020', 'max:2100'],
             'reference' => ['nullable', 'string', 'max:255'],
