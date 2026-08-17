@@ -83,12 +83,10 @@
                                             <div class="status-menu-panel">
                                                 @if ($isDomiciled)
                                                     <span class="fine-print">Pago domiciliado automatico</span>
-                                                @elseif ($service->status !== 'inactive' && $hasSupport && ! $paid)
+                                                @elseif ($service->status !== 'inactive' && ! $paid)
                                                     <a class="button primary small" href="{{ route('finance.services.payment', [$service, $item['due_date']]) }}">Subir comprobante</a>
                                                 @elseif ($paid)
                                                     <span class="fine-print">Pagado</span>
-                                                @elseif (! $hasSupport)
-                                                    <span class="fine-print">Esperando factura</span>
                                                 @endif
                                             </div>
                                         </details>
@@ -440,6 +438,5 @@
         });
     </script>
 @endsection
-
 
 

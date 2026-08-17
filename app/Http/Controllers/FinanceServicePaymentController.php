@@ -30,7 +30,7 @@ class FinanceServicePaymentController extends Controller
         abort_unless($occurrence, 404);
         abort_if($service->is_domiciled, 403);
         $receipt = $this->receiptFor($service, $dueDate);
-        abort_unless($service->status !== 'inactive' && filled($receipt?->support_file_path) && ! $receipt->isPaid(), 403);
+        abort_unless($service->status !== 'inactive' && ! ($receipt?->isPaid() ?? false), 403);
 
         return view('finance.services.payment', [
             'service' => $service,
@@ -47,7 +47,7 @@ class FinanceServicePaymentController extends Controller
         abort_unless($occurrence, 404);
         abort_if($service->is_domiciled, 403);
         $existingReceipt = $this->receiptFor($service, $dueDate);
-        abort_unless($service->status !== 'inactive' && filled($existingReceipt?->support_file_path) && ! $existingReceipt->isPaid(), 403);
+        abort_unless($service->status !== 'inactive' && ! ($existingReceipt?->isPaid() ?? false), 403);
 
         $validated = $request->validate([
             'payment_file' => ['required', 'file', 'max:10240'],
@@ -55,10 +55,16 @@ class FinanceServicePaymentController extends Controller
         ]);
 
         $path = $request->file('payment_file')->store('service-payments');
-        $receipt = $existingReceipt;
+        $receipt = $existingReceipt ?? new RecurringServiceReceipt([
+            'recurring_service_id' => $service->id,
+            'due_date' => $dueDate,
+            'period_start' => $occurrence['period_start'],
+            'amount' => $service->cost,
+        ]);
 
         $receipt->fill([
             'period_start' => $receipt->period_start ?: $occurrence['period_start'],
+            'amount' => $receipt->amount ?? $service->cost,
             'payment_file_path' => $path,
             'payment_original_name' => $request->file('payment_file')->getClientOriginalName(),
             'payment_paid_on' => $validated['payment_paid_on'],

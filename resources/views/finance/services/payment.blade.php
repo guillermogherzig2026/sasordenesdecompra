@@ -20,7 +20,11 @@
                     <div><span class="fine-print">Periodo</span><strong>{{ \Illuminate\Support\Carbon::parse($occurrence['period_start'])->format('d/m/Y') }} al {{ \Illuminate\Support\Carbon::parse($occurrence['due_date'])->format('d/m/Y') }}</strong></div>
                     <div><span class="fine-print">Monto</span><strong>${{ number_format($periodAmount, 2) }}</strong></div>
                 </div>
-                <p class="fine-print">Factura/recibo cargado por Asistente Administrativo: {{ $receipt?->support_original_name ?? 'Pendiente' }}</p>
+                @if ($receipt?->support_file_path)
+                    <p class="fine-print">Factura/recibo cargado por Asistente Administrativo: {{ $receipt->support_original_name }}</p>
+                @else
+                    <p class="fine-print">Sin factura o recibo. Puedes registrar el comprobante de pago directamente.</p>
+                @endif
             </section>
 
             <div class="grid-2">

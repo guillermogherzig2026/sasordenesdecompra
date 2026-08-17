@@ -62,7 +62,7 @@ class BuyerProviderController extends Controller
     {
         $this->ensureOwner($provider);
 
-        $provider->update($this->providerPayload($request));
+        $provider->update($this->providerPayload($request, $provider));
 
         AuditLog::create([
             'user_id' => Auth::id(),
@@ -75,11 +75,18 @@ class BuyerProviderController extends Controller
         return redirect()->route('buyer.providers.index')->with('status', 'Proveedor actualizado.');
     }
 
-    private function providerPayload(Request $request): array
+    private function providerPayload(Request $request, ?Provider $provider = null): array
     {
+        $rfcRule = Rule::unique('providers', 'rfc')
+            ->where(fn ($query) => $query->where('buyer_id', Auth::id()));
+
+        if ($provider) {
+            $rfcRule->ignore($provider->id);
+        }
+
         $validated = $request->validate([
             'business_name' => ['required', 'string', 'max:255'],
-            'rfc' => ['required', 'string', 'max:20'],
+            'rfc' => ['required', 'string', 'max:20', $rfcRule],
             'business_line_id' => ['required', 'integer', Rule::exists('provider_business_lines', 'id')->where('active', true)],
             'bank' => ['required', 'string', 'max:120'],
             'account_number' => ['required', 'string', 'max:40'],
@@ -91,7 +98,7 @@ class BuyerProviderController extends Controller
 
         return [
             'business_name' => $validated['business_name'],
-            'rfc' => $validated['rfc'],
+            'rfc' => strtoupper(trim($validated['rfc'])),
             'business_line' => $line->name,
             'provider_business_line_id' => $line->id,
             'bank' => $validated['bank'],

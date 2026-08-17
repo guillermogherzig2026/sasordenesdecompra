@@ -431,7 +431,7 @@ class FinanceAdminController extends Controller
             return collect();
         }
 
-        return collect(DB::table('supply_warehouses')->orderByRaw("CASE WHEN key = 'central' THEN 0 ELSE 1 END")->orderBy('name')->get())
+        return collect(DB::table('supply_warehouses')->orderByRaw('CASE WHEN `key` = ? THEN 0 ELSE 1 END', ['central'])->orderBy('name')->get())
             ->map(function ($warehouse) {
                 $companies = Schema::hasTable('supply_warehouse_companies')
                     ? Company::query()
