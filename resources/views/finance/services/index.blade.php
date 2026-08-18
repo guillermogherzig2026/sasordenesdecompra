@@ -6,12 +6,16 @@
             <a class="button ghost" href="{{ route('reports.download', 'services-months-excel') }}">Descargar</a>
         </x-slot:actions>
         @foreach ($months as $month)
-            <section class="panel service-month-panel">
+            <section class="panel service-month-panel" data-month-panel>
                 <div class="panel-header service-month-header service-month-header-compact">
-                    <div class="month-toggle-copy">
-                        <h2>{{ $month['label'] }} <span class="month-total-inline">Total: ${{ number_format((float) $month['total'], 0) }}</span></h2>
-                        <span class="fine-print">Servicios ordenados de la fecha de corte mas proxima a la mas tardia.</span>
-                    </div>
+                    <button class="month-toggle" type="button" data-month-toggle
+                        aria-expanded="{{ $loop->first ? 'true' : 'false' }}">
+                        <span class="month-toggle-sign" aria-hidden="true">{{ $loop->first ? '-' : '+' }}</span>
+                        <span class="month-toggle-copy">
+                            <h2>{{ $month['label'] }} <span class="month-total-inline">Total: ${{ number_format((float) $month['total'], 0) }}</span></h2>
+                            <span class="fine-print">Servicios ordenados de la fecha de corte mas proxima a la mas tardia.</span>
+                        </span>
+                    </button>
                     <div class="month-summary-metrics">
                         <article class="metric-card compact-metric">
                             <span>Monto total mensual</span>
@@ -28,113 +32,117 @@
                     </div>
                 </div>
 
-                <div class="table-scroll service-month-scroll">
-                    <table class="service-month-table" data-column-filter-table>
-                        <thead>
-                            <tr>
-                                <th data-filter-column="0"><span>ID</span></th>
-                                <th data-filter-column="1"><span>Titular</span></th>
-                                <th data-filter-column="2"><span>Sucursal</span></th>
-                                <th data-filter-column="3"><span>Servicio</span></th>
-                                <th data-filter-column="4"><span>Banco</span></th>
-                                <th data-filter-column="5"><span>Cuenta pagadora</span></th>
-                                <th data-filter-column="6"><span>Proveedor</span></th>
-                                <th data-filter-column="7"><span>No. Servicio</span></th>
-                                <th data-filter-column="8"><span>Periodo</span></th>
-                                <th data-filter-column="9" data-filter-type="date-range"><span>Vencimiento</span></th>
-                                <th data-filter-column="10"><span>Monto</span></th>
-                                <th data-filter-column="11"><span>Referencia</span></th>
-                                <th data-filter-column="12"><span>Estado</span></th>
-                                <th data-filter-column="13"><span>Factura</span></th>
-                                <th data-filter-column="14"><span>Comprobante pago</span></th>
-                                <th data-filter-column="15"><span>Pausar</span></th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @forelse ($month['items'] as $item)
-                                @php
-                                    $service = $item['service'];
-                                    $receipt = $item['receipt'];
-                                    $isDomiciled = $service->is_domiciled;
-                                    $paid = filled($receipt?->payment_file_path);
-                                    $hasSupport = filled($receipt?->support_file_path);
-                                    $paused = $service->status === 'paused';
-                                    $statusText = $paused ? 'Pausado' : ($isDomiciled ? 'DOM' : ($paid ? 'Pagado' : ($hasSupport ? 'Listo para pago' : 'Pendiente')));
-                                    $statusClass = $paused ? 'rejected' : ($isDomiciled ? 'domiciled' : ($paid ? 'paid' : ($hasSupport ? 'approved' : 'pending')));
-                                    $periodAmount = (float) ($receipt?->amount ?? $service->cost);
-                                    $paymentDueDate = \Illuminate\Support\Carbon::parse($item['payment_due_date'] ?? $item['due_date']);
-                                @endphp
-                                <tr data-filter-row>
-                                    <td data-filter-value="{{ $service->folio }}"><strong>{{ $service->folio }}</strong></td>
-                                    <td data-filter-value="{{ $service->holder ?: $service->company_name }}">{{ $service->holder ?: $service->company_name }}</td>
-                                    <td data-filter-value="{{ $service->display_branch }}">{{ $service->display_branch }}</td>
-                                    <td data-filter-value="{{ $service->service_name }}">{{ $service->service_name }}</td>
-                                    <td data-filter-value="{{ $service->bank }}">{{ $service->bank }}</td>
-                                    <td data-filter-value="{{ $service->payer_account }}">{{ $service->payer_account }}</td>
-                                    <td data-filter-value="{{ $service->provider }}">{{ $service->provider }}</td>
-                                    <td data-filter-value="{{ $service->service_number }}">{{ $service->service_number }}</td>
-                                    <td data-filter-value="{{ \Illuminate\Support\Carbon::parse($item['period_start'])->format('d/m/Y') }} al {{ \Illuminate\Support\Carbon::parse($item['due_date'])->format('d/m/Y') }}">{{ \Illuminate\Support\Carbon::parse($item['period_start'])->format('d/m') }} al {{ \Illuminate\Support\Carbon::parse($item['due_date'])->format('d/m') }}</td>
-                                    <td data-filter-value="{{ $paymentDueDate->format('d/m/Y') }}" data-filter-date="{{ $paymentDueDate->format('Y-m-d') }}">{{ $paymentDueDate->format('d/m/Y') }}</td>
-                                    <td data-filter-value="${{ number_format($periodAmount, 2) }}">${{ number_format($periodAmount, 2) }}</td>
-                                    <td data-filter-value="{{ $service->reference }}">{{ $service->reference }}</td>
-                                    <td data-filter-value="{{ $statusText }}">
-                                        <details class="status-menu">
-                                            <summary class="status {{ $statusClass }}">{{ $statusText }}</summary>
-                                            <div class="status-menu-panel">
-                                                @if ($isDomiciled)
-                                                    <span class="fine-print">Pago domiciliado automatico</span>
-                                                @elseif ($service->status !== 'inactive' && ! $paid)
-                                                    <a class="button primary small" href="{{ route('finance.services.payment', [$service, $item['due_date']]) }}">Subir comprobante</a>
-                                                @elseif ($paid)
-                                                    <span class="fine-print">Pagado</span>
-                                                @endif
-                                            </div>
-                                        </details>
-                                    </td>
-                                    <td data-filter-value="{{ $receipt?->support_original_name ?? 'Pendiente' }}">
-                                        @if ($receipt?->support_file_path)
-                                            <a class="attachment-pill" href="{{ route('finance.services.support-file', $receipt) }}" target="_blank" rel="noopener"><span>Adjunto</span>{{ $receipt->support_original_name ?: 'Factura' }}</a>
-                                        @else
-                                            Pendiente
-                                        @endif
-                                    </td>
-                                    <td data-filter-value="{{ $isDomiciled ? 'DOM' : ($receipt?->payment_original_name ?? 'Pendiente') }}">
-                                        @if ($isDomiciled)
-                                            DOM
-                                        @elseif ($receipt?->payment_file_path)
-                                            <a class="attachment-pill" href="{{ route('finance.services.payment-file', $receipt) }}" target="_blank" rel="noopener"><span>Adjunto</span>{{ $receipt->payment_original_name ?: 'Comprobante' }}</a>
-                                        @else
-                                            Pendiente
-                                        @endif
-                                    </td>
-                                    <td data-filter-value="{{ $service->status === 'paused' ? 'Reactivar' : 'Pausar' }}">
-                                        <div class="item-actions service-actions">
-                                            @if ($service->status === 'paused')
-                                                <form class="inline-form" method="POST" action="{{ route('finance.services.status', [$service, 'active']) }}">
-                                                    @csrf
-                                                    @method('PATCH')
-                                                    <button class="button primary small" type="submit">Reactivar</button>
-                                                </form>
-                                            @else
-                                                <form class="inline-form" method="POST" action="{{ route('finance.services.status', [$service, 'paused']) }}">
-                                                    @csrf
-                                                    @method('PATCH')
-                                                    <button class="button ghost small" type="submit">Pausar</button>
-                                                </form>
-                                            @endif
-                                            <form class="inline-form" method="POST" action="{{ route('finance.services.status', [$service, 'inactive']) }}" onsubmit="return confirm('Dar de baja {{ $service->folio }}?')">
-                                                @csrf
-                                                @method('PATCH')
-                                                <button class="button danger small" type="submit">Dar de baja</button>
-                                            </form>
-                                        </div>
-                                    </td>
+                <div class="service-month-detail" @if (!$loop->first) hidden @endif>
+                    <div class="table-scroll service-month-scroll">
+                        <table class="service-month-table" data-column-filter-table>
+                            <thead>
+                                <tr>
+                                    <th data-filter-column="0"><span>ID</span></th>
+                                    <th data-filter-column="1"><span>Titular</span></th>
+                                    <th data-filter-column="2"><span>Sucursal</span></th>
+                                    <th data-filter-column="3"><span>Servicio</span></th>
+                                    <th data-filter-column="4"><span>Banco</span></th>
+                                    <th data-filter-column="5"><span>Cuenta pagadora</span></th>
+                                    <th data-filter-column="6"><span>Proveedor</span></th>
+                                    <th data-filter-column="7"><span>No. Servicio</span></th>
+                                    <th data-filter-column="8"><span>Periodo</span></th>
+                                    <th data-filter-column="9" data-filter-type="date-range"><span>Vencimiento</span></th>
+                                    <th data-filter-column="10"><span>Monto</span></th>
+                                    <th data-filter-column="11"><span>Referencia</span></th>
+                                    <th data-filter-column="12"><span>Estado</span></th>
+                                    <th data-filter-column="13"><span>Factura</span></th>
+                                    <th data-filter-column="14"><span>Comprobante pago</span></th>
+                                    <th data-filter-column="15"><span>Pausar</span></th>
                                 </tr>
-                            @empty
-                                <tr><td colspan="16">No hay servicios programados para este mes.</td></tr>
-                            @endforelse
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
+                                @forelse ($month['items'] as $item)
+                                    @php
+                                        $service = $item['service'];
+                                        $receipt = $item['receipt'];
+                                        $isDomiciled = $service->is_domiciled;
+                                        $paid = filled($receipt?->payment_file_path);
+                                        $hasSupport = filled($receipt?->support_file_path);
+                                        $paused = $service->status === 'paused';
+                                        $statusText = $paused ? 'Pausado' : ($isDomiciled ? 'DOM' : ($paid ? 'Pagado' : ($hasSupport ? 'Listo para pago' : 'Pendiente')));
+                                        $statusClass = $paused ? 'rejected' : ($isDomiciled ? 'domiciled' : ($paid ? 'paid' : ($hasSupport ? 'approved' : 'pending')));
+                                        $periodAmount = (float) ($receipt?->amount ?? $service->cost);
+                                        $paymentDueDate = \Illuminate\Support\Carbon::parse($item['payment_due_date'] ?? $item['due_date']);
+                                    @endphp
+                                    <tr data-filter-row>
+                                        <td data-filter-value="{{ $service->folio }}"><strong>{{ $service->folio }}</strong></td>
+                                        <td data-filter-value="{{ $service->holder ?: $service->company_name }}">{{ $service->holder ?: $service->company_name }}</td>
+                                        <td data-filter-value="{{ $service->display_branch }}">{{ $service->display_branch }}</td>
+                                        <td data-filter-value="{{ $service->service_name }}">{{ $service->service_name }}</td>
+                                        <td data-filter-value="{{ $service->bank }}">{{ $service->bank }}</td>
+                                        <td data-filter-value="{{ $service->payer_account }}">{{ $service->payer_account }}</td>
+                                        <td data-filter-value="{{ $service->provider }}">{{ $service->provider }}</td>
+                                        <td data-filter-value="{{ $service->service_number }}">{{ $service->service_number }}</td>
+                                        <td data-filter-value="{{ \Illuminate\Support\Carbon::parse($item['period_start'])->format('d/m/Y') }} al {{ \Illuminate\Support\Carbon::parse($item['due_date'])->format('d/m/Y') }}">{{ \Illuminate\Support\Carbon::parse($item['period_start'])->format('d/m') }} al {{ \Illuminate\Support\Carbon::parse($item['due_date'])->format('d/m') }}</td>
+                                        <td data-filter-value="{{ $paymentDueDate->format('d/m/Y') }}" data-filter-date="{{ $paymentDueDate->format('Y-m-d') }}">{{ $paymentDueDate->format('d/m/Y') }}</td>
+                                        <td data-filter-value="${{ number_format($periodAmount, 2) }}">${{ number_format($periodAmount, 2) }}</td>
+                                        <td data-filter-value="{{ $service->reference }}">{{ $service->reference }}</td>
+                                        <td data-filter-value="{{ $statusText }}">
+                                            <details class="status-menu">
+                                                <summary class="status {{ $statusClass }}">{{ $statusText }}</summary>
+                                                <div class="status-menu-panel">
+                                                    @if ($isDomiciled)
+                                                        <span class="fine-print">Pago domiciliado automatico</span>
+                                                    @elseif ($service->status !== 'inactive' && $hasSupport && ! $paid)
+                                                        <a class="button primary small" href="{{ route('finance.services.payment', [$service, $item['due_date']]) }}">Subir comprobante</a>
+                                                    @elseif ($paid)
+                                                        <span class="fine-print">Pagado</span>
+                                                    @elseif (! $hasSupport)
+                                                        <span class="fine-print">Esperando factura</span>
+                                                    @endif
+                                                </div>
+                                            </details>
+                                        </td>
+                                        <td data-filter-value="{{ $receipt?->support_original_name ?? 'Pendiente' }}">
+                                            @if ($receipt?->support_file_path)
+                                                <a class="attachment-pill" href="{{ route('finance.services.support-file', $receipt) }}" target="_blank" rel="noopener"><span>Adjunto</span>{{ $receipt->support_original_name ?: 'Factura' }}</a>
+                                            @else
+                                                Pendiente
+                                            @endif
+                                        </td>
+                                        <td data-filter-value="{{ $isDomiciled ? 'DOM' : ($receipt?->payment_original_name ?? 'Pendiente') }}">
+                                            @if ($isDomiciled)
+                                                DOM
+                                            @elseif ($receipt?->payment_file_path)
+                                                <a class="attachment-pill" href="{{ route('finance.services.payment-file', $receipt) }}" target="_blank" rel="noopener"><span>Adjunto</span>{{ $receipt->payment_original_name ?: 'Comprobante' }}</a>
+                                            @else
+                                                Pendiente
+                                            @endif
+                                        </td>
+                                        <td data-filter-value="{{ $service->status === 'paused' ? 'Reactivar' : 'Pausar' }}">
+                                            <div class="item-actions service-actions">
+                                                @if ($service->status === 'paused')
+                                                    <form class="inline-form" method="POST" action="{{ route('finance.services.status', [$service, 'active']) }}">
+                                                        @csrf
+                                                        @method('PATCH')
+                                                        <button class="button primary small" type="submit">Reactivar</button>
+                                                    </form>
+                                                @else
+                                                    <form class="inline-form" method="POST" action="{{ route('finance.services.status', [$service, 'paused']) }}">
+                                                        @csrf
+                                                        @method('PATCH')
+                                                        <button class="button ghost small" type="submit">Pausar</button>
+                                                    </form>
+                                                @endif
+                                                <form class="inline-form" method="POST" action="{{ route('finance.services.status', [$service, 'inactive']) }}" onsubmit="return confirm('Dar de baja {{ $service->folio }}?')">
+                                                    @csrf
+                                                    @method('PATCH')
+                                                    <button class="button danger small" type="submit">Dar de baja</button>
+                                                </form>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                @empty
+                                    <tr><td colspan="16">No hay servicios programados para este mes.</td></tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </section>
         @endforeach
@@ -157,6 +165,19 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
+            document.querySelectorAll('[data-month-toggle]').forEach((toggle) => {
+                toggle.addEventListener('click', () => {
+                    const panel = toggle.closest('[data-month-panel]');
+                    const detail = panel?.querySelector('.service-month-detail');
+                    if (!detail) return;
+
+                    const isOpen = toggle.getAttribute('aria-expanded') === 'true';
+                    toggle.setAttribute('aria-expanded', isOpen ? 'false' : 'true');
+                    toggle.querySelector('.month-toggle-sign').textContent = isOpen ? '+' : '-';
+                    detail.hidden = isOpen;
+                });
+            });
+
             const normalize = (value) => (value || '').replace(/\s+/g, ' ').trim();
             const parseDateKey = (key) => {
                 const [year, month, day] = (key || '').split('-').map(Number);

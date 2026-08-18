@@ -11,7 +11,8 @@
             <div class="panel-header">
                 <div>
                     <p class="eyebrow">Remision de entrega</p>
-                    <h2>{{ $order->delivery_remission_number ?: 'Remision pendiente' }}</h2>
+                    <h2>{{ $order->formatted_delivery_remission_number ?: 'Remision pendiente' }}</h2>
+                    <p class="fine-print">ID OS {{ $order->supply_consecutive }}</p>
                     <p class="fine-print">OS {{ $order->folio }} · {{ \App\Support\UiStatus::supplyOrder($order->status, 'inventory') }}</p>
                 </div>
                 <button class="button ghost no-print" onclick="window.print()" type="button">Imprimir</button>
@@ -40,7 +41,7 @@
                 <div class="panel">
                     <strong>Confirmacion digital</strong>
                     @if ($qrUrl)
-                        <img src="{{ $qrUrl }}" alt="QR de remision {{ $order->delivery_remission_number }}" width="180" height="180" style="width:180px;height:180px">
+                        <img src="{{ $qrUrl }}" alt="QR de remision {{ $order->formatted_delivery_remission_number }}" width="180" height="180" style="width:180px;height:180px">
                         <p class="fine-print">Escanea para abrir el formato digital y recibir mercancia.</p>
                         <p class="fine-print" style="word-break:break-all">{{ $digitalUrl }}</p>
                     @else

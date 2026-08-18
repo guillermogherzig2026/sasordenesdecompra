@@ -1,10 +1,26 @@
 @extends('layouts.app')
 
 @section('body')
-    <x-app-shell title="Servicios por mes">
-        <x-slot:actions>
-            <a class="button ghost" href="{{ route('reports.download', 'services-months-excel') }}">Descarga para filtrar</a>
-        </x-slot:actions>
+    @php
+        $pageTitle = $title ?? 'Servicios por mes';
+        $downloadReport = $downloadReport ?? 'services-months-excel';
+        $monthSubtitle = $monthSubtitle ?? 'Servicios ordenados de la fecha de corte mas proxima a la mas tardia.';
+        $emptyMessage = $emptyMessage ?? 'No hay servicios programados para este mes.';
+        $historyMode = $historyMode ?? false;
+        $metricLabels = $metricLabels ?? [
+            'total' => 'Monto total mensual',
+            'paid' => 'Monto total pagado',
+            'next_week' => 'Monto a pagar la proxima semana',
+            'pending' => 'Monto pendiente por pagar',
+        ];
+    @endphp
+
+    <x-app-shell :title="$pageTitle">
+        @if ($downloadReport)
+            <x-slot:actions>
+                <a class="button ghost" href="{{ route('reports.download', $downloadReport) }}">Descarga para filtrar</a>
+            </x-slot:actions>
+        @endif
         @foreach ($months as $month)
             <section class="panel service-month-panel" data-month-panel>
                 <div class="panel-header service-month-header service-month-header-compact">
@@ -14,28 +30,27 @@
                         <span class="month-toggle-copy">
                             <h2>{{ $month['label'] }} <span class="month-total-inline">Total:
                                     ${{ number_format((float) $month['total'], 0) }}</span></h2>
-                            <span class="fine-print">Servicios ordenados de la fecha de corte mas proxima a la mas
-                                tardia.</span>
+                            <span class="fine-print">{{ $monthSubtitle }}</span>
                         </span>
                     </button>
                     <div class="month-summary-metrics">
                         <article class="metric-card compact-metric">
-                            <span>Monto total mensual</span>
+                            <span>{{ $metricLabels['total'] }}</span>
                             <strong>${{ number_format((float) $month['total'], 2) }}</strong>
                         </article>
 
                         <article class="metric-card compact-metric">
-                            <span>Monto total pagado</span>
+                            <span>{{ $metricLabels['paid'] }}</span>
                             <strong>${{ number_format((float) $month['paid_total'], 2) }}</strong>
                         </article>
 
                         <article class="metric-card compact-metric">
-                            <span>Monto a pagar la próxima semana</span>
+                            <span>{{ $metricLabels['next_week'] }}</span>
                             <strong>${{ number_format((float) $next_week_total, 2) }}</strong>
                         </article>
 
                         <article class="metric-card compact-metric">
-                            <span>Monto pendiente por pagar</span>
+                            <span>{{ $metricLabels['pending'] }}</span>
                             <strong>${{ number_format((float) $month['pending_total'], 2) }}</strong>
                         </article>
                     </div>
@@ -90,7 +105,7 @@
                                             $item['payment_due_date'] ?? $item['due_date'],
                                         );
                                     @endphp
-                                    <tr data-filter-row @class(['service-row-locked' => $paid && !$isDomiciled])>
+                                    <tr data-filter-row @class(['service-row-locked' => $historyMode || ($paid && !$isDomiciled)])>
                                         <td data-filter-value="{{ $item['service']->folio }}">
                                             <strong>{{ $item['service']->folio }}</strong>
                                         </td>
@@ -118,7 +133,7 @@
                                             data-filter-date="{{ $paymentDueDate->format('Y-m-d') }}">
                                             {{ $paymentDueDate->format('d/m/Y') }}</td>
                                         <td data-filter-value="${{ number_format($periodAmount, 2) }}">
-                                            @if ($paid && !$isDomiciled)
+                                            @if ($historyMode || ($paid && !$isDomiciled))
                                                 ${{ number_format($periodAmount, 2) }}
                                             @else
                                                 <form class="amount-edit" method="POST"
@@ -150,7 +165,7 @@
                                                         href="{{ route('services.support-file', $receipt) }}"
                                                         target="_blank"
                                                         rel="noopener"><span>Adjunto</span>{{ $receipt->support_original_name }}</a>
-                                                    @if ($item['service']->status !== 'inactive' && (!$paid || $isDomiciled))
+                                                    @if (! $historyMode && $item['service']->status !== 'inactive' && (!$paid || $isDomiciled))
                                                         <a class="button ghost small"
                                                             href="{{ route('services.receipt', [$item['service'], $item['due_date']]) }}">Cambiar
                                                             factura</a>
@@ -159,7 +174,7 @@
                                                     @endif
                                                 </div>
                                             @else
-                                                @if ($item['service']->status !== 'inactive')
+                                                @if (! $historyMode && $item['service']->status !== 'inactive')
                                                     <a class="button primary small"
                                                         href="{{ route('services.receipt', [$item['service'], $item['due_date']]) }}">Subir
                                                         factura</a>
@@ -183,7 +198,7 @@
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="15">No hay servicios programados para este mes.</td>
+                                        <td colspan="15">{{ $emptyMessage }}</td>
                                     </tr>
                                 @endforelse
                             </tbody>

@@ -101,6 +101,36 @@ class ServiceController extends Controller
         ]);
     }
 
+    public function history(Request $request)
+    {
+        $this->ensureServiceHistory();
+
+        $month = now()->startOfMonth();
+        $items = $this->paidHistoryItemsForMonth($month);
+        $months = [[
+            'month_key' => $month->format('Y-m'),
+            'label' => $this->monthLabel($month),
+            'items' => $items,
+            ...$this->monthTotals($items),
+        ]];
+
+        return view('services.months', [
+            'months' => $months,
+            'next_week_total' => 0,
+            'title' => 'Historial de Servicios',
+            'downloadReport' => null,
+            'monthSubtitle' => 'Servicios pagados durante el mes en curso.',
+            'emptyMessage' => 'No hay servicios pagados durante el mes en curso.',
+            'historyMode' => true,
+            'metricLabels' => [
+                'total' => 'Monto pagado del mes',
+                'paid' => 'Monto total pagado',
+                'next_week' => 'Pagos pendientes esta semana',
+                'pending' => 'Monto pendiente por pagar',
+            ],
+        ]);
+    }
+
     public function receiptForm(RecurringService $service, string $dueDate)
     {
         $this->ensureServices();
@@ -223,6 +253,7 @@ class ServiceController extends Controller
                 ->where('status', '!=', 'inactive')
                 ->get()
                 ->flatMap(fn(RecurringService $service) => $this->occurrencesForMonth($service, $month))
+                ->filter(fn(array $item) => ! $this->isPaidOccurrence($item))
                 ->sortBy(fn(array $item) => $item['due_date'])
                 ->values();
 
@@ -233,6 +264,67 @@ class ServiceController extends Controller
                 ...$this->monthTotals($items),
             ];
         })->all();
+    }
+
+    private function paidHistoryItemsForMonth(Carbon $month): Collection
+    {
+        $paidReceipts = RecurringServiceReceipt::with('recurringService.receipts')
+            ->whereNotNull('payment_file_path')
+            ->whereYear('payment_paid_on', $month->year)
+            ->whereMonth('payment_paid_on', $month->month)
+            ->get()
+            ->filter(fn(RecurringServiceReceipt $receipt) => $receipt->recurringService && $receipt->recurringService->status !== 'inactive')
+            ->map(function (RecurringServiceReceipt $receipt) {
+                $service = $receipt->recurringService;
+                $dueDate = $receipt->due_date?->toDateString() ?? now()->toDateString();
+                $periodStart = $receipt->period_start?->toDateString()
+                    ?? Carbon::parse($dueDate)->subDays(max((int) $service->payment_interval_days, 1))->toDateString();
+
+                return [
+                    'service' => $service,
+                    'due_date' => $dueDate,
+                    'payment_due_date' => $dueDate,
+                    'period_start' => $periodStart,
+                    'receipt' => $receipt,
+                ];
+            });
+
+        $domiciled = RecurringService::with('receipts')
+            ->where('status', '!=', 'inactive')
+            ->where('is_domiciled', true)
+            ->get()
+            ->flatMap(fn(RecurringService $service) => $this->occurrencesForMonth($service, $month));
+
+        return collect($paidReceipts->all())
+            ->merge($domiciled)
+            ->unique(fn(array $item) => $item['service']->id.'|'.$item['due_date'])
+            ->sortBy(fn(array $item) => $item['receipt']?->payment_paid_on?->toDateString() ?? ($item['payment_due_date'] ?? $item['due_date']))
+            ->values();
+    }
+
+    private function isPaidOccurrence(array $item): bool
+    {
+        return (bool) $item['service']->is_domiciled || filled($item['receipt']?->payment_file_path);
+    }
+
+    private function monthLabel(Carbon $month): string
+    {
+        $monthNames = [
+            1 => 'enero',
+            2 => 'febrero',
+            3 => 'marzo',
+            4 => 'abril',
+            5 => 'mayo',
+            6 => 'junio',
+            7 => 'julio',
+            8 => 'agosto',
+            9 => 'septiembre',
+            10 => 'octubre',
+            11 => 'noviembre',
+            12 => 'diciembre',
+        ];
+
+        return ($monthNames[(int) $month->month] ?? $month->format('F')).' de '.$month->year;
     }
 
     private function nextWeekTotal(array $months): float
@@ -492,5 +584,12 @@ class ServiceController extends Controller
         $user = Auth::user();
 
         abort_unless($user?->active && in_array($user->role, ['finance', 'services', 'administrative_assistant', 'superadmin'], true), 403);
+    }
+
+    private function ensureServiceHistory(): void
+    {
+        $user = Auth::user();
+
+        abort_unless($user?->active && in_array($user->role, ['finance', 'administrative_assistant', 'superadmin'], true), 403);
     }
 }

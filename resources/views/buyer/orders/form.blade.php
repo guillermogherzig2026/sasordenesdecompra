@@ -12,6 +12,13 @@
     $referenceValue = old('reference', $order?->reference ?? $selectedProvider?->reference);
     $selectedCompanyId = (int) old('company_id', $order?->company_id);
     $selectedWarehouse = old('warehouse', $order?->warehouse);
+    $constructionContext = $constructionContext ?? false;
+    $constructionProjects = $constructionProjects ?? collect();
+    $routeContext = $constructionContext ? ['context' => 'construction'] : [];
+    $selectedConstructionProjectId = (int) old('construction_project_id', $order?->construction_project_id);
+    $formAction = $order
+        ? route('buyer.orders.update', array_merge(['purchaseOrder' => $order], $routeContext))
+        : route('buyer.orders.store', $routeContext);
     $currentUser = auth()->user();
     $warehousesByCompany = $companies->mapWithKeys(function ($company) use ($currentUser) {
         if ($currentUser?->role === 'superadmin') {
@@ -29,8 +36,8 @@
 @endphp
 
 @section('body')
-    <x-app-shell :title="$order ? 'Editar orden de compra' : 'Nueva orden de compra'">
-        <form class="panel" method="POST" enctype="multipart/form-data" action="{{ $order ? route('buyer.orders.update', $order) : route('buyer.orders.store') }}">
+    <x-app-shell :title="$constructionContext ? ($order ? 'Editar orden de compra de obra' : 'Nueva orden de compra de obra') : ($order ? 'Editar orden de compra' : 'Nueva orden de compra')">
+        <form class="panel" method="POST" enctype="multipart/form-data" action="{{ $formAction }}">
             @csrf
             @if ($order)
                 @method('PUT')
@@ -38,11 +45,27 @@
 
             <div class="panel-header">
                 <div>
-                    <h2>{{ $order ? "Editar {$order->folio}" : 'Nueva orden de compra' }}</h2>
-                    <p class="fine-print">La orden se guarda como enviada y queda pendiente de revision por Finanzas.</p>
+                    <h2>{{ $order ? "Editar {$order->folio}" : ($constructionContext ? 'Nueva orden de compra de obra' : 'Nueva orden de compra') }}</h2>
+                    <p class="fine-print">{{ $constructionContext ? 'La orden quedara vinculada exclusivamente a la obra seleccionada.' : 'La orden se guarda como enviada y queda pendiente de revision por Finanzas.' }}</p>
                 </div>
-                <a class="button ghost" href="{{ route('buyer.orders.index') }}">Volver</a>
+                <a class="button ghost" href="{{ route('buyer.orders.index', $routeContext) }}">Volver</a>
             </div>
+
+            @if ($constructionContext)
+                <div class="grid-3">
+                    <label>
+                        Obra
+                        <select name="construction_project_id" required>
+                            <option value="">Seleccionar obra...</option>
+                            @foreach ($constructionProjects as $project)
+                                <option value="{{ $project->id }}" @selected($selectedConstructionProjectId === $project->id)>
+                                    {{ $project->project_key }} - {{ $project->name }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </label>
+                </div>
+            @endif
 
             <div class="grid-3">
                 <label>

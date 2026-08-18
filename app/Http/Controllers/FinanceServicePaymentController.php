@@ -126,6 +126,7 @@ class FinanceServicePaymentController extends Controller
                 ->where('status', '!=', 'inactive')
                 ->get()
                 ->flatMap(fn (RecurringService $service) => $this->occurrencesForMonth($service, $month))
+                ->filter(fn (array $item) => ! $item['service']->is_domiciled && ! filled($item['receipt']?->payment_file_path))
                 ->sortBy(fn (array $item) => $item['due_date'])
                 ->values();
 

@@ -7,6 +7,7 @@ use App\Models\Company;
 use App\Models\Provider;
 use App\Models\PurchaseOrder;
 use App\Models\RecurringService;
+use App\Models\SupplyOrder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
@@ -22,21 +23,28 @@ class ReportController extends Controller
     public function download(string $type): StreamedResponse
     {
         $user = Auth::user();
+        $constructionContext = $user?->role === 'superadmin' && request('context') === 'construction';
 
         $rows = match ($type) {
-            'finance-active' => $this->orderRows(PurchaseOrder::with(['buyer', 'company', 'provider', 'payment', 'items.receiptItems', 'receipts'])->whereIn('status', ['sent', 'approved'])->get()),
-            'finance-active-excel' => $this->orderRows(PurchaseOrder::with(['buyer', 'company', 'provider', 'payment', 'items.receiptItems', 'receipts'])->whereIn('status', ['sent', 'approved'])->get()),
-            'finance-history' => $this->orderRows($this->sortHistoryOrders(PurchaseOrder::with(['buyer', 'company', 'provider', 'payment', 'items.receiptItems', 'receipts', 'auditLogs'])->whereIn('status', ['paid', 'rejected', 'canceled'])->get())),
-            'finance-history-items-excel' => $this->orderItemRows($this->sortHistoryOrders(PurchaseOrder::with(['buyer', 'company', 'provider', 'payment', 'items.receiptItems', 'receipts', 'auditLogs'])->whereIn('status', ['paid', 'rejected', 'canceled'])->get())),
-            'buyer-active' => $this->orderRows(PurchaseOrder::with(['buyer', 'company', 'provider', 'payment', 'items.receiptItems', 'receipts'])->where('buyer_id', $user->id)->whereNotIn('status', ['rejected', 'canceled'])->get()),
-            'buyer-items-excel' => $this->orderItemRows(PurchaseOrder::with(['buyer', 'company', 'provider', 'payment', 'items.receiptItems', 'receipts', 'auditLogs'])->where('buyer_id', $user->id)->latest()->get()),
-            'buyer-history' => $this->orderRows(PurchaseOrder::with(['buyer', 'company', 'provider', 'payment', 'items.receiptItems', 'receipts'])->where('buyer_id', $user->id)->whereIn('status', ['paid', 'rejected', 'canceled'])->get()),
-            'inventory-paid' => $this->orderRows(PurchaseOrder::with(['buyer', 'company', 'provider', 'payment', 'items.receiptItems', 'receipts'])->where('status', 'paid')->where('receipt_status', '!=', 'completed')->get()),
-            'inventory-history' => $this->orderRows(PurchaseOrder::with(['buyer', 'company', 'provider', 'payment', 'items.receiptItems', 'receipts'])->where('status', 'paid')->where('receipt_status', 'completed')->get()),
+            'finance-active' => $this->orderRows(PurchaseOrder::with(['buyer', 'company', 'provider', 'payment', 'items.receiptItems', 'receipts'])->general()->whereIn('status', ['sent', 'approved'])->get()),
+            'finance-active-excel' => $this->orderRows(PurchaseOrder::with(['buyer', 'company', 'provider', 'payment', 'items.receiptItems', 'receipts'])->general()->whereIn('status', ['sent', 'approved'])->get()),
+            'finance-history' => $this->orderRows($this->sortHistoryOrders(PurchaseOrder::with(['buyer', 'company', 'provider', 'payment', 'items.receiptItems', 'receipts', 'auditLogs'])->general()->whereIn('status', ['paid', 'rejected', 'canceled'])->get())),
+            'finance-history-items-excel' => $this->orderItemRows($this->sortHistoryOrders(PurchaseOrder::with(['buyer', 'company', 'provider', 'payment', 'items.receiptItems', 'receipts', 'auditLogs'])->general()->whereIn('status', ['paid', 'rejected', 'canceled'])->get())),
+            'buyer-active' => $this->orderRows(PurchaseOrder::with(['buyer', 'company', 'provider', 'payment', 'items.receiptItems', 'receipts'])->general()->where('buyer_id', $user->id)->whereNotIn('status', ['rejected', 'canceled'])->get()),
+            'buyer-items-excel' => $this->orderItemRows(PurchaseOrder::with(['buyer', 'company', 'provider', 'payment', 'items.receiptItems', 'receipts', 'auditLogs'])
+                ->when($constructionContext, fn ($query) => $query->forConstruction(), fn ($query) => $query->general())
+                ->when($user?->role !== 'superadmin', fn ($query) => $query->where('buyer_id', $user->id))
+                ->latest()
+                ->get()),
+            'buyer-history' => $this->orderRows(PurchaseOrder::with(['buyer', 'company', 'provider', 'payment', 'items.receiptItems', 'receipts'])->general()->where('buyer_id', $user->id)->whereIn('status', ['paid', 'rejected', 'canceled'])->get()),
+            'inventory-paid' => $this->orderRows(PurchaseOrder::with(['buyer', 'company', 'provider', 'payment', 'items.receiptItems', 'receipts'])->general()->where('status', 'paid')->where('receipt_status', '!=', 'completed')->get()),
+            'inventory-history' => $this->orderRows(PurchaseOrder::with(['buyer', 'company', 'provider', 'payment', 'items.receiptItems', 'receipts'])->general()->where('status', 'paid')->where('receipt_status', 'completed')->get()),
             'audit' => $this->auditRows(),
             'providers' => $this->providerRows(),
             'providers-excel' => $this->providerRows(),
             'companies' => $this->companyRows(),
+            'supply-orders' => $this->supplyOrderRows($this->supplyOrdersForReport()),
+            'supply-orders-excel' => $this->supplyOrderRows($this->supplyOrdersForReport()),
             'services-catalog' => $this->serviceRows(),
             'services-payments' => $this->servicePaymentRows(),
             'services-months-excel' => $this->serviceMonthRows(request('month')),
@@ -160,11 +168,12 @@ class ReportController extends Controller
 
     private function providerRows(): array
     {
-        return Provider::with('buyer')->orderBy('business_name')->get()->map(fn (Provider $provider) => [
+        return Provider::with(['buyer', 'businessSubcategory'])->orderBy('business_name')->get()->map(fn (Provider $provider) => [
             'Comprador' => $provider->buyer?->name,
             'Razon Social' => $provider->business_name,
             'RFC' => $provider->rfc,
             'Giro' => $provider->business_line,
+            'Subcategoria' => $provider->businessSubcategory?->name ?? $provider->provider_business_subcategory,
             'Banco' => $provider->bank,
             'Cuenta' => $provider->account_number,
             'CLABE' => $provider->clabe,
@@ -207,6 +216,50 @@ class ReportController extends Controller
             'Recibos Cargados' => $service->receipts->whereNotNull('support_file_path')->count(),
             'Pagos Comprobados' => $service->receipts->whereNotNull('payment_file_path')->count(),
         ])->all();
+    }
+
+    private function supplyOrderRows($orders): array
+    {
+        return $orders->flatMap(function (SupplyOrder $order) {
+            $items = $order->items->isNotEmpty() ? $order->items->values() : collect([null]);
+
+            return $items->map(function ($item, int $index) use ($order) {
+                return [
+                    'ID Consecutivo OS' => $order->supply_consecutive,
+                    'OS' => $order->folio,
+                    'Partida' => $item ? $index + 1 : '',
+                    'Fecha Envio' => $order->created_on?->format('d/m/Y'),
+                    'Usuario' => $order->requester?->name,
+                    'Empresa' => $order->company?->name,
+                    'Almacen Origen' => $order->warehouse_from,
+                    'Almacen Destino' => $order->warehouse_to,
+                    'Descripcion' => $item?->article,
+                    'SKU' => $item?->catalogItem?->sku,
+                    'Cantidad' => $item?->quantity,
+                    'Unidad' => $item?->catalogItem?->unit,
+                    'Precio Unitario' => $item?->unit_cost,
+                    'Precio Total' => $item?->line_total,
+                    'Estado' => $order->status,
+                    'Remision' => $order->formatted_delivery_remission_number ?: 'Pendiente',
+                    'Fecha Salida' => $order->delivered_on?->format('d/m/Y'),
+                    'Fecha Recepcion' => $order->received_on?->format('d/m/Y'),
+                    'Recibio' => $order->received_by_name,
+                ];
+            });
+        })->values()->all();
+    }
+
+    private function supplyOrdersForReport()
+    {
+        $user = Auth::user();
+        $canSeeAll = $user?->role === 'superadmin'
+            || $user?->canAccessRole('finance')
+            || $user?->canAccessRole('inventory');
+
+        return SupplyOrder::with(['requester', 'company', 'items.catalogItem'])
+            ->when(! $canSeeAll, fn ($builder) => $builder->where('requester_id', $user?->id ?? 0))
+            ->orderBy('id')
+            ->get();
     }
 
     private function servicePaymentRows(): array

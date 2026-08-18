@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
 class PurchaseOrder extends Model
@@ -9,6 +10,7 @@ class PurchaseOrder extends Model
     protected $fillable = [
         'folio',
         'buyer_id',
+        'construction_project_id',
         'company_id',
         'warehouse',
         'provider_id',
@@ -49,6 +51,11 @@ class PurchaseOrder extends Model
         return $this->belongsTo(Company::class);
     }
 
+    public function constructionProject()
+    {
+        return $this->belongsTo(ConstructionProject::class);
+    }
+
     public function provider()
     {
         return $this->belongsTo(Provider::class);
@@ -77,6 +84,16 @@ class PurchaseOrder extends Model
     public function getRouteKeyName(): string
     {
         return 'folio';
+    }
+
+    public function scopeGeneral(Builder $query): Builder
+    {
+        return $query->whereNull('construction_project_id');
+    }
+
+    public function scopeForConstruction(Builder $query): Builder
+    {
+        return $query->whereNotNull('construction_project_id');
     }
 
     public function isEditableByBuyer(): bool

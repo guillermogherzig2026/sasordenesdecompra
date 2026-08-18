@@ -6,6 +6,7 @@ use App\Models\AuditLog;
 use App\Models\Company;
 use App\Models\Provider;
 use App\Models\ProviderBusinessLine;
+use App\Models\ProviderBusinessSubcategory;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -123,11 +124,12 @@ class FinanceAdminController extends Controller
         $this->ensureFinance();
 
         $query = trim((string) $request->query('q'));
-        $providers = Provider::with('buyer')
+        $providers = Provider::with(['buyer', 'businessSubcategory'])
             ->when($query, fn ($builder) => $builder->where(function ($inner) use ($query) {
                 $inner->where('business_name', 'like', "%{$query}%")
                     ->orWhere('rfc', 'like', "%{$query}%")
                     ->orWhere('business_line', 'like', "%{$query}%")
+                    ->orWhere('provider_business_subcategory', 'like', "%{$query}%")
                     ->orWhere('bank', 'like', "%{$query}%")
                     ->orWhereHas('buyer', fn ($buyer) => $buyer->where('name', 'like', "%{$query}%"));
             }))
@@ -136,8 +138,48 @@ class FinanceAdminController extends Controller
 
         return view('finance.admin.providers', [
             'providers' => $providers,
+            'businessLines' => $this->providerBusinessLines(),
+            'buyers' => User::where('role', 'buyer')->where('active', true)->orderBy('name')->get(),
             'query' => $query,
         ]);
+    }
+
+    public function storeProvider(Request $request)
+    {
+        $this->ensureFinance();
+
+        $validated = $request->validate([
+            'buyer_id' => ['required', 'integer', Rule::exists('users', 'id')->where(fn ($query) => $query->where('role', 'buyer')->where('active', true))],
+            'business_name' => ['required', 'string', 'max:255'],
+            'rfc' => ['required', 'string', 'max:20', Rule::unique('providers', 'rfc')->where(fn ($query) => $query->where('buyer_id', $request->integer('buyer_id')))],
+            'business_line_id' => ['required', 'integer', Rule::exists('provider_business_lines', 'id')->where('active', true)],
+            'business_subcategory_id' => ['nullable', 'integer', Rule::exists('provider_business_subcategories', 'id')->where('active', true)],
+            'bank' => ['required', 'string', 'max:120'],
+            'account_number' => ['required', 'string', 'max:40'],
+            'clabe' => ['required', 'string', 'size:18'],
+            'reference' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $line = ProviderBusinessLine::findOrFail($validated['business_line_id']);
+        $subcategory = $this->providerSubcategoryForLine($validated['business_subcategory_id'] ?? null, $line);
+
+        $provider = Provider::create([
+            'buyer_id' => $validated['buyer_id'],
+            'business_name' => $validated['business_name'],
+            'rfc' => $validated['rfc'],
+            'business_line' => $line->name,
+            'provider_business_line_id' => $line->id,
+            'provider_business_subcategory_id' => $subcategory?->id,
+            'provider_business_subcategory' => $subcategory?->name,
+            'bank' => $validated['bank'],
+            'account_number' => $validated['account_number'],
+            'clabe' => $validated['clabe'],
+            'reference' => $validated['reference'] ?? null,
+        ]);
+
+        $this->audit($provider, 'provider_created', "Proveedor {$provider->business_name} creado por Finanzas.");
+
+        return redirect()->route('finance.admin.providers')->with('status', 'Proveedor registrado.');
     }
 
     public function updateProvider(Request $request, Provider $provider)
@@ -148,6 +190,7 @@ class FinanceAdminController extends Controller
             'business_name' => ['required', 'string', 'max:255'],
             'rfc' => ['required', 'string', 'max:20'],
             'business_line_id' => ['required', 'integer', Rule::exists('provider_business_lines', 'id')->where('active', true)],
+            'business_subcategory_id' => ['nullable', 'integer', Rule::exists('provider_business_subcategories', 'id')->where('active', true)],
             'bank' => ['required', 'string', 'max:120'],
             'account_number' => ['required', 'string', 'max:40'],
             'clabe' => ['required', 'string', 'size:18'],
@@ -155,12 +198,15 @@ class FinanceAdminController extends Controller
         ]);
 
         $line = ProviderBusinessLine::findOrFail($validated['business_line_id']);
+        $subcategory = $this->providerSubcategoryForLine($validated['business_subcategory_id'] ?? null, $line);
 
         $provider->update([
             'business_name' => $validated['business_name'],
             'rfc' => $validated['rfc'],
             'business_line' => $line->name,
             'provider_business_line_id' => $line->id,
+            'provider_business_subcategory_id' => $subcategory?->id,
+            'provider_business_subcategory' => $subcategory?->name,
             'bank' => $validated['bank'],
             'account_number' => $validated['account_number'],
             'clabe' => $validated['clabe'],
@@ -176,8 +222,8 @@ class FinanceAdminController extends Controller
         $this->ensureFinance();
 
         return view('finance.admin.provider-edit', [
-            'provider' => $provider->load('buyer'),
-            'businessLines' => ProviderBusinessLine::where('active', true)->orderBy('name')->get(),
+            'provider' => $provider->load(['buyer', 'businessSubcategory']),
+            'businessLines' => $this->providerBusinessLines(),
         ]);
     }
 
@@ -409,18 +455,52 @@ class FinanceAdminController extends Controller
 
     private function supplyWarehouseAssignments(array $selectedKeys): array
     {
-        $selectedKeys = collect($selectedKeys)->map(fn ($key) => (string) $key)->filter()->unique()->all();
+        $selectedKeys = collect($selectedKeys)->map(fn ($key) => (string) $key)->filter()->unique()->values();
+        $selectedCompaniesByWarehouse = [];
+        $selectedWholeWarehouses = [];
 
-        if (! count($selectedKeys)) {
+        $selectedKeys->each(function (string $selectedKey) use (&$selectedCompaniesByWarehouse, &$selectedWholeWarehouses) {
+            [$warehouseKey, $companyId] = array_pad(explode('|', $selectedKey, 2), 2, null);
+            $warehouseKey = trim((string) $warehouseKey);
+
+            if ($warehouseKey === '') {
+                return;
+            }
+
+            if (filled($companyId)) {
+                $selectedCompaniesByWarehouse[$warehouseKey][] = (int) $companyId;
+                return;
+            }
+
+            $selectedWholeWarehouses[] = $warehouseKey;
+        });
+
+        $warehouseKeys = collect(array_merge(array_keys($selectedCompaniesByWarehouse), $selectedWholeWarehouses))
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
+        if (! count($warehouseKeys)) {
             return [];
         }
 
         return $this->supplyWarehouseAuthorizationRows()
-            ->whereIn('key', $selectedKeys)
-            ->flatMap(fn (array $warehouse) => collect($warehouse['companies'])->map(fn (array $company) => [
-                'name' => $company['name'],
-                'warehouses' => [$warehouse['label']],
-            ]))
+            ->whereIn('key', $warehouseKeys)
+            ->flatMap(function (array $warehouse) use ($selectedCompaniesByWarehouse, $selectedWholeWarehouses) {
+                $selectedCompanyIds = collect($selectedCompaniesByWarehouse[$warehouse['key']] ?? [])
+                    ->map(fn ($companyId) => (int) $companyId)
+                    ->unique()
+                    ->all();
+                $allCompaniesSelected = in_array($warehouse['key'], $selectedWholeWarehouses, true);
+
+                return collect($warehouse['companies'])
+                    ->filter(fn (array $company) => $allCompaniesSelected || in_array((int) $company['id'], $selectedCompanyIds, true))
+                    ->map(fn (array $company) => [
+                        'name' => $company['name'],
+                        'warehouses' => [$warehouse['label']],
+                    ]);
+            })
             ->values()
             ->all();
     }
@@ -504,6 +584,28 @@ class FinanceAdminController extends Controller
             'action' => $action,
             'description' => $description,
         ]);
+    }
+
+    private function providerBusinessLines()
+    {
+        return ProviderBusinessLine::with(['subcategories' => fn ($subcategories) => $subcategories
+            ->where('active', true)
+            ->orderBy('name')])
+            ->where('active', true)
+            ->orderBy('name')
+            ->get();
+    }
+
+    private function providerSubcategoryForLine($subcategoryId, ProviderBusinessLine $line): ?ProviderBusinessSubcategory
+    {
+        if (empty($subcategoryId)) {
+            return null;
+        }
+
+        return ProviderBusinessSubcategory::query()
+            ->where('provider_business_line_id', $line->id)
+            ->where('active', true)
+            ->findOrFail($subcategoryId);
     }
 
     private function ensureFinance(): void

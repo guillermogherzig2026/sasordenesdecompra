@@ -21,7 +21,8 @@
             <div class="panel-header">
                 <div>
                     <p class="eyebrow">Formato digital de solicitud</p>
-                    <h1 style="margin:0">{{ $order->delivery_remission_number }}</h1>
+                    <h1 style="margin:0">{{ $order->formatted_delivery_remission_number }}</h1>
+                    <p class="fine-print">ID OS {{ $order->supply_consecutive }}</p>
                     <p class="fine-print">OS {{ $order->folio }} · {{ \App\Support\UiStatus::supplyOrder($order->status, 'buyer') }}</p>
                 </div>
                 @if ($order->status === 'delivered')

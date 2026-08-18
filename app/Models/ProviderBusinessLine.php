@@ -19,4 +19,9 @@ class ProviderBusinessLine extends Model
     {
         return $this->hasMany(Provider::class);
     }
+
+    public function subcategories()
+    {
+        return $this->hasMany(ProviderBusinessSubcategory::class, 'provider_business_line_id');
+    }
 }

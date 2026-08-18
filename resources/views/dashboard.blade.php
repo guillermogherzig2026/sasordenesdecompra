@@ -2,29 +2,9 @@
 
 @section('body')
     <x-app-shell title="Resumen operativo">
-        <div class="metrics-grid">
-            @if ($user->role === 'superadmin')
-                <article class="metric-card">
-                    <span>Usuarios</span>
-                    <strong>{{ $usersCount }}</strong>
-                    <small>Cuentas registradas</small>
-                </article>
-                <article class="metric-card">
-                    <span>Activos</span>
-                    <strong>{{ $activeUsersCount }}</strong>
-                    <small>Pueden iniciar sesion</small>
-                </article>
-                <article class="metric-card">
-                    <span>Roles</span>
-                    <strong>{{ $rolesCount }}</strong>
-                    <small>Perfiles operativos usados</small>
-                </article>
-                <article class="metric-card">
-                    <span>Empresas</span>
-                    <strong>{{ $companiesCount }}</strong>
-                    <small>Asignables a compradores</small>
-                </article>
-            @elseif ($user->role === 'finance')
+        @if ($user->role !== 'superadmin')
+            <div class="metrics-grid">
+            @if ($user->role === 'finance')
                 <article class="metric-card">
                     <span>OC pendientes</span>
                     <strong>{{ $financeSentCount }}</strong>
@@ -133,19 +113,10 @@
                     <small>Ultimos movimientos visibles</small>
                 </article>
             @endif
-        </div>
+            </div>
+        @endif
 
         @if ($user->role === 'superadmin')
-            <section class="panel">
-                <div class="panel-header">
-                    <div>
-                        <h2>Gestion de accesos</h2>
-                        <p class="fine-print">Crea usuarios, asigna roles, limita empresas para compradores y activa o desactiva cuentas.</p>
-                    </div>
-                    <a class="button primary" href="{{ route('superadmin.users.index') }}">Usuarios y Roles</a>
-                </div>
-            </section>
-
             <section class="panel">
                 <h2>Auditoria reciente</h2>
                 <ul class="audit-list">

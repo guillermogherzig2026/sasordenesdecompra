@@ -69,6 +69,30 @@ class SupplyOrder extends Model
         return 'folio';
     }
 
+    public function getSupplyConsecutiveAttribute(): string
+    {
+        return str_pad((string) $this->getKey(), 6, '0', STR_PAD_LEFT);
+    }
+
+    public function getFormattedDeliveryRemissionNumberAttribute(): ?string
+    {
+        if (! $this->delivery_remission_number) {
+            return null;
+        }
+
+        if (preg_match('/^REM-(\d{4})-(\d+)$/', $this->delivery_remission_number, $matches)) {
+            return 'REM-'.$matches[1].'-'.str_pad($matches[2], 6, '0', STR_PAD_LEFT);
+        }
+
+        if (preg_match('/^REM-(\d+)$/', $this->delivery_remission_number, $matches)) {
+            $year = $this->delivered_on?->format('Y') ?: $this->created_on?->format('Y') ?: now()->format('Y');
+
+            return 'REM-'.$year.'-'.str_pad($matches[1], 6, '0', STR_PAD_LEFT);
+        }
+
+        return $this->delivery_remission_number;
+    }
+
     public function isPendingForUser(): bool
     {
         return in_array($this->status, ['sent', 'approved', 'remitted'], true);

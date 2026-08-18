@@ -50,7 +50,7 @@ class FinanceReimbursementOrderController extends Controller
             'reason' => ['nullable', 'string', 'max:500'],
         ]);
 
-        $reason = $validated['reason'] ?: 'No cumple criterios de autorizacion';
+        $reason = ($validated['reason'] ?? null) ?: 'No cumple criterios de autorizacion';
         $reimbursementOrder->update(['status' => 'rejected']);
         $this->audit($reimbursementOrder, 'rejected', "OR rechazada: {$reason}.");
 

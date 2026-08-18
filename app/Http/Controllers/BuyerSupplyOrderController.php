@@ -20,6 +20,7 @@ class BuyerSupplyOrderController extends Controller
 
         $panel = $request->query('panel', 'pending');
         $query = trim((string) $request->query('q'));
+        $consecutiveQuery = preg_match('/^#?\d+$/', $query) ? (int) ltrim($query, '#0') : null;
 
         $orders = SupplyOrder::with(['company', 'items.catalogItem'])
             ->with('requester')
@@ -29,11 +30,16 @@ class BuyerSupplyOrderController extends Controller
                 fn ($builder) => $builder->whereIn('status', ['delivered', 'rejected', 'canceled']),
                 fn ($builder) => $builder->whereIn('status', ['sent', 'approved', 'remitted'])
             )
-            ->when($query, function ($builder) use ($query) {
-                $builder->where(function ($inner) use ($query) {
+            ->when($query, function ($builder) use ($query, $consecutiveQuery) {
+                $builder->where(function ($inner) use ($query, $consecutiveQuery) {
                     $inner->where('folio', 'like', "%{$query}%")
+                        ->orWhere('delivery_remission_number', 'like', "%{$query}%")
                         ->orWhereHas('company', fn ($company) => $company->where('name', 'like', "%{$query}%"))
                         ->orWhereHas('items', fn ($items) => $items->where('article', 'like', "%{$query}%"));
+
+                    if ($consecutiveQuery) {
+                        $inner->orWhere('id', $consecutiveQuery);
+                    }
                 });
             })
             ->orderByDesc('created_on')

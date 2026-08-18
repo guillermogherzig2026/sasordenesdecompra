@@ -51,6 +51,8 @@
                             </div>
                         </div>
                     </div>
+                    <x-company-warehouse-selector :companies="$companies" :supply-warehouses="$supplyWarehouses" />
+                    @if(false)
                     <div class="companies-box">
                         <div class="company-selector" data-company-selector>
                             <div class="company-selector-header">
@@ -102,6 +104,7 @@
                             </div>
                         </div>
                     </div>
+                    @endif
                 </div>
                 <div class="form-actions">
                     <span class="fine-print">Los usuarios nuevos podran iniciar sesion con el correo y contrasena indicados.</span>
@@ -215,6 +218,8 @@
                                                     </div>
                                                 </div>
                                             </div>
+                                            <x-company-warehouse-selector :companies="$companies" :supply-warehouses="$supplyWarehouses" :managed-user="$managedUser" />
+                                            @if(false)
                                             <div class="companies-box">
                                                 <div class="company-selector" data-company-selector>
                                                     <div class="company-selector-header">
@@ -277,6 +282,7 @@
                                                     </div>
                                                 </div>
                                             </div>
+                                            @endif
                                         </div>
                                         <div class="form-actions">
                                             <span class="fine-print">Deja la contrasena vacia para conservar la actual.</span>

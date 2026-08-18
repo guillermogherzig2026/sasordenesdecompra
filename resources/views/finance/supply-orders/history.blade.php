@@ -10,12 +10,14 @@
                 </div>
                 <form class="toolbar" method="GET" action="{{ route('finance.supply-orders.history') }}">
                     <input name="q" value="{{ $query }}" placeholder="Buscar OS...">
+                    <a class="button ghost" href="{{ route('reports.download', 'supply-orders-excel') }}">Exportar Excel</a>
                 </form>
             </div>
             <div class="table-scroll">
                 <table>
                     <thead>
                         <tr>
+                            <th>ID consecutivo</th>
                             <th>OS</th>
                             <th>Fecha de envio</th>
                             <th>Usuario</th>
@@ -40,6 +42,10 @@
                             @endphp
                             <tr>
                                 <td>
+                                    <strong>{{ $order->supply_consecutive }}</strong>
+                                    <small class="fine-print">General</small>
+                                </td>
+                                <td>
                                     <strong>{{ $order->folio }}</strong>
                                     <small class="fine-print">{{ \App\Support\UiStatus::supplyOrder($order->status) }}</small>
                                 </td>
@@ -62,7 +68,7 @@
                                 <td>${{ number_format((float) $totalAmount, 2) }}</td>
                                 <td>
                                     @if ($order->delivery_remission_number)
-                                        <a class="attachment-pill" href="{{ route('finance.supply-orders.remission', $order) }}" target="_blank"><span>Remision</span>{{ $order->delivery_remission_number }}</a>
+                                        <a class="attachment-pill" href="{{ route('finance.supply-orders.remission', $order) }}" target="_blank"><span>Remision</span>{{ $order->formatted_delivery_remission_number }}</a>
                                         @if ($order->received_on)
                                             <div class="fine-print">Recibida {{ $order->received_on->format('d/m/Y') }}</div>
                                         @endif
@@ -72,7 +78,7 @@
                                 </td>
                             </tr>
                         @empty
-                            <tr><td colspan="10">No hay historial de OS.</td></tr>
+                            <tr><td colspan="11">No hay historial de OS.</td></tr>
                         @endforelse
                     </tbody>
                 </table>

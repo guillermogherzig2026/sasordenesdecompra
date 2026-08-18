@@ -5,10 +5,10 @@
         <section class="panel">
             <div>
                 <h2>Nuevo proveedor</h2>
-                <p class="fine-print">Los proveedores dados de alta aqui quedan disponibles para tus ordenes de compra.</p>
+                <p class="fine-print">{{ $constructionContext ? 'Los proveedores dados de alta aqui quedan disponibles para las ordenes de compra de Administracion de obra.' : 'Los proveedores dados de alta aqui quedan disponibles para tus ordenes de compra.' }}</p>
             </div>
 
-            <form class="stack" method="POST" action="{{ route('buyer.providers.store') }}">
+            <form class="stack" method="POST" action="{{ route($providerRoutePrefix.'.store') }}">
                 @csrf
                 <div class="grid-3">
                     <label>
@@ -19,16 +19,27 @@
                         RFC
                         <input name="rfc" value="{{ old('rfc') }}" required>
                     </label>
+                </div>
+                <div class="grid-4">
                     <label>
                         Giro de proveeduria
-                        <select name="business_line_id" required>
+                        <select name="business_line_id" data-provider-line-select required>
                             @foreach ($businessLines as $line)
                                 <option value="{{ $line->id }}" @selected((int) old('business_line_id') === $line->id)>{{ $line->name }}</option>
                             @endforeach
                         </select>
                     </label>
-                </div>
-                <div class="grid-3">
+                    <label>
+                        Subcategoria
+                        <select name="business_subcategory_id" data-provider-subcategory-select>
+                            <option value="">Sin subcategoria</option>
+                            @foreach ($businessLines as $line)
+                                @foreach ($line->subcategories as $subcategory)
+                                    <option value="{{ $subcategory->id }}" data-line-id="{{ $line->id }}" @selected((int) old('business_subcategory_id') === $subcategory->id)>{{ $subcategory->name }}</option>
+                                @endforeach
+                            @endforeach
+                        </select>
+                    </label>
                     <label>
                         Banco
                         <input name="bank" value="{{ old('bank') }}" required>
@@ -57,9 +68,9 @@
             <div class="panel-header">
                 <div>
                     <h2>Mis proveedores</h2>
-                    <p class="fine-print">Catalogo propio del comprador autenticado.</p>
+                    <p class="fine-print">{{ $constructionContext ? 'Proveedores disponibles para las ordenes de compra de Administracion de obra.' : 'Catalogo propio del comprador autenticado.' }}</p>
                 </div>
-                <form class="toolbar" method="GET" action="{{ route('buyer.providers.index') }}">
+                <form class="toolbar" method="GET" action="{{ route($providerRoutePrefix.'.index') }}">
                     <input name="q" value="{{ $query }}" placeholder="Buscar proveedor">
                     <button class="button ghost" type="submit">Buscar</button>
                 </form>
@@ -72,6 +83,7 @@
                             <th>Razon social</th>
                             <th>RFC</th>
                             <th>Giro</th>
+                            <th>Subcategoria</th>
                             <th>Banco</th>
                             <th>Cuenta</th>
                             <th>CLABE</th>
@@ -85,6 +97,7 @@
                                 <td><strong>{{ $provider->business_name }}</strong></td>
                                 <td>{{ $provider->rfc }}</td>
                                 <td>{{ $provider->business_line }}</td>
+                                <td>{{ $provider->businessSubcategory?->name ?? $provider->provider_business_subcategory ?? 'Sin subcategoria' }}</td>
                                 <td>{{ $provider->bank }}</td>
                                 <td>{{ $provider->account_number }}</td>
                                 <td>{{ $provider->clabe }}</td>
@@ -94,17 +107,27 @@
                                 </td>
                             </tr>
                             <tr class="editor-row" id="provider-editor-{{ $provider->id }}" hidden>
-                                <td colspan="8">
-                                    <form class="stack" method="POST" action="{{ route('buyer.providers.update', $provider) }}">
+                                <td colspan="9">
+                                    <form class="stack" method="POST" action="{{ route($providerRoutePrefix.'.update', $provider) }}">
                                         @csrf
                                         @method('PUT')
-                                        <div class="grid-3">
+                                        <div class="grid-4">
                                             <label>Razon social<input name="business_name" value="{{ old('business_name', $provider->business_name) }}" required></label>
                                             <label>RFC<input name="rfc" value="{{ old('rfc', $provider->rfc) }}" required></label>
                                             <label>Giro de proveeduria
-                                                <select name="business_line_id" required>
+                                                <select name="business_line_id" data-provider-line-select required>
                                                     @foreach ($businessLines as $line)
                                                         <option value="{{ $line->id }}" @selected((int) old('business_line_id', $provider->provider_business_line_id) === $line->id || (! $provider->provider_business_line_id && $provider->business_line === $line->name))>{{ $line->name }}</option>
+                                                    @endforeach
+                                                </select>
+                                            </label>
+                                            <label>Subcategoria
+                                                <select name="business_subcategory_id" data-provider-subcategory-select>
+                                                    <option value="">Sin subcategoria</option>
+                                                    @foreach ($businessLines as $line)
+                                                        @foreach ($line->subcategories as $subcategory)
+                                                            <option value="{{ $subcategory->id }}" data-line-id="{{ $line->id }}" @selected((int) old('business_subcategory_id', $provider->provider_business_subcategory_id) === $subcategory->id)>{{ $subcategory->name }}</option>
+                                                        @endforeach
                                                     @endforeach
                                                 </select>
                                             </label>
@@ -124,7 +147,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="8">No hay proveedores registrados.</td>
+                                <td colspan="9">No hay proveedores registrados.</td>
                             </tr>
                         @endforelse
                     </tbody>
