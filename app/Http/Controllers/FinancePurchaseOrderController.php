@@ -19,6 +19,7 @@ class FinancePurchaseOrderController extends Controller
 
         $query = trim((string) $request->query('q'));
         $orders = PurchaseOrder::with(['buyer', 'company', 'provider', 'payment', 'auditLogs'])
+            ->general()
             ->whereIn('status', ['sent', 'approved'])
             ->when($query, function ($builder) use ($query) {
                 $builder->where(function ($inner) use ($query) {
@@ -43,6 +44,7 @@ class FinancePurchaseOrderController extends Controller
 
         $query = trim((string) $request->query('q'));
         $orders = PurchaseOrder::with(['buyer', 'company', 'provider', 'payment', 'auditLogs'])
+            ->general()
             ->whereIn('status', ['paid', 'rejected', 'canceled'])
             ->when($query, function ($builder) use ($query) {
                 $builder->where(function ($inner) use ($query) {
@@ -75,6 +77,7 @@ class FinancePurchaseOrderController extends Controller
     public function approve(PurchaseOrder $purchaseOrder)
     {
         $this->ensureFinance();
+        $this->ensureGeneralOrder($purchaseOrder);
         abort_unless($purchaseOrder->status === 'sent', 403);
 
         $purchaseOrder->update(['status' => 'approved']);
@@ -86,6 +89,7 @@ class FinancePurchaseOrderController extends Controller
     public function reject(Request $request, PurchaseOrder $purchaseOrder)
     {
         $this->ensureFinance();
+        $this->ensureGeneralOrder($purchaseOrder);
         abort_unless(in_array($purchaseOrder->status, ['sent', 'approved'], true), 403);
 
         $validated = $request->validate([
@@ -101,6 +105,7 @@ class FinancePurchaseOrderController extends Controller
     public function paymentForm(PurchaseOrder $purchaseOrder)
     {
         $this->ensureFinance();
+        $this->ensureGeneralOrder($purchaseOrder);
         abort_unless($purchaseOrder->status === 'approved', 403);
 
         return view('finance.orders.payment', [
@@ -111,6 +116,7 @@ class FinancePurchaseOrderController extends Controller
     public function storePayment(Request $request, PurchaseOrder $purchaseOrder)
     {
         $this->ensureFinance();
+        $this->ensureGeneralOrder($purchaseOrder);
         abort_unless($purchaseOrder->status === 'approved', 403);
 
         $validated = $request->validate([
@@ -141,6 +147,7 @@ class FinancePurchaseOrderController extends Controller
     public function replacePaymentReceipt(Request $request, PurchaseOrder $purchaseOrder)
     {
         $this->ensureFinance();
+        $this->ensureGeneralOrder($purchaseOrder);
         abort_unless($purchaseOrder->status === 'paid', 403);
 
         $validated = $request->validate([
@@ -171,6 +178,7 @@ class FinancePurchaseOrderController extends Controller
     public function print(PurchaseOrder $purchaseOrder)
     {
         $this->ensureFinance();
+        $this->ensureGeneralOrder($purchaseOrder);
 
         return view('finance.orders.print', [
             'order' => $purchaseOrder->load(['buyer', 'company', 'provider', 'items', 'payment']),
@@ -180,6 +188,7 @@ class FinancePurchaseOrderController extends Controller
     public function paymentReceipt(PurchaseOrder $purchaseOrder)
     {
         $this->ensureFinance();
+        $this->ensureGeneralOrder($purchaseOrder);
 
         $payment = $purchaseOrder->payment;
 
@@ -191,6 +200,7 @@ class FinancePurchaseOrderController extends Controller
     public function quoteSupport(PurchaseOrder $purchaseOrder)
     {
         $this->ensureFinance();
+        $this->ensureGeneralOrder($purchaseOrder);
 
         return StoredFileResponse::download($purchaseOrder->quote_file_path, $purchaseOrder->quote_original_name ?: $purchaseOrder->folio.'-cotizacion');
     }
@@ -246,5 +256,10 @@ class FinancePurchaseOrderController extends Controller
     private function ensureFinance(): void
     {
         abort_unless(Auth::user()?->canAccessRole('finance'), 403);
+    }
+
+    private function ensureGeneralOrder(PurchaseOrder $order): void
+    {
+        abort_unless($order->construction_project_id === null, 404);
     }
 }

@@ -13,7 +13,7 @@
                 <a class="button ghost" href="{{ route('finance.admin.providers') }}">Volver</a>
             </div>
 
-            <div class="grid-3">
+            <div class="grid-4">
                 <label>
                     Razon Social
                     <input name="business_name" value="{{ old('business_name', $provider->business_name) }}" required>
@@ -24,9 +24,20 @@
                 </label>
                 <label>
                     Giro
-                    <select name="business_line_id" required>
+                    <select name="business_line_id" data-provider-line-select required>
                         @foreach ($businessLines as $line)
                             <option value="{{ $line->id }}" @selected((int) old('business_line_id', $provider->provider_business_line_id) === $line->id || (! $provider->provider_business_line_id && $provider->business_line === $line->name))>{{ $line->name }}</option>
+                        @endforeach
+                    </select>
+                </label>
+                <label>
+                    Subcategoria
+                    <select name="business_subcategory_id" data-provider-subcategory-select>
+                        <option value="">Sin subcategoria</option>
+                        @foreach ($businessLines as $line)
+                            @foreach ($line->subcategories as $subcategory)
+                                <option value="{{ $subcategory->id }}" data-line-id="{{ $line->id }}" @selected((int) old('business_subcategory_id', $provider->provider_business_subcategory_id) === $subcategory->id)>{{ $subcategory->name }}</option>
+                            @endforeach
                         @endforeach
                     </select>
                 </label>

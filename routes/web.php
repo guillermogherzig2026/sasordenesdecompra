@@ -5,7 +5,9 @@ use App\Http\Controllers\BuyerPurchaseOrderController;
 use App\Http\Controllers\BuyerReimbursementOrderController;
 use App\Http\Controllers\BuyerSupplyOrderController;
 use App\Http\Controllers\CompanyAssetController;
+use App\Http\Controllers\ConstructionAdminController;
 use App\Http\Controllers\FinanceAdminController;
+use App\Http\Controllers\FinanceConstructionPaymentOrderController;
 use App\Http\Controllers\FinancePurchaseOrderController;
 use App\Http\Controllers\FinanceReimbursementOrderController;
 use App\Http\Controllers\FinanceServicePaymentController;
@@ -173,9 +175,40 @@ Route::middleware('auth')->prefix('superadmin')->name('superadmin.')->group(func
     Route::put('/usuarios/{user}', [SuperAdminUserController::class, 'update'])->name('users.update');
     Route::patch('/usuarios/{user}/estado', [SuperAdminUserController::class, 'toggle'])->name('users.toggle');
     Route::get('/giros-proveeduria', [SuperAdminProviderBusinessLineController::class, 'index'])->name('provider-lines.index');
+    Route::get('/giros-proveeduria/categorias', [SuperAdminProviderBusinessLineController::class, 'manage'])->name('provider-lines.manage');
     Route::post('/giros-proveeduria', [SuperAdminProviderBusinessLineController::class, 'store'])->name('provider-lines.store');
     Route::put('/giros-proveeduria/{providerLine}', [SuperAdminProviderBusinessLineController::class, 'update'])->name('provider-lines.update');
     Route::delete('/giros-proveeduria/{providerLine}', [SuperAdminProviderBusinessLineController::class, 'destroy'])->name('provider-lines.destroy');
+    Route::post('/giros-proveeduria/{providerLine}/subcategorias', [SuperAdminProviderBusinessLineController::class, 'storeSubcategory'])->name('provider-lines.subcategories.store');
+    Route::put('/giros-proveeduria/subcategorias/{subcategory}', [SuperAdminProviderBusinessLineController::class, 'updateSubcategory'])->name('provider-lines.subcategories.update');
+    Route::delete('/giros-proveeduria/subcategorias/{subcategory}', [SuperAdminProviderBusinessLineController::class, 'destroySubcategory'])->name('provider-lines.subcategories.destroy');
+});
+
+Route::middleware('auth')->prefix('administracion-obra')->name('construction.')->group(function () {
+    Route::get('/', [ConstructionAdminController::class, 'dashboard'])->name('dashboard');
+    Route::get('/obras', [ConstructionAdminController::class, 'projects'])->name('projects.index');
+    Route::get('/obras/nueva', [ConstructionAdminController::class, 'create'])->name('projects.create');
+    Route::post('/obras', [ConstructionAdminController::class, 'store'])->name('projects.store');
+    Route::get('/obras/{project}', [ConstructionAdminController::class, 'show'])->name('projects.show');
+    Route::get('/obras/{project}/editar', [ConstructionAdminController::class, 'edit'])->name('projects.edit');
+    Route::put('/obras/{project}', [ConstructionAdminController::class, 'update'])->name('projects.update');
+    Route::delete('/obras/{project}', [ConstructionAdminController::class, 'destroy'])->name('projects.destroy');
+    Route::get('/bitacora', [ConstructionAdminController::class, 'audit'])->name('audit');
+    Route::get('/usuarios-permisos', [ConstructionAdminController::class, 'usersAccess'])->name('users-access');
+    Route::put('/usuarios-permisos/{user}', [ConstructionAdminController::class, 'updateUserAccess'])->name('users-access.update');
+    Route::post('/nominas', [ConstructionAdminController::class, 'storePayroll'])->name('payrolls.store');
+    Route::post('/estimaciones', [ConstructionAdminController::class, 'storeEstimate'])->name('estimates.store');
+    Route::get('/nominas/{payroll}/editar', [ConstructionAdminController::class, 'editPayroll'])->name('payrolls.edit');
+    Route::put('/nominas/{payroll}', [ConstructionAdminController::class, 'updatePayroll'])->name('payrolls.update');
+    Route::delete('/nominas/{payroll}', [ConstructionAdminController::class, 'destroyPayroll'])->name('payrolls.destroy');
+    Route::post('/pagos-vigentes/{paymentOrder}/factura', [ConstructionAdminController::class, 'storePaymentInvoice'])->name('payment-orders.invoice.store');
+    Route::get('/pagos-vigentes/{paymentOrder}/factura', [ConstructionAdminController::class, 'paymentInvoice'])->name('payment-orders.invoice');
+    Route::get('/pagos-vigentes/{paymentOrder}/pago', [ConstructionAdminController::class, 'paymentReceipt'])->name('payment-orders.payment');
+    Route::delete('/pagos-vigentes/{paymentOrder}', [ConstructionAdminController::class, 'destroyPaymentOrder'])->name('payment-orders.destroy');
+    Route::get('/proveedores', [BuyerProviderController::class, 'index'])->name('providers.index');
+    Route::post('/proveedores', [BuyerProviderController::class, 'store'])->name('providers.store');
+    Route::put('/proveedores/{provider}', [BuyerProviderController::class, 'update'])->name('providers.update');
+    Route::get('/secciones/{section}', [ConstructionAdminController::class, 'placeholder'])->name('placeholder');
 });
 
 Route::middleware('auth')->prefix('comprador')->name('buyer.')->group(function () {
@@ -225,6 +258,12 @@ Route::middleware('auth')->prefix('finanzas')->name('finance.')->group(function 
     Route::get('/pago-servicios/recibos/{receipt}/comprobante', [FinanceServicePaymentController::class, 'paymentFile'])->name('services.payment-file');
     Route::patch('/pago-servicios/{service}/estado/{status}', [FinanceServicePaymentController::class, 'updateStatus'])->name('services.status');
 
+    Route::get('/op-pendientes', [FinanceConstructionPaymentOrderController::class, 'active'])->name('construction-payment-orders.active');
+    Route::get('/op-historial', [FinanceConstructionPaymentOrderController::class, 'history'])->name('construction-payment-orders.history');
+    Route::post('/op-pendientes/{paymentOrder}/pago', [FinanceConstructionPaymentOrderController::class, 'storePayment'])->name('construction-payment-orders.payment.store');
+    Route::get('/op/{paymentOrder}/factura', [FinanceConstructionPaymentOrderController::class, 'invoice'])->name('construction-payment-orders.invoice');
+    Route::get('/op/{paymentOrder}/pago', [FinanceConstructionPaymentOrderController::class, 'payment'])->name('construction-payment-orders.payment');
+
     Route::get('/os-vigentes', [FinanceSupplyOrderController::class, 'active'])->name('supply-orders.active');
     Route::get('/os-historial', [FinanceSupplyOrderController::class, 'history'])->name('supply-orders.history');
     Route::get('/os/{supplyOrder}/remision', [FinanceSupplyOrderController::class, 'remission'])->name('supply-orders.remission');
@@ -245,6 +284,7 @@ Route::middleware('auth')->prefix('finanzas')->name('finance.')->group(function 
     Route::put('/autorizaciones/{user}', [FinanceAdminController::class, 'updateUser'])->name('admin.users.update');
     Route::patch('/autorizaciones/{user}/estado', [FinanceAdminController::class, 'toggleUser'])->name('admin.users.toggle');
     Route::get('/proveedores', [FinanceAdminController::class, 'providers'])->name('admin.providers');
+    Route::post('/proveedores', [FinanceAdminController::class, 'storeProvider'])->name('admin.providers.store');
     Route::get('/proveedores/{provider}/editar', [FinanceAdminController::class, 'editProvider'])->name('admin.providers.edit');
     Route::put('/proveedores/{provider}', [FinanceAdminController::class, 'updateProvider'])->name('admin.providers.update');
     Route::get('/empresas', [FinanceAdminController::class, 'companies'])->name('admin.companies');
@@ -289,6 +329,7 @@ Route::middleware('auth')->prefix('servicios')->name('services.')->group(functio
     Route::post('/alta', [ServiceController::class, 'store'])->name('store');
     Route::get('/catalogo', [ServiceController::class, 'catalog'])->name('catalog');
     Route::get('/meses', [ServiceController::class, 'months'])->name('months');
+    Route::get('/historial', [ServiceController::class, 'history'])->name('history');
     Route::get('/{service}/editar', [ServiceController::class, 'edit'])->name('edit');
     Route::put('/{service}', [ServiceController::class, 'update'])->name('update');
     Route::get('/{service}/{dueDate}/recibo', [ServiceController::class, 'receiptForm'])->name('receipt');

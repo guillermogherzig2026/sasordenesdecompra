@@ -49,7 +49,7 @@ class FinanceSupplyOrderController extends Controller
             'reason' => ['nullable', 'string', 'max:500'],
         ]);
 
-        $reason = $validated['reason'] ?: 'No cumple criterios de autorizacion';
+        $reason = ($validated['reason'] ?? null) ?: 'No cumple criterios de autorizacion';
         $supplyOrder->update(['status' => 'rejected']);
         $this->audit($supplyOrder, 'rejected', "OS rechazada: {$reason}.");
 
@@ -69,15 +69,21 @@ class FinanceSupplyOrderController extends Controller
     private function orders(Request $request, array $statuses)
     {
         $query = trim((string) $request->query('q'));
+        $consecutiveQuery = preg_match('/^#?\d+$/', $query) ? (int) ltrim($query, '#0') : null;
 
         return SupplyOrder::with(['requester', 'company', 'items.catalogItem', 'deliveredBy'])
             ->whereIn('status', $statuses)
-            ->when($query, function ($builder) use ($query) {
-                $builder->where(function ($inner) use ($query) {
+            ->when($query, function ($builder) use ($query, $consecutiveQuery) {
+                $builder->where(function ($inner) use ($query, $consecutiveQuery) {
                     $inner->where('folio', 'like', "%{$query}%")
+                        ->orWhere('delivery_remission_number', 'like', "%{$query}%")
                         ->orWhereHas('requester', fn ($user) => $user->where('name', 'like', "%{$query}%"))
                         ->orWhereHas('company', fn ($company) => $company->where('name', 'like', "%{$query}%"))
                         ->orWhereHas('items', fn ($items) => $items->where('article', 'like', "%{$query}%"));
+
+                    if ($consecutiveQuery) {
+                        $inner->orWhere('id', $consecutiveQuery);
+                    }
                 });
             })
             ->orderByDesc('created_on')

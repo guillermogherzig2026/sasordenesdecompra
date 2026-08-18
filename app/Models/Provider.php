@@ -12,6 +12,8 @@ class Provider extends Model
         'rfc',
         'business_line',
         'provider_business_line_id',
+        'provider_business_subcategory_id',
+        'provider_business_subcategory',
         'bank',
         'account_number',
         'clabe',
@@ -31,5 +33,10 @@ class Provider extends Model
     public function businessLine()
     {
         return $this->belongsTo(ProviderBusinessLine::class, 'provider_business_line_id');
+    }
+
+    public function businessSubcategory()
+    {
+        return $this->belongsTo(ProviderBusinessSubcategory::class, 'provider_business_subcategory_id');
     }
 }

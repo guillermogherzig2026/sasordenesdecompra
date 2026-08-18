@@ -21,6 +21,30 @@
         'pending-payment' => 'No tienes ordenes pendientes de pago.',
         'rejected' => 'No tienes ordenes rechazadas.',
     ];
+
+    $constructionContext = $constructionContext ?? false;
+    $routeContext = $constructionContext ? ['context' => 'construction'] : [];
+    $orderRoute = fn (string $name, $order) => route($name, array_merge(['purchaseOrder' => $order], $routeContext));
+
+    if ($constructionContext) {
+        $titles = [
+            'all' => 'Mis ordenes de compra de obra',
+            'paid' => 'Ordenes de obra pagadas',
+            'pending-payment' => 'Pendientes de pago de obra',
+            'rejected' => 'Ordenes de obra rechazadas',
+        ];
+        $descriptions = [
+            'all' => 'Ordenes vinculadas exclusivamente a proyectos de Administracion de obra.',
+            'paid' => 'Ordenes pagadas vinculadas a proyectos de obra.',
+            'pending-payment' => 'Ordenes de obra que aun no cambian a estatus Pagada.',
+            'rejected' => 'Ordenes de obra rechazadas.',
+        ];
+        $emptyMessages = [
+            'paid' => 'No hay ordenes de obra pagadas.',
+            'pending-payment' => 'No hay ordenes de obra pendientes de pago.',
+            'rejected' => 'No hay ordenes de obra rechazadas.',
+        ];
+    }
 @endphp
 
 @section('body')
@@ -32,23 +56,25 @@
                     <p class="fine-print">{{ $descriptions[$panel] ?? $descriptions['all'] }}</p>
                 </div>
                 @if (in_array($panel, $originalBuyerPanels, true))
-                    <form class="toolbar" method="GET" action="{{ route('buyer.orders.index') }}">
+                    <form class="toolbar" method="GET" action="{{ route('buyer.orders.index', $routeContext) }}">
                         <input type="hidden" name="panel" value="{{ $panel }}">
+                        @if ($constructionContext)<input type="hidden" name="context" value="construction">@endif
                         <input name="q" value="{{ $query }}" placeholder="Buscar orden...">
                     </form>
                 @else
                     <div class="item-actions">
-                        <a class="button ghost" href="{{ route('reports.download', 'buyer-items-excel') }}">Exportar Excel</a>
-                        <a class="button primary" href="{{ route('buyer.orders.create') }}">Nueva OC</a>
+                        <a class="button ghost" href="{{ route('reports.download', array_merge(['type' => 'buyer-items-excel'], $routeContext)) }}">Exportar Excel</a>
+                        <a class="button primary" href="{{ route('buyer.orders.create', $routeContext) }}">Nueva OC</a>
                     </div>
                 @endif
             </div>
 
             @if (! in_array($panel, $originalBuyerPanels, true))
-                <form class="toolbar" method="GET" action="{{ route('buyer.orders.index') }}">
+                <form class="toolbar" method="GET" action="{{ route('buyer.orders.index', $routeContext) }}">
                     @if ($panel !== 'all')
                         <input type="hidden" name="panel" value="{{ $panel }}">
                     @endif
+                    @if ($constructionContext)<input type="hidden" name="context" value="construction">@endif
                     <input name="q" value="{{ $query }}" placeholder="Buscar por OC, empresa o proveedor">
                     <button class="button ghost" type="submit">Buscar</button>
                 </form>
@@ -80,15 +106,18 @@
                                 <tr data-filter-row>
                                     <td data-filter-value="{{ $order->folio }}">
                                         <strong>
-                                            <a href="{{ route('buyer.orders.print', $order) }}" target="_blank">{{ $order->folio }}</a>
+                                            <a href="{{ $orderRoute('buyer.orders.print', $order) }}" target="_blank">{{ $order->folio }}</a>
                                         </strong>
+                                        @if ($constructionContext && $order->constructionProject)
+                                            <small class="fine-print">{{ $order->constructionProject->project_key }} - {{ $order->constructionProject->name }}</small>
+                                        @endif
                                     </td>
                                     <td data-filter-value="{{ $order->company->name }}">{{ $order->company->name }}</td>
                                     <td data-filter-value="{{ $order->provider->business_name }}">{{ $order->provider->business_name }}</td>
                                     <td data-filter-value="${{ number_format((float) $order->total, 0) }}">${{ number_format((float) $order->total, 0) }}</td>
                                     <td data-filter-value="{{ $buyerStatus }}">
                                         @if ($panel === 'paid' && $order->payment)
-                                            <a class="status {{ $buyerStatusClass }}" href="{{ route('buyer.orders.payment-receipt', $order) }}" target="_blank" title="Descargar comprobante de pago">
+                                            <a class="status {{ $buyerStatusClass }}" href="{{ $orderRoute('buyer.orders.payment-receipt', $order) }}" target="_blank" title="Descargar comprobante de pago">
                                                 {{ $buyerStatus }}
                                             </a>
                                         @else
@@ -96,8 +125,8 @@
                                                 <summary class="status {{ $buyerStatusClass }}">{{ $buyerStatus }}</summary>
                                                 <div class="status-menu-panel">
                                                     @if ($order->isEditableByBuyer())
-                                                        <a class="button ghost small" href="{{ route('buyer.orders.edit', $order) }}">Editar</a>
-                                                        <form class="inline-form" method="POST" action="{{ route('buyer.orders.cancel', $order) }}" onsubmit="return confirm('Cancelar {{ $order->folio }}?')">
+                                                        <a class="button ghost small" href="{{ $orderRoute('buyer.orders.edit', $order) }}">Editar</a>
+                                                        <form class="inline-form" method="POST" action="{{ $orderRoute('buyer.orders.cancel', $order) }}" onsubmit="return confirm('Cancelar {{ $order->folio }}?')">
                                                             @csrf
                                                             @method('PATCH')
                                                             <button class="button danger small" type="submit">Cancelar</button>
@@ -113,7 +142,7 @@
                                     <td data-filter-value="{{ $order->delivery_date?->format('d/m/Y') }}">{{ $order->delivery_date?->format('d/m/Y') }}</td>
                                     <td data-filter-value="{{ $paymentFilter }}">
                                         @if ($order->payment)
-                                            <a class="attachment-pill" href="{{ route('buyer.orders.payment-receipt', $order) }}" target="_blank">
+                                            <a class="attachment-pill" href="{{ $orderRoute('buyer.orders.payment-receipt', $order) }}" target="_blank">
                                                 <span>Adjunto</span>{{ $order->payment->original_name }}
                                             </a>
                                             <div class="fine-print">{{ $order->payment->paid_on?->format('d/m/Y') }}</div>
@@ -161,7 +190,12 @@
                                     }
                                 @endphp
                                 <tr data-filter-row>
-                                    <td data-filter-value="{{ $order->folio }}"><strong>{{ $order->folio }}</strong></td>
+                                    <td data-filter-value="{{ $order->folio }} {{ $order->constructionProject?->project_key }} {{ $order->constructionProject?->name }}">
+                                        <strong>{{ $order->folio }}</strong>
+                                        @if ($constructionContext && $order->constructionProject)
+                                            <small class="fine-print">{{ $order->constructionProject->project_key }} - {{ $order->constructionProject->name }}</small>
+                                        @endif
+                                    </td>
                                     <td data-filter-value="{{ ($order->created_on ?? $order->created_at)?->format('d/m/Y') ?? 'Sin fecha' }}">{{ ($order->created_on ?? $order->created_at)?->format('d/m/Y') ?? 'Sin fecha' }}</td>
                                     <td data-filter-value="{{ $order->company->name }}">{{ $order->company->name }}</td>
                                     <td data-filter-value="{{ $order->provider->business_name }} {{ $order->provider->business_line }}">
@@ -174,8 +208,8 @@
                                             <summary class="status {{ $buyerStatusClass }}">{{ $buyerStatus }}</summary>
                                             <div class="status-menu-panel">
                                                 @if ($order->isEditableByBuyer())
-                                                    <a class="button ghost small" href="{{ route('buyer.orders.edit', $order) }}">Editar</a>
-                                                    <form class="inline-form" method="POST" action="{{ route('buyer.orders.cancel', $order) }}" onsubmit="return confirm('Cancelar {{ $order->folio }}?')">
+                                                    <a class="button ghost small" href="{{ $orderRoute('buyer.orders.edit', $order) }}">Editar</a>
+                                                    <form class="inline-form" method="POST" action="{{ $orderRoute('buyer.orders.cancel', $order) }}" onsubmit="return confirm('Cancelar {{ $order->folio }}?')">
                                                         @csrf
                                                         @method('PATCH')
                                                         <button class="button danger small" type="submit">Cancelar</button>

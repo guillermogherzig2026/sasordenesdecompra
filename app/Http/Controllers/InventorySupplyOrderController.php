@@ -474,15 +474,21 @@ class InventorySupplyOrderController extends Controller
         $this->ensureInventory();
 
         $query = trim((string) $request->query('q'));
+        $consecutiveQuery = preg_match('/^#?\d+$/', $query) ? (int) ltrim($query, '#0') : null;
 
         return view('inventory.supply-orders.active', [
             'orders' => SupplyOrder::with(['requester', 'company', 'items.catalogItem'])
                 ->whereIn('status', ['approved', 'remitted'])
-                ->when($query, function ($builder) use ($query) {
-                    $builder->where(function ($inner) use ($query) {
+                ->when($query, function ($builder) use ($query, $consecutiveQuery) {
+                    $builder->where(function ($inner) use ($query, $consecutiveQuery) {
                         $inner->where('folio', 'like', "%{$query}%")
+                            ->orWhere('delivery_remission_number', 'like', "%{$query}%")
                             ->orWhereHas('requester', fn ($user) => $user->where('name', 'like', "%{$query}%"))
                             ->orWhereHas('items', fn ($items) => $items->where('article', 'like', "%{$query}%"));
+
+                        if ($consecutiveQuery) {
+                            $inner->orWhere('id', $consecutiveQuery);
+                        }
                     });
                 })
                 ->orderBy('delivery_date')
@@ -551,11 +557,11 @@ class InventorySupplyOrderController extends Controller
             ->whereNotNull('delivery_remission_number')
             ->pluck('delivery_remission_number')
             ->map(function (string $number) {
-                return preg_match('/^REM-(\d+)$/', $number, $matches) ? (int) $matches[1] : 0;
+                return preg_match('/^REM-(?:\d{4}-)?(\d+)$/', $number, $matches) ? (int) $matches[1] : 0;
             })
             ->max();
 
-        return 'REM-'.str_pad((string) (($latest ?: 0) + 1), 6, '0', STR_PAD_LEFT);
+        return 'REM-'.now()->format('Y').'-'.str_pad((string) (($latest ?: 0) + 1), 6, '0', STR_PAD_LEFT);
     }
 
     private function nextCatalogSku(): string
@@ -918,7 +924,7 @@ class InventorySupplyOrderController extends Controller
                     'date' => $order?->delivered_on?->format('d/m/Y') ?: 'Sin fecha',
                     'date_value' => $dateValue,
                     'order' => $order?->folio ?: '—',
-                    'document' => $order?->delivery_remission_number ?: 'Remision pendiente',
+                    'document' => $order?->formatted_delivery_remission_number ?: 'Remision pendiente',
                     'company' => $order?->company?->name ?: 'Empresa no capturada',
                     'warehouse' => $centralWarehouse['warehouse'],
                     'related' => 'Destino: '.($order?->warehouse_to ?: 'Sin destino').' · Solicitante: '.($order?->requester?->name ?: 'Usuario'),

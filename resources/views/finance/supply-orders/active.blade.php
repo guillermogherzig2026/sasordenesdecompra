@@ -10,6 +10,7 @@
                 </div>
                 <form class="toolbar" method="GET" action="{{ route('finance.supply-orders.active') }}">
                     <input name="q" value="{{ $query }}" placeholder="Buscar OS...">
+                    <a class="button ghost" href="{{ route('reports.download', 'supply-orders-excel') }}">Exportar Excel</a>
                 </form>
             </div>
 
@@ -17,6 +18,7 @@
                 <table>
                     <thead>
                         <tr>
+                            <th>ID consecutivo</th>
                             <th>OS</th>
                             <th>Fecha de envio</th>
                             <th>Usuario</th>
@@ -41,6 +43,10 @@
                             @endphp
                             <tr>
                                 <td>
+                                    <strong>{{ $order->supply_consecutive }}</strong>
+                                    <small class="fine-print">General</small>
+                                </td>
+                                <td>
                                     <strong>{{ $order->folio }}</strong>
                                     <small class="fine-print">{{ \App\Support\UiStatus::supplyOrder($order->status) }}</small>
                                 </td>
@@ -63,7 +69,7 @@
                                 <td>${{ number_format((float) $totalAmount, 2) }}</td>
                                 <td>
                                     @if ($order->delivery_remission_number)
-                                        <a class="attachment-pill" href="{{ route('finance.supply-orders.remission', $order) }}" target="_blank"><span>Remision</span>{{ $order->delivery_remission_number }}</a>
+                                        <a class="attachment-pill" href="{{ route('finance.supply-orders.remission', $order) }}" target="_blank"><span>Remision</span>{{ $order->formatted_delivery_remission_number }}</a>
                                         <div class="fine-print">{{ $order->status === 'remitted' ? 'Pendiente de recibir' : 'Recibida' }}</div>
                                     @else
                                         <details class="status-menu">
@@ -78,6 +84,7 @@
                                                     <form class="inline-form" method="POST" action="{{ route('finance.supply-orders.reject', $order) }}">
                                                         @csrf
                                                         @method('PATCH')
+                                                        <input type="hidden" name="reason" value="No cumple criterios de autorizacion">
                                                         <button class="button danger small" type="submit">Rechazada</button>
                                                     </form>
                                                 @elseif ($order->status === 'approved')
@@ -85,6 +92,7 @@
                                                     <form class="inline-form" method="POST" action="{{ route('finance.supply-orders.reject', $order) }}">
                                                         @csrf
                                                         @method('PATCH')
+                                                        <input type="hidden" name="reason" value="No cumple criterios de autorizacion">
                                                         <button class="button danger small" type="submit">Rechazar</button>
                                                     </form>
                                                 @endif
@@ -94,7 +102,7 @@
                                 </td>
                             </tr>
                         @empty
-                            <tr><td colspan="10">No hay OS vigentes.</td></tr>
+                            <tr><td colspan="11">No hay OS vigentes.</td></tr>
                         @endforelse
                     </tbody>
                 </table>

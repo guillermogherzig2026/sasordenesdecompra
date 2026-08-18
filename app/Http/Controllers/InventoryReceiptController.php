@@ -19,6 +19,7 @@ class InventoryReceiptController extends Controller
 
         $query = trim((string) $request->query('q'));
         $orders = PurchaseOrder::with(['buyer', 'company', 'provider', 'payment', 'items.receiptItems', 'receipts'])
+            ->general()
             ->where('status', 'paid')
             ->where('receipt_status', '!=', 'completed')
             ->when(Auth::user()?->role !== 'superadmin', fn ($builder) => $this->restrictToAuthorizedCompanies($builder))
@@ -38,6 +39,7 @@ class InventoryReceiptController extends Controller
 
         $query = trim((string) $request->query('q'));
         $orders = PurchaseOrder::with(['buyer', 'company', 'provider', 'payment', 'receipts.items.purchaseOrderItem'])
+            ->general()
             ->where('status', 'paid')
             ->where('receipt_status', 'completed')
             ->when(Auth::user()?->role !== 'superadmin', fn ($builder) => $this->restrictToAuthorizedCompanies($builder))
@@ -54,6 +56,7 @@ class InventoryReceiptController extends Controller
     public function create(PurchaseOrder $purchaseOrder)
     {
         $this->ensureInventory();
+        $this->ensureGeneralOrder($purchaseOrder);
         abort_unless($purchaseOrder->isOpenForInventory(), 403);
 
         return view('inventory.orders.receipt', [
@@ -65,6 +68,7 @@ class InventoryReceiptController extends Controller
     public function print(PurchaseOrder $purchaseOrder)
     {
         $this->ensureInventory();
+        $this->ensureGeneralOrder($purchaseOrder);
         abort_unless($purchaseOrder->status === 'paid', 403);
 
         return view('finance.orders.print', [
@@ -75,6 +79,7 @@ class InventoryReceiptController extends Controller
     public function store(Request $request, PurchaseOrder $purchaseOrder)
     {
         $this->ensureInventory();
+        $this->ensureGeneralOrder($purchaseOrder);
         abort_unless($purchaseOrder->isOpenForInventory(), 403);
 
         $validated = $request->validate([
@@ -217,5 +222,10 @@ class InventoryReceiptController extends Controller
     private function ensureInventory(): void
     {
         abort_unless(Auth::user()?->canAccessRole('inventory'), 403);
+    }
+
+    private function ensureGeneralOrder(PurchaseOrder $order): void
+    {
+        abort_unless($order->construction_project_id === null, 404);
     }
 }

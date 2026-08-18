@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\AuditLog;
 use App\Models\Company;
+use App\Models\ConstructionProject;
 use App\Models\Provider;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderItem;
@@ -25,8 +26,9 @@ class BuyerPurchaseOrderController extends Controller
         $panel = $request->query('panel', 'all');
         $query = trim((string) $request->query('q'));
 
-        $orders = $this->buyerOrders()
-            ->with(['company', 'provider', 'payment'])
+        $constructionContext = $this->isConstructionContext($request);
+        $orders = $this->buyerOrders($request)
+            ->with(['company', 'provider', 'payment', 'constructionProject'])
             ->when($panel === 'paid', fn ($builder) => $builder->where('status', 'paid'))
             ->when($panel === 'pending-payment', fn ($builder) => $builder->whereIn('status', ['sent', 'approved']))
             ->when($panel === 'rejected', fn ($builder) => $builder->where('status', 'rejected'))
@@ -56,17 +58,21 @@ class BuyerPurchaseOrderController extends Controller
             'orders' => $orders,
             'panel' => $panel,
             'query' => $query,
+            'constructionContext' => $constructionContext,
         ]);
     }
 
-    public function create()
+    public function create(Request $request)
     {
         $this->ensureBuyer();
+        $constructionContext = $this->isConstructionContext($request);
 
         return view('buyer.orders.form', [
             'order' => null,
             'companies' => $this->allowedCompanies(),
             'providers' => $this->providersForCurrentUser(),
+            'constructionContext' => $constructionContext,
+            'constructionProjects' => $this->constructionProjects($request, $constructionContext),
         ]);
     }
 
@@ -74,19 +80,21 @@ class BuyerPurchaseOrderController extends Controller
     {
         $this->ensureBuyer();
 
-        $validated = $this->validatedOrder($request);
+        $constructionContext = $this->isConstructionContext($request);
+        $validated = $this->validatedOrder($request, $constructionContext);
         $buyer = Auth::user();
         $company = $this->allowedCompanies()->firstWhere('id', (int) $validated['company_id']);
         $provider = $this->providersForCurrentUser()->firstWhere('id', (int) $validated['provider_id']);
 
         abort_unless($company && $provider, 403);
 
-        $order = DB::transaction(function () use ($request, $validated, $buyer, $company, $provider) {
+        $order = DB::transaction(function () use ($request, $validated, $buyer, $company, $provider, $constructionContext) {
             $total = $this->itemsTotal($validated['items']);
             $warehouse = $this->validatedWarehouse($validated['warehouse'] ?? null, $company);
             $orderPayload = [
                 'folio' => $this->nextFolio(),
                 'buyer_id' => $buyer->id,
+                'construction_project_id' => $constructionContext ? $validated['construction_project_id'] : null,
                 'company_id' => $company->id,
                 'provider_id' => $provider->id,
                 'created_on' => now()->toDateString(),
@@ -115,35 +123,42 @@ class BuyerPurchaseOrderController extends Controller
             return $order;
         });
 
-        return redirect()->route('buyer.orders.index')->with('status', "Orden {$order->folio} creada.");
+        return redirect()->route('buyer.orders.index', $this->contextRouteParameters($request))->with('status', "Orden {$order->folio} creada.");
     }
 
-    public function edit(PurchaseOrder $purchaseOrder)
+    public function edit(Request $request, PurchaseOrder $purchaseOrder)
     {
         $this->ensureOwner($purchaseOrder);
+        $this->ensureOrderContext($request, $purchaseOrder);
         abort_unless($purchaseOrder->isEditableByBuyer(), 403);
+        $constructionContext = $this->isConstructionContext($request);
 
         return view('buyer.orders.form', [
             'order' => $purchaseOrder->load('items'),
             'companies' => $this->allowedCompanies(),
             'providers' => $this->providersForCurrentUser(),
+            'constructionContext' => $constructionContext,
+            'constructionProjects' => $this->constructionProjects($request, $constructionContext),
         ]);
     }
 
     public function update(Request $request, PurchaseOrder $purchaseOrder)
     {
         $this->ensureOwner($purchaseOrder);
+        $this->ensureOrderContext($request, $purchaseOrder);
         abort_unless($purchaseOrder->isEditableByBuyer(), 403);
 
-        $validated = $this->validatedOrder($request);
+        $constructionContext = $this->isConstructionContext($request);
+        $validated = $this->validatedOrder($request, $constructionContext);
         $company = $this->allowedCompanies()->firstWhere('id', (int) $validated['company_id']);
         $provider = $this->providersForCurrentUser()->firstWhere('id', (int) $validated['provider_id']);
 
         abort_unless($company && $provider, 403);
 
-        DB::transaction(function () use ($request, $purchaseOrder, $validated, $company, $provider) {
+        DB::transaction(function () use ($request, $purchaseOrder, $validated, $company, $provider, $constructionContext) {
             $warehouse = $this->validatedWarehouse($validated['warehouse'] ?? null, $company);
             $orderPayload = [
+                'construction_project_id' => $constructionContext ? $validated['construction_project_id'] : null,
                 'company_id' => $company->id,
                 'provider_id' => $provider->id,
                 'due_date' => $validated['due_date'],
@@ -168,32 +183,35 @@ class BuyerPurchaseOrderController extends Controller
             $this->audit($purchaseOrder, 'updated', 'OC actualizada por el comprador antes de aprobacion.');
         });
 
-        return redirect()->route('buyer.orders.index')->with('status', "Orden {$purchaseOrder->folio} actualizada.");
+        return redirect()->route('buyer.orders.index', $this->contextRouteParameters($request))->with('status', "Orden {$purchaseOrder->folio} actualizada.");
     }
 
-    public function cancel(PurchaseOrder $purchaseOrder)
+    public function cancel(Request $request, PurchaseOrder $purchaseOrder)
     {
         $this->ensureOwner($purchaseOrder);
+        $this->ensureOrderContext($request, $purchaseOrder);
         abort_unless($purchaseOrder->isEditableByBuyer(), 403);
 
         $purchaseOrder->update(['status' => 'canceled']);
         $this->audit($purchaseOrder, 'canceled', 'OC cancelada por el comprador antes de aprobacion.');
 
-        return redirect()->route('buyer.orders.index')->with('status', "Orden {$purchaseOrder->folio} cancelada.");
+        return redirect()->route('buyer.orders.index', $this->contextRouteParameters($request))->with('status', "Orden {$purchaseOrder->folio} cancelada.");
     }
 
-    public function print(PurchaseOrder $purchaseOrder)
+    public function print(Request $request, PurchaseOrder $purchaseOrder)
     {
         $this->ensureOwner($purchaseOrder);
+        $this->ensureOrderContext($request, $purchaseOrder);
 
         return view('finance.orders.print', [
             'order' => $purchaseOrder->load(['buyer', 'company', 'provider', 'items']),
         ]);
     }
 
-    public function paymentReceipt(PurchaseOrder $purchaseOrder)
+    public function paymentReceipt(Request $request, PurchaseOrder $purchaseOrder)
     {
         $this->ensureOwner($purchaseOrder);
+        $this->ensureOrderContext($request, $purchaseOrder);
 
         $payment = $purchaseOrder->payment;
 
@@ -202,16 +220,18 @@ class BuyerPurchaseOrderController extends Controller
         return StoredFileResponse::download($payment->file_path, $payment->original_name);
     }
 
-    public function quoteSupport(PurchaseOrder $purchaseOrder)
+    public function quoteSupport(Request $request, PurchaseOrder $purchaseOrder)
     {
         $this->ensureOwner($purchaseOrder);
+        $this->ensureOrderContext($request, $purchaseOrder);
 
         return StoredFileResponse::download($purchaseOrder->quote_file_path, $purchaseOrder->quote_original_name ?: $purchaseOrder->folio.'-cotizacion');
     }
 
-    private function validatedOrder(Request $request): array
+    private function validatedOrder(Request $request, bool $constructionContext): array
     {
         $validated = $request->validate([
+            'construction_project_id' => [$constructionContext ? 'required' : 'nullable', 'integer', 'exists:construction_projects,id'],
             'company_id' => ['required', 'integer'],
             'provider_id' => ['required', 'integer'],
             'warehouse' => ['nullable', 'string', 'max:255'],
@@ -236,6 +256,19 @@ class BuyerPurchaseOrderController extends Controller
             throw ValidationException::withMessages([
                 'credit_days' => 'Indica los dias de credito.',
             ]);
+        }
+
+        if ($constructionContext) {
+            $projectIsVisible = ConstructionProject::query()
+                ->visibleTo($request->user())
+                ->whereKey((int) $validated['construction_project_id'])
+                ->exists();
+
+            if (! $projectIsVisible) {
+                throw ValidationException::withMessages([
+                    'construction_project_id' => 'Selecciona una obra disponible.',
+                ]);
+            }
         }
 
         $validated['items'] = collect($validated['items'])
@@ -320,11 +353,27 @@ class BuyerPurchaseOrderController extends Controller
         return collect($items)->sum(fn (array $item) => (float) $item['quantity'] * (float) $item['unit_price']);
     }
 
-    private function buyerOrders()
+    private function buyerOrders(Request $request)
     {
-        return $this->isSuperAdmin()
+        $orders = $this->isSuperAdmin()
             ? PurchaseOrder::query()
             : PurchaseOrder::where('buyer_id', Auth::id());
+
+        return $this->isConstructionContext($request)
+            ? $orders->forConstruction()
+            : $orders->general();
+    }
+
+    private function constructionProjects(Request $request, bool $constructionContext)
+    {
+        if (! $constructionContext) {
+            return collect();
+        }
+
+        return ConstructionProject::query()
+            ->visibleTo($request->user())
+            ->orderBy('project_key')
+            ->get();
     }
 
     private function allowedCompanies()
@@ -353,6 +402,25 @@ class BuyerPurchaseOrderController extends Controller
     private function isSuperAdmin(): bool
     {
         return Auth::user()?->role === 'superadmin';
+    }
+
+    private function isConstructionContext(Request $request): bool
+    {
+        return $this->isSuperAdmin() && $request->query('context') === 'construction';
+    }
+
+    private function contextRouteParameters(Request $request): array
+    {
+        return $this->isConstructionContext($request) ? ['context' => 'construction'] : [];
+    }
+
+    private function ensureOrderContext(Request $request, PurchaseOrder $order): void
+    {
+        $matchesContext = $this->isConstructionContext($request)
+            ? $order->construction_project_id !== null
+            : $order->construction_project_id === null;
+
+        abort_unless($matchesContext, 404);
     }
 
     private function audit(PurchaseOrder $order, string $action, string $description): void

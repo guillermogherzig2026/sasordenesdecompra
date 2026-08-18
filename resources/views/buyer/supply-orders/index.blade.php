@@ -19,6 +19,7 @@
                         @endif
                         <input name="q" value="{{ $query }}" placeholder="Buscar OS...">
                     </form>
+                    <a class="button ghost" href="{{ route('reports.download', 'supply-orders-excel') }}">Exportar Excel</a>
                     @if (! $isHistory)
                         <a class="button primary" href="{{ route('buyer.supply-orders.create') }}">Nueva OS</a>
                     @endif
@@ -29,6 +30,7 @@
                 <table class="supply-orders-table">
                     <thead>
                         <tr>
+                            <th>ID consecutivo</th>
                             <th>OS</th>
                             <th>Fecha de envio</th>
                             <th>Usuario</th>
@@ -53,6 +55,10 @@
                             @endphp
                             <tr>
                                 <td>
+                                    <strong>{{ $order->supply_consecutive }}</strong>
+                                    <small class="fine-print">General</small>
+                                </td>
+                                <td>
                                     <strong>{{ $order->folio }}</strong>
                                     <small class="fine-print">{{ \App\Support\UiStatus::supplyOrder($order->status, 'buyer') }}</small>
                                 </td>
@@ -76,7 +82,7 @@
                                 <td>
                                     @if ($order->delivery_remission_number)
                                         <a class="button ghost small" href="{{ route('buyer.supply-orders.remission', $order) }}" target="_blank">Remision</a>
-                                        <div class="fine-print">{{ $order->delivery_remission_number }}</div>
+                                        <div class="fine-print">{{ $order->formatted_delivery_remission_number }}</div>
                                         @if ($order->status === 'remitted')
                                             <div class="fine-print">Pendiente de recibir</div>
                                         @endif
@@ -87,7 +93,7 @@
                                 </td>
                             </tr>
                         @empty
-                            <tr><td colspan="10">No hay OS para mostrar.</td></tr>
+                            <tr><td colspan="11">No hay OS para mostrar.</td></tr>
                         @endforelse
                     </tbody>
                 </table>
