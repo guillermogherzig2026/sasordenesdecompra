@@ -252,6 +252,7 @@
                             <th>Monto</th>
                             <th>Estado</th>
                             <th>Factura</th>
+                            <th>Fotos</th>
                             <th>Pago</th>
                             <th>Fecha pago</th>
                             <th class="labor-actions-column" data-no-filter data-no-sort>Acciones</th>
@@ -293,6 +294,22 @@
                                 </td>
                                 <td>
                                     <div class="labor-file-actions">
+                                        <form method="POST" action="{{ $row['photos_upload_url'] }}" enctype="multipart/form-data">
+                                            @csrf
+                                            <label class="button ghost small" title="Subir fotos de avance">
+                                                Subir
+                                                <input class="file-upload-input" type="file" name="photo_files[]" accept=".jpg,.jpeg,.png,.webp" multiple data-auto-file-submit required>
+                                            </label>
+                                        </form>
+                                        @if (filled($row['photo_files_url']))
+                                            <a class="button ghost small labor-view-button" href="{{ $row['photo_files_url'] }}" target="_blank" rel="noopener" data-photo-view-enabled="{{ $row['payment_order_id'] }}">Ver</a>
+                                        @else
+                                            <button class="button ghost small labor-view-button" type="button" disabled aria-disabled="true" title="Sin fotos adjuntas" data-photo-view-disabled="{{ $row['payment_order_id'] }}">Ver</button>
+                                        @endif
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="labor-file-actions">
                                         @if (auth()->user()?->canAccessRole('finance'))
                                             <form method="POST" action="{{ $row['payment_upload_url'] }}" enctype="multipart/form-data">
                                                 @csrf
@@ -324,7 +341,7 @@
                             </tr>
                         @endforeach
                         <tr data-labor-empty hidden>
-                            <td class="empty-state" colspan="14">No hay pagos vigentes para esta obra.</td>
+                            <td class="empty-state" colspan="15">No hay pagos vigentes para esta obra.</td>
                         </tr>
                     </tbody>
                 </table>

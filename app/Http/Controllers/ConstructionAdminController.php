@@ -383,6 +383,14 @@ class ConstructionAdminController extends Controller
         $oldValues = $payroll->toArray();
         $code = $payroll->code;
 
+        $paymentOrder = ConstructionPaymentOrder::query()
+            ->where('construction_payroll_id', $payroll->id)
+            ->first();
+
+        if ($paymentOrder) {
+            $this->deletePaymentOrderFiles($paymentOrder);
+        }
+
         $payroll->delete();
 
         $this->recordAudit(
@@ -430,6 +438,38 @@ class ConstructionAdminController extends Controller
         return back()->with('status', "Factura de {$paymentOrder->code} cargada correctamente.");
     }
 
+    public function storePaymentPhotos(Request $request, ConstructionPaymentOrder $paymentOrder): RedirectResponse
+    {
+        $paymentOrder->loadMissing('project');
+        abort_unless($this->canEditProject($request->user(), $paymentOrder->project), 403);
+
+        $request->validate([
+            'photo_files' => ['required', 'array', 'min:1', 'max:20'],
+            'photo_files.*' => ['required', 'file', 'mimes:jpg,jpeg,png,webp', 'max:10240'],
+        ]);
+
+        $photos = collect($paymentOrder->photo_files ?? []);
+
+        foreach ($request->file('photo_files', []) as $file) {
+            $photos->push([
+                'path' => $file->store('construction-payment-photos'),
+                'name' => $file->getClientOriginalName(),
+                'mime_type' => $file->getMimeType(),
+            ]);
+        }
+
+        $paymentOrder->update(['photo_files' => $photos->values()->all()]);
+
+        $this->recordAudit(
+            $request,
+            $paymentOrder->project,
+            'Fotos de avance cargadas',
+            "Se cargaron fotos de avance para {$paymentOrder->code}."
+        );
+
+        return back()->with('status', "Fotos de avance de {$paymentOrder->code} cargadas correctamente.");
+    }
+
     public function paymentInvoice(Request $request, ConstructionPaymentOrder $paymentOrder)
     {
         $paymentOrder->loadMissing('project');
@@ -454,6 +494,37 @@ class ConstructionAdminController extends Controller
         );
     }
 
+    public function paymentPhotos(Request $request, ConstructionPaymentOrder $paymentOrder): View
+    {
+        $paymentOrder->loadMissing('project');
+        $this->authorizeProject($request, $paymentOrder->project);
+
+        $photos = collect($paymentOrder->photo_files ?? [])
+            ->filter(fn ($photo): bool => is_array($photo) && filled($photo['path'] ?? null))
+            ->values();
+
+        abort_if($photos->isEmpty(), 404);
+
+        return view('construction.payment-photos', [
+            'paymentOrder' => $paymentOrder,
+            'photos' => $photos,
+        ]);
+    }
+
+    public function paymentPhotoFile(Request $request, ConstructionPaymentOrder $paymentOrder, int $photoIndex)
+    {
+        $paymentOrder->loadMissing('project');
+        $this->authorizeProject($request, $paymentOrder->project);
+
+        $photo = data_get($paymentOrder->photo_files ?? [], $photoIndex);
+        abort_unless(is_array($photo) && filled($photo['path'] ?? null), 404);
+
+        return StoredFileResponse::inline(
+            $photo['path'],
+            $photo['name'] ?? $paymentOrder->code.'-foto-'.($photoIndex + 1)
+        );
+    }
+
     public function destroyPaymentOrder(Request $request, ConstructionPaymentOrder $paymentOrder): RedirectResponse
     {
         $paymentOrder->loadMissing('project');
@@ -464,11 +535,7 @@ class ConstructionAdminController extends Controller
         $project = $paymentOrder->project;
         $code = $paymentOrder->code;
 
-        foreach ([$paymentOrder->invoice_file_path, $paymentOrder->payment_file_path] as $path) {
-            if ($path && Storage::exists($path)) {
-                Storage::delete($path);
-            }
-        }
+        $this->deletePaymentOrderFiles($paymentOrder);
 
         $paymentOrder->delete();
         $this->recordAudit(
@@ -521,8 +588,7 @@ class ConstructionAdminController extends Controller
                 'projects' => $projects,
                 'selectedProjectId' => $selectedProjectId,
                 'catalogRows' => $this->laborTrackingRows($paymentOrders),
-                'laborRows' => $this->laborTrackingRows($paymentOrders->filter(fn (ConstructionPaymentOrder $order): bool =>
-                    blank($order->payment_file_path)
+                'laborRows' => $this->laborTrackingRows($paymentOrders->filter(fn (ConstructionPaymentOrder $order): bool => blank($order->payment_file_path)
                     && ! in_array($order->status, ['Pagada', 'Pagado', 'Cancelada', 'Cancelado'], true)
                 )),
                 'payrollPeriodicityOptions' => ['Semanal', 'Quincenal', 'Mensual'],
@@ -1071,15 +1137,37 @@ class ConstructionAdminController extends Controller
             'invoice_file_url' => filled($order->invoice_file_path)
                 ? route('construction.payment-orders.invoice', $order)
                 : null,
+            'photo_files_url' => collect($order->photo_files ?? [])->contains(
+                fn ($photo): bool => is_array($photo) && filled($photo['path'] ?? null)
+            )
+                ? route('construction.payment-orders.photos', $order)
+                : null,
             'payment_file_url' => filled($order->payment_file_path)
                 ? route('construction.payment-orders.payment', $order)
                 : null,
             'invoice_upload_url' => route('construction.payment-orders.invoice.store', $order),
+            'photos_upload_url' => route('construction.payment-orders.photos.store', $order),
             'payment_upload_url' => route('finance.construction-payment-orders.payment.store', $order),
             'delete_url' => $order->construction_payroll_id
                 ? route('construction.payrolls.destroy', $order->construction_payroll_id)
                 : route('construction.payment-orders.destroy', $order),
         ])->values()->all();
+    }
+
+    private function deletePaymentOrderFiles(ConstructionPaymentOrder $paymentOrder): void
+    {
+        $paths = collect([
+            $paymentOrder->invoice_file_path,
+            $paymentOrder->payment_file_path,
+        ])->merge(
+            collect($paymentOrder->photo_files ?? [])->pluck('path')
+        )->filter()->unique();
+
+        foreach ($paths as $path) {
+            if (Storage::exists($path)) {
+                Storage::delete($path);
+            }
+        }
     }
 
     private function payrollStatusClass(string $status): string

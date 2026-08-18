@@ -42,6 +42,7 @@ class ConstructionPaymentOrderFlowTest extends TestCase
         $labor->assertOk();
         $labor->assertSee('Fecha limite de pago');
         $labor->assertSee('30/06/2026');
+        $labor->assertSeeInOrder(['Factura', 'Fotos', 'Pago']);
     }
 
     public function test_superadmin_can_create_a_new_estimate_package_from_the_catalog(): void
@@ -159,6 +160,56 @@ class ConstructionPaymentOrderFlowTest extends TestCase
         $this->actingAs($user)
             ->get(route('finance.construction-payment-orders.active'))
             ->assertSee(route('finance.construction-payment-orders.invoice', $order), false);
+    }
+
+    public function test_progress_photos_can_be_uploaded_and_viewed_from_labor(): void
+    {
+        Storage::fake('local');
+        $user = $this->superadmin();
+        $order = ConstructionPaymentOrder::where('code', 'NOM-S26')->firstOrFail();
+        $laborUrl = route('construction.placeholder', [
+            'section' => 'mano-obra',
+            'project' => $order->construction_project_id,
+        ]);
+
+        $this->actingAs($user)
+            ->get($laborUrl)
+            ->assertSee('data-photo-view-disabled="'.$order->id.'"', false);
+
+        $this->actingAs($user)
+            ->from($laborUrl)
+            ->post(route('construction.payment-orders.photos.store', $order), [
+                'photo_files' => [
+                    UploadedFile::fake()->create('avance-frente.jpg', 50, 'image/jpeg'),
+                    UploadedFile::fake()->create('avance-losa.png', 50, 'image/png'),
+                ],
+            ])
+            ->assertRedirect($laborUrl);
+
+        $order->refresh();
+        $this->assertCount(2, $order->photo_files);
+
+        foreach ($order->photo_files as $photo) {
+            Storage::disk('local')->assertExists($photo['path']);
+        }
+
+        $this->actingAs($user)
+            ->get($laborUrl)
+            ->assertSee('data-photo-view-enabled="'.$order->id.'"', false)
+            ->assertDontSee('data-photo-view-disabled="'.$order->id.'"', false);
+
+        $this->actingAs($user)
+            ->get(route('construction.payment-orders.photos', $order))
+            ->assertOk()
+            ->assertSee('avance-frente.jpg')
+            ->assertSee('avance-losa.png');
+
+        $this->actingAs($user)
+            ->get(route('construction.payment-orders.photos.file', [
+                'paymentOrder' => $order,
+                'photoIndex' => 0,
+            ]))
+            ->assertOk();
     }
 
     public function test_superadmin_can_delete_an_estimate_package_from_the_catalog(): void

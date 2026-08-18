@@ -203,6 +203,11 @@ Route::middleware('auth')->prefix('administracion-obra')->name('construction.')-
     Route::delete('/nominas/{payroll}', [ConstructionAdminController::class, 'destroyPayroll'])->name('payrolls.destroy');
     Route::post('/pagos-vigentes/{paymentOrder}/factura', [ConstructionAdminController::class, 'storePaymentInvoice'])->name('payment-orders.invoice.store');
     Route::get('/pagos-vigentes/{paymentOrder}/factura', [ConstructionAdminController::class, 'paymentInvoice'])->name('payment-orders.invoice');
+    Route::post('/pagos-vigentes/{paymentOrder}/fotos', [ConstructionAdminController::class, 'storePaymentPhotos'])->name('payment-orders.photos.store');
+    Route::get('/pagos-vigentes/{paymentOrder}/fotos', [ConstructionAdminController::class, 'paymentPhotos'])->name('payment-orders.photos');
+    Route::get('/pagos-vigentes/{paymentOrder}/fotos/{photoIndex}', [ConstructionAdminController::class, 'paymentPhotoFile'])
+        ->whereNumber('photoIndex')
+        ->name('payment-orders.photos.file');
     Route::get('/pagos-vigentes/{paymentOrder}/pago', [ConstructionAdminController::class, 'paymentReceipt'])->name('payment-orders.payment');
     Route::delete('/pagos-vigentes/{paymentOrder}', [ConstructionAdminController::class, 'destroyPaymentOrder'])->name('payment-orders.destroy');
     Route::get('/proveedores', [BuyerProviderController::class, 'index'])->name('providers.index');

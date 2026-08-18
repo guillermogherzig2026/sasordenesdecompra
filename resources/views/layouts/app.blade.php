@@ -284,7 +284,7 @@
             .labor-tab.is-active { color: #fff; border-color: #0aa79b; background: #0aa79b; }
             .labor-toolbar-note { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
             .labor-table-scroll { max-height: min(58vh, 520px); }
-            .labor-table { min-width: 1660px; }
+            .labor-table { min-width: 1780px; }
             .labor-table th, .labor-table td { white-space: nowrap; }
             .labor-table td:nth-child(3) { min-width: 230px; white-space: normal; }
             .labor-table .labor-actions-column { position: sticky; right: 0; z-index: 1; min-width: 100px; text-align: right; background: #fff; box-shadow: -1px 0 0 var(--line); }
@@ -297,6 +297,11 @@
             .labor-progress-track { height: 6px; border-radius: 999px; background: #e7edf5; overflow: hidden; }
             .labor-progress-track span { display: block; height: 100%; border-radius: inherit; background: #0bb394; }
             .labor-file-actions { display: flex; align-items: center; gap: 6px; }
+            .payment-photo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; }
+            .payment-photo-item { overflow: hidden; border: 1px solid var(--line); border-radius: 8px; background: #fff; }
+            .payment-photo-preview { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; background: #edf2f7; }
+            .payment-photo-meta { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px; }
+            .payment-photo-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
             .labor-file-actions form { display: inline-flex; margin: 0; }
             .file-upload-input { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
             .labor-file-actions .labor-view-button:disabled { border-color: #d0d5dd; background: #eef1f4; color: #98a2b3; opacity: 1; cursor: not-allowed; box-shadow: none; }

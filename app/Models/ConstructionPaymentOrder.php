@@ -26,6 +26,7 @@ class ConstructionPaymentOrder extends Model
         'status',
         'invoice_file_path',
         'invoice_original_name',
+        'photo_files',
         'payment_file_path',
         'payment_original_name',
         'paid_on',
@@ -41,6 +42,7 @@ class ConstructionPaymentOrder extends Model
             'paid_on' => 'date',
             'progress' => 'decimal:2',
             'amount' => 'decimal:2',
+            'photo_files' => 'array',
         ];
     }
 
