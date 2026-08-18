@@ -12,13 +12,15 @@ return new class extends Migration
         if (! Schema::hasTable('provider_business_subcategories')) {
             Schema::create('provider_business_subcategories', function (Blueprint $table) {
                 $table->id();
-                $table->foreignId('provider_business_line_id')
-                    ->constrained('provider_business_lines')
-                    ->cascadeOnDelete();
+                $table->foreignId('provider_business_line_id');
                 $table->string('name');
                 $table->boolean('active')->default(true);
                 $table->timestamps();
 
+                $table->foreign('provider_business_line_id', 'provider_subcategories_line_fk')
+                    ->references('id')
+                    ->on('provider_business_lines')
+                    ->cascadeOnDelete();
                 $table->unique(['provider_business_line_id', 'name'], 'provider_subcategories_line_name_unique');
             });
         }
