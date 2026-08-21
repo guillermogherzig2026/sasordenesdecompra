@@ -82,17 +82,17 @@
             <div class="grid-4">
                 <label>Periodo — Fecha de inicio
                     <div style="display:flex;gap:6px">
-                        <select name="start_day" required style="flex:1" onchange="recalcDueDate()">
+                        <select name="start_day" required style="flex:1">
                             @foreach (range(1, 31) as $d)
                                 <option value="{{ $d }}" @selected((int) $selectedStartDay === $d)>{{ $d }}</option>
                             @endforeach
                         </select>
-                        <select name="start_month" required style="flex:2" onchange="recalcDueDate()">
+                        <select name="start_month" required style="flex:2">
                             @foreach ($monthNames as $num => $name)
                                 <option value="{{ $num }}" @selected((int) $selectedStartMonth === $num)>{{ $name }}</option>
                             @endforeach
                         </select>
-                        <select name="start_year" required style="flex:1" onchange="recalcDueDate()">
+                        <select name="start_year" required style="flex:1">
                             @foreach ($yearOptions as $year)
                                 <option value="{{ $year }}" @selected((int) $selectedStartYear === $year)>{{ $year }}</option>
                             @endforeach
@@ -101,17 +101,17 @@
                 </label>
                 <label>Periodo — Fecha de corte
                     <div style="display:flex;gap:6px">
-                        <select name="cutoff_day" required style="flex:1" onchange="recalcDueDate()">
+                        <select name="cutoff_day" required style="flex:1">
                             @foreach (range(1, 31) as $d)
                                 <option value="{{ $d }}" @selected((int) $selectedCutoffDay === $d)>{{ $d }}</option>
                             @endforeach
                         </select>
-                        <select name="cutoff_month" required style="flex:2" onchange="recalcDueDate()">
+                        <select name="cutoff_month" required style="flex:2">
                             @foreach ($monthNames as $num => $name)
                                 <option value="{{ $num }}" @selected((int) $selectedCutoffMonth === $num)>{{ $name }}</option>
                             @endforeach
                         </select>
-                        <select name="cutoff_year" required style="flex:1" onchange="recalcDueDate()">
+                        <select name="cutoff_year" required style="flex:1">
                             @foreach ($yearOptions as $year)
                                 <option value="{{ $year }}" @selected((int) $selectedCutoffYear === $year)>{{ $year }}</option>
                             @endforeach
@@ -159,7 +159,6 @@
 
         <script>
             document.addEventListener('DOMContentLoaded', () => {
-                const monthNames = @json($monthNames);
                 const paymentLapse = document.querySelector('select[name="payment_lapse"]');
                 const startDay = document.querySelector('select[name="start_day"]');
                 const startMonth = document.querySelector('select[name="start_month"]');
@@ -169,19 +168,94 @@
                 const cutoffYear = document.querySelector('select[name="cutoff_year"]');
                 const dueDateDisplay = document.getElementById('due_date_display');
 
-                function recalcDueDate() {
-                    const cDay = parseInt(cutoffDay.value, 10);
-                    const lapse = parseInt(paymentLapse.value, 10) || 30;
-                    const cMonth = parseInt(cutoffMonth.value, 10) - 1;
-                    const cYear = parseInt(cutoffYear.value, 10);
-                    const daysInCutoffMonth = new Date(cYear, cMonth + 1, 0).getDate();
+                function selectedDate(daySelect, monthSelect, yearSelect) {
+                    const day = Number(daySelect.value);
+                    const month = Number(monthSelect.value);
+                    const year = Number(yearSelect.value);
+                    const date = new Date(year, month - 1, day);
 
-                    if (cDay > daysInCutoffMonth) {
+                    if (
+                        date.getFullYear() !== year
+                        || date.getMonth() !== month - 1
+                        || date.getDate() !== day
+                    ) {
+                        return null;
+                    }
+
+                    return date;
+                }
+
+                function selectFirstEnabled(select) {
+                    if (!select.selectedOptions[0]?.disabled) {
+                        return;
+                    }
+
+                    const firstEnabled = Array.from(select.options).find((option) => !option.disabled);
+                    if (firstEnabled) {
+                        select.value = firstEnabled.value;
+                    }
+                }
+
+                function syncStartDays() {
+                    const month = Number(startMonth.value);
+                    const year = Number(startYear.value);
+                    const lastDay = new Date(year, month, 0).getDate();
+
+                    Array.from(startDay.options).forEach((option) => {
+                        option.disabled = Number(option.value) > lastDay;
+                    });
+
+                    if (startDay.selectedOptions[0]?.disabled) {
+                        startDay.value = String(lastDay);
+                    }
+                }
+
+                function syncCutoffDate() {
+                    syncStartDays();
+
+                    const start = selectedDate(startDay, startMonth, startYear);
+                    if (!start) {
+                        recalcDueDate();
+                        return;
+                    }
+
+                    Array.from(cutoffYear.options).forEach((option) => {
+                        option.disabled = Number(option.value) < start.getFullYear();
+                    });
+                    selectFirstEnabled(cutoffYear);
+
+                    const selectedCutoffYear = Number(cutoffYear.value);
+                    Array.from(cutoffMonth.options).forEach((option) => {
+                        option.disabled = selectedCutoffYear === start.getFullYear()
+                            && Number(option.value) < start.getMonth() + 1;
+                    });
+                    selectFirstEnabled(cutoffMonth);
+
+                    const selectedCutoffMonth = Number(cutoffMonth.value);
+                    const lastCutoffDay = new Date(selectedCutoffYear, selectedCutoffMonth, 0).getDate();
+                    const firstCutoffDay = selectedCutoffYear === start.getFullYear()
+                        && selectedCutoffMonth === start.getMonth() + 1
+                        ? start.getDate()
+                        : 1;
+
+                    Array.from(cutoffDay.options).forEach((option) => {
+                        const day = Number(option.value);
+                        option.disabled = day < firstCutoffDay || day > lastCutoffDay;
+                    });
+                    selectFirstEnabled(cutoffDay);
+
+                    recalcDueDate();
+                }
+
+                function recalcDueDate() {
+                    const lapse = parseInt(paymentLapse.value, 10) || 30;
+                    const cutoff = selectedDate(cutoffDay, cutoffMonth, cutoffYear);
+
+                    if (!cutoff) {
                         dueDateDisplay.value = '';
                         return;
                     }
 
-                    let cutoff = new Date(cYear, cMonth, cDay);
                     const due = new Date(cutoff);
                     due.setDate(due.getDate() + lapse);
                     const y = due.getFullYear();
@@ -190,12 +264,14 @@
                     dueDateDisplay.value = `${y}-${m}-${d}`;
                 }
 
-                window.recalcDueDate = recalcDueDate;
                 paymentLapse.addEventListener('change', recalcDueDate);
+                startDay.addEventListener('change', syncCutoffDate);
+                startMonth.addEventListener('change', syncCutoffDate);
+                startYear.addEventListener('change', syncCutoffDate);
                 cutoffDay.addEventListener('change', recalcDueDate);
-                cutoffMonth.addEventListener('change', recalcDueDate);
-                cutoffYear.addEventListener('change', recalcDueDate);
-                recalcDueDate();
+                cutoffMonth.addEventListener('change', syncCutoffDate);
+                cutoffYear.addEventListener('change', syncCutoffDate);
+                syncCutoffDate();
             });
         </script>
     </x-app-shell>

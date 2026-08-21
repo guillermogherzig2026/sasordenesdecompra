@@ -66,10 +66,13 @@
                         @endforeach
                     </select>
                 </label>
+                @php
+                    $selectedProjectStatus = old('status', $project->status === 'Terminada' ? 'Concluida' : $project->status);
+                @endphp
                 <label>Estado
                     <select name="status" required>
-                        @foreach (['Por iniciar', 'En ejecucion', 'Terminada', 'Suspendida'] as $status)
-                            <option value="{{ $status }}" @selected(old('status', $project->status) === $status)>{{ $status }}</option>
+                        @foreach ($statuses as $status)
+                            <option value="{{ $status }}" @selected($selectedProjectStatus === $status)>{{ $status }}</option>
                         @endforeach
                     </select>
                 </label>

@@ -13,6 +13,8 @@ class ConstructionProject extends Model
 {
     use SoftDeletes;
 
+    public const STATUSES = ['Por iniciar', 'En ejecucion', 'Concluida'];
+
     protected $fillable = [
         'company_id',
         'client_id',
@@ -99,6 +101,11 @@ class ConstructionProject extends Model
         return $this->hasMany(ConstructionPaymentOrder::class);
     }
 
+    public function scheduleItems(): HasMany
+    {
+        return $this->hasMany(ConstructionScheduleItem::class);
+    }
+
     public function scopeVisibleTo(Builder $query, User $user): Builder
     {
         if ($user->role === 'superadmin') {
@@ -133,7 +140,7 @@ class ConstructionProject extends Model
     public function statusColor(): string
     {
         return match ($this->status) {
-            'Terminada' => 'success',
+            'Concluida', 'Terminada' => 'success',
             'Por iniciar' => 'warning',
             'Suspendida', 'Cancelada' => 'danger',
             default => 'primary',

@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Provider;
 use App\Models\ProviderBusinessLine;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -86,5 +87,87 @@ class ConstructionProviderTest extends TestCase
         $this->actingAs($user)
             ->get(route('construction.placeholder', 'proveedores'))
             ->assertRedirect(route('construction.providers.index'));
+    }
+
+    public function test_superadmin_can_show_and_hide_the_provider_categories_catalog(): void
+    {
+        $user = User::factory()->create([
+            'role' => 'superadmin',
+            'active' => true,
+        ]);
+
+        $response = $this->actingAs($user)->get(route('superadmin.provider-lines.index'));
+
+        $response->assertOk();
+        $response->assertSee('Categorias de proveedores');
+        $response->assertSee('data-provider-category-toggle', false);
+        $response->assertSee('aria-controls="provider-category-management"', false);
+        $response->assertSee('aria-expanded="true"', false);
+        $response->assertSee('categoryContent.hidden = !willExpand;', false);
+    }
+
+    public function test_superadmin_provider_catalog_links_to_provider_registration(): void
+    {
+        $user = User::factory()->create([
+            'role' => 'superadmin',
+            'active' => true,
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('superadmin.provider-lines.index'))
+            ->assertOk()
+            ->assertSee('Alta de proveedor')
+            ->assertSee('href="'.route('finance.admin.providers').'"', false)
+            ->assertSee('data-provider-catalog-action', false);
+
+        $this->actingAs($user)
+            ->get(route('finance.admin.providers'))
+            ->assertOk()
+            ->assertSee('Nuevo proveedor');
+    }
+
+    public function test_provider_catalog_is_ordered_by_category_before_business_name(): void
+    {
+        $user = User::factory()->create([
+            'role' => 'superadmin',
+            'active' => true,
+        ]);
+        $alphaCategory = ProviderBusinessLine::create([
+            'name' => 'Alfa categoria',
+            'active' => true,
+        ]);
+        $zetaCategory = ProviderBusinessLine::create([
+            'name' => 'Zeta categoria',
+            'active' => true,
+        ]);
+
+        Provider::create([
+            'buyer_id' => $user->id,
+            'business_name' => 'AAA Proveedor de Zeta',
+            'rfc' => 'APZ260819AA1',
+            'business_line' => $zetaCategory->name,
+            'provider_business_line_id' => $zetaCategory->id,
+            'bank' => 'BANORTE',
+            'account_number' => '1000000001',
+            'clabe' => '072180000000000001',
+        ]);
+        Provider::create([
+            'buyer_id' => $user->id,
+            'business_name' => 'ZZZ Proveedor de Alfa',
+            'rfc' => 'ZPA260819AA2',
+            'business_line' => $alphaCategory->name,
+            'provider_business_line_id' => $alphaCategory->id,
+            'bank' => 'BBVA',
+            'account_number' => '1000000002',
+            'clabe' => '012180000000000002',
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('superadmin.provider-lines.index'))
+            ->assertOk()
+            ->assertSeeInOrder([
+                'ZZZ Proveedor de Alfa',
+                'AAA Proveedor de Zeta',
+            ]);
     }
 }

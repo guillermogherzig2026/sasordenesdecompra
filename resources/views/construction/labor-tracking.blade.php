@@ -125,7 +125,12 @@
                         </thead>
                         <tbody>
                             @foreach ($payrollRows as $row)
-                                <tr data-payroll-row data-payroll-project="{{ $row['project_id'] }}" @if ((int) $row['project_id'] !== $selectedProjectId) hidden @endif>
+                                <tr
+                                    id="payroll-row-{{ $row['id'] }}"
+                                    data-payroll-row
+                                    data-payroll-project="{{ $row['project_id'] }}"
+                                    @if ((int) $row['project_id'] !== $selectedProjectId) hidden @endif
+                                >
                                     <td>{{ $row['code'] }}</td>
                                     <td>{{ $row['responsible'] }}</td>
                                     <td>{{ $row['description'] }}</td>
@@ -133,7 +138,39 @@
                                     <td>{{ $row['periodicity'] }}</td>
                                     <td>{{ $money($row['amount']) }}</td>
                                     <td data-disbursed-amount="{{ number_format($row['disbursed_amount'], 2, '.', '') }}">{{ $money($row['disbursed_amount']) }}</td>
-                                    <td><span class="status {{ $row['status_class'] }}">{{ $row['status'] }}</span></td>
+                                    <td data-filter-value="{{ $row['status'] }}">
+                                        <details class="status-menu">
+                                            <summary
+                                                class="status {{ $row['status_class'] }}"
+                                                aria-label="Cambiar estatus de {{ $row['code'] }}"
+                                            >{{ $row['status'] }}</summary>
+                                            <div class="status-menu-panel">
+                                                @foreach ($payrollCatalogStatusOptions as $payrollStatus)
+                                                    @continue($payrollStatus === $row['status'])
+                                                    @php
+                                                        $statusOptionClass = match ($payrollStatus) {
+                                                            'Concluida' => 'primary',
+                                                            'Cancelada' => 'danger',
+                                                            default => 'ghost',
+                                                        };
+                                                    @endphp
+                                                    <form
+                                                        class="inline-form"
+                                                        method="POST"
+                                                        action="{{ route('construction.payrolls.status.update', $row['id']) }}"
+                                                    >
+                                                        @csrf
+                                                        @method('PATCH')
+                                                        <input type="hidden" name="status" value="{{ $payrollStatus }}">
+                                                        <button
+                                                            class="button small {{ $statusOptionClass }}"
+                                                            type="submit"
+                                                        >{{ $payrollStatus }}</button>
+                                                    </form>
+                                                @endforeach
+                                            </div>
+                                        </details>
+                                    </td>
                                     <td>
                                         <div class="labor-file-actions">
                                             <a class="button ghost small" href="{{ route('construction.payrolls.edit', $row['id']) }}">Editar</a>
@@ -350,13 +387,14 @@
         @php
             $createPayrollValues = [
                 'construction_project_id' => $creatingPayroll ? old('construction_project_id', $selectedProjectId) : $selectedProjectId,
-                'code' => $creatingPayroll ? old('code', '') : '',
+        'code' => $nextPayrollCode,
                 'contractor' => $creatingPayroll ? old('contractor', '') : '',
                 'description' => $creatingPayroll ? old('description', '') : '',
                 'area' => $creatingPayroll ? old('area', 'Mano de obra') : 'Mano de obra',
                 'periodicity' => $creatingPayroll ? old('periodicity', 'Quincenal') : 'Quincenal',
                 'period_start' => $creatingPayroll ? old('period_start', '') : '',
                 'period_end' => $creatingPayroll ? old('period_end', '') : '',
+                'period_end_indefinite' => $creatingPayroll ? old('period_end_indefinite', '1') : '1',
                 'progress' => $creatingPayroll ? old('progress', 0) : 0,
                 'amount' => $creatingPayroll ? old('amount', 0) : 0,
                 'status' => $creatingPayroll ? old('status', 'Borrador') : 'Borrador',

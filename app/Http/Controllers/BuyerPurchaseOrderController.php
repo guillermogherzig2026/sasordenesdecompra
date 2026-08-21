@@ -234,7 +234,7 @@ class BuyerPurchaseOrderController extends Controller
             'construction_project_id' => [$constructionContext ? 'required' : 'nullable', 'integer', 'exists:construction_projects,id'],
             'company_id' => ['required', 'integer'],
             'provider_id' => ['required', 'integer'],
-            'warehouse' => ['nullable', 'string', 'max:255'],
+            'warehouse' => ['required', 'string', 'max:255'],
             'delivery_date' => ['required', 'date'],
             'due_date' => ['required', 'date'],
             'is_credit' => ['nullable', 'boolean'],
@@ -247,6 +247,8 @@ class BuyerPurchaseOrderController extends Controller
             'items.*.article' => ['required', 'string', 'max:255'],
             'items.*.quantity' => ['required', 'numeric', 'min:0.01'],
             'items.*.unit_price' => ['required', 'numeric', 'min:0'],
+        ], [
+            'warehouse.required' => 'Selecciona un almacen para enviar la orden de compra.',
         ]);
 
         $validated['is_credit'] = $request->boolean('is_credit');
@@ -281,7 +283,7 @@ class BuyerPurchaseOrderController extends Controller
         return $validated;
     }
 
-    private function validatedWarehouse(?string $warehouse, Company $company): ?string
+    private function validatedWarehouse(?string $warehouse, Company $company): string
     {
         $warehouse = trim((string) $warehouse);
         $user = Auth::user();
@@ -290,12 +292,14 @@ class BuyerPurchaseOrderController extends Controller
             : ($user?->authorizedWarehousesFor($company->name) ?: $company->warehouseList());
 
         if (! count($availableWarehouses)) {
-            return null;
+            throw ValidationException::withMessages([
+                'warehouse' => 'La empresa seleccionada no tiene almacenes disponibles. Registra un almacen antes de enviar la orden de compra.',
+            ]);
         }
 
         if ($warehouse === '' || ! in_array($warehouse, $availableWarehouses, true)) {
             throw ValidationException::withMessages([
-                'warehouse' => 'Selecciona un almacen autorizado para la empresa.',
+                'warehouse' => 'Selecciona un almacen autorizado para enviar la orden de compra.',
             ]);
         }
 

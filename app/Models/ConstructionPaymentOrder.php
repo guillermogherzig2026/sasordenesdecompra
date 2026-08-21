@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -11,6 +12,7 @@ class ConstructionPaymentOrder extends Model
     protected $fillable = [
         'construction_project_id',
         'construction_payroll_id',
+        'scheduled_for',
         'type',
         'code',
         'description',
@@ -35,6 +37,7 @@ class ConstructionPaymentOrder extends Model
     protected function casts(): array
     {
         return [
+            'scheduled_for' => 'date',
             'period_start' => 'date',
             'period_end' => 'date',
             'payment_due_date' => 'date',
@@ -63,6 +66,11 @@ class ConstructionPaymentOrder extends Model
     {
         return $query
             ->whereNull('payment_file_path')
+            ->where(function (Builder $availability): void {
+                $availability->whereNull('scheduled_for')
+                    ->orWhereDate('scheduled_for', '<=', CarbonImmutable::now('America/Mexico_City')->toDateString());
+            })
+            ->where('status', '!=', 'Borrador')
             ->whereNotIn('status', ['Pagada', 'Pagado', 'Cancelada', 'Cancelado']);
     }
 
@@ -96,15 +104,19 @@ class ConstructionPaymentOrder extends Model
             return $this->period_start->format('d/m').' - '.$this->period_end->format('d/m/Y');
         }
 
+        if ($this->period_start && ! $this->period_end && $this->type === 'Nomina') {
+            return $this->period_start->format('d/m/Y').' - Indefinido';
+        }
+
         return $this->period_reference ?: 'Pendiente';
     }
 
     public function statusClass(): string
     {
         return match ($this->status) {
-            'Aprobada', 'Aprobado' => 'approved',
+            'Aprobada', 'Aprobado', 'Concluida' => 'approved',
             'Pagada', 'Pagado' => 'paid',
-            'En revision' => 'warning',
+            'En revision', 'Pausada' => 'warning',
             'Cancelada', 'Cancelado' => 'canceled',
             'En ejecucion' => 'primary',
             default => 'pending',

@@ -8,7 +8,14 @@
                     <h2>Catalogo de proveedores</h2>
                     <p class="fine-print">Consulta todos los proveedores dados de alta en el sistema.</p>
                 </div>
-                <span class="button ghost provider-catalog-toggle" aria-hidden="true"></span>
+                <div class="provider-catalog-summary-actions">
+                    <a
+                        class="button primary small"
+                        href="{{ route('finance.admin.providers') }}"
+                        data-provider-catalog-action
+                    >Alta de proveedor</a>
+                    <span class="button ghost provider-catalog-toggle" aria-hidden="true"></span>
+                </div>
             </summary>
 
             <div class="table-scroll provider-catalog-list">
@@ -56,6 +63,16 @@
                 <div>
                     <h2>Categorias de proveedores</h2>
                     <a class="button primary small" href="{{ route('superadmin.provider-lines.manage') }}">Administrar categorias</a>
+                </div>
+                <div class="table-export-actions provider-category-panel-actions">
+                    <button
+                        class="button ghost provider-category-toggle"
+                        type="button"
+                        data-provider-category-toggle
+                        aria-controls="provider-category-management"
+                        aria-expanded="true"
+                        aria-label="Ocultar categorias de proveedores"
+                    >-</button>
                 </div>
             </div>
 
@@ -267,6 +284,28 @@
         </section>
 
         <script>
+            document.querySelectorAll('[data-provider-catalog-action]').forEach((link) => {
+                link.addEventListener('click', (event) => {
+                    event.stopPropagation();
+                });
+            });
+
+            const categoryToggle = document.querySelector('[data-provider-category-toggle]');
+            const categoryContent = document.getElementById(categoryToggle?.getAttribute('aria-controls'));
+
+            if (categoryToggle && categoryContent) {
+                categoryToggle.addEventListener('click', () => {
+                    const willExpand = categoryContent.hidden;
+
+                    categoryContent.hidden = !willExpand;
+                    categoryToggle.setAttribute('aria-expanded', String(willExpand));
+                    categoryToggle.setAttribute('aria-label', willExpand
+                        ? 'Ocultar categorias de proveedores'
+                        : 'Mostrar categorias de proveedores');
+                    categoryToggle.textContent = willExpand ? '-' : '+';
+                });
+            }
+
             document.querySelectorAll('[data-provider-line-toggle]').forEach((button) => {
                 button.addEventListener('click', () => {
                     const parentId = button.dataset.providerLineToggle;

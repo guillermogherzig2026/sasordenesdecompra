@@ -44,7 +44,7 @@ class ConstructionProjectAreaFieldsTest extends TestCase
 
         $project = ConstructionProject::where('name', 'Nueva obra consecutiva')->firstOrFail();
 
-        $response->assertRedirect(route('construction.dashboard').'#project-row-'.$project->id);
+        $response->assertRedirect(route('construction.dashboard'));
         $this->assertSame('OBR-004', $project->project_key);
         $this->assertSame('Hibrida', $project->modality);
         $this->assertSame('0.00', $project->physical_progress);
@@ -137,6 +137,51 @@ class ConstructionProjectAreaFieldsTest extends TestCase
         $legacyDetails->assertRedirect(route('construction.dashboard').'#project-row-'.$project->id);
     }
 
+    public function test_project_status_controls_the_active_projects_carousel(): void
+    {
+        $user = User::factory()->create([
+            'role' => 'superadmin',
+            'active' => true,
+        ]);
+        $project = ConstructionProject::where('project_key', 'OBR-003')->firstOrFail();
+
+        $dashboardBefore = $this->actingAs($user)->get(route('construction.dashboard'));
+
+        $dashboardBefore->assertOk();
+        $dashboardBefore->assertDontSee('data-carousel-project-id="'.$project->id.'"', false);
+        $dashboardBefore->assertSee(route('construction.projects.status.update', $project), false);
+
+        $activate = $this->actingAs($user)->patch(route('construction.projects.status.update', $project), [
+            'status' => 'En ejecucion',
+        ]);
+
+        $activate->assertRedirect(route('construction.dashboard'));
+        $activate->assertSessionHas('status', "Estatus de {$project->project_key} actualizado a En ejecucion.");
+        $this->assertDatabaseHas('construction_projects', [
+            'id' => $project->id,
+            'status' => 'En ejecucion',
+        ]);
+        $this->assertDatabaseHas('construction_audit_logs', [
+            'construction_project_id' => $project->id,
+            'action' => 'Estatus de obra actualizado',
+            'description' => "Se cambio el estatus de {$project->project_key} de Por iniciar a En ejecucion.",
+        ]);
+
+        $dashboardActive = $this->actingAs($user)->get(route('construction.dashboard'));
+        $dashboardActive->assertSee('data-carousel-project-id="'.$project->id.'"', false);
+
+        $this->actingAs($user)->patch(route('construction.projects.status.update', $project), [
+            'status' => 'Concluida',
+        ])->assertRedirect(route('construction.dashboard'));
+
+        $this->assertDatabaseHas('construction_projects', [
+            'id' => $project->id,
+            'status' => 'Concluida',
+        ]);
+        $dashboardCompleted = $this->actingAs($user)->get(route('construction.dashboard'));
+        $dashboardCompleted->assertDontSee('data-carousel-project-id="'.$project->id.'"', false);
+    }
+
     public function test_dashboard_only_shows_edit_actions_for_projects_with_edit_permission(): void
     {
         $user = User::factory()->create([
@@ -153,6 +198,10 @@ class ConstructionProjectAreaFieldsTest extends TestCase
         $readOnlyDashboard->assertOk();
         $readOnlyDashboard->assertSee('Solo lectura');
         $readOnlyDashboard->assertDontSee(route('construction.projects.edit', $project), false);
+        $readOnlyDashboard->assertDontSee(route('construction.projects.status.update', $project), false);
+        $this->actingAs($user)->patch(route('construction.projects.status.update', $project), [
+            'status' => 'Concluida',
+        ])->assertForbidden();
 
         $project->users()->updateExistingPivot($user->id, ['can_edit' => true]);
 
@@ -160,5 +209,6 @@ class ConstructionProjectAreaFieldsTest extends TestCase
 
         $editableDashboard->assertOk();
         $editableDashboard->assertSee(route('construction.projects.edit', $project), false);
+        $editableDashboard->assertSee(route('construction.projects.status.update', $project), false);
     }
 }

@@ -19,8 +19,15 @@ class SuperAdminProviderBusinessLineController extends Controller
         $query = trim((string) $request->query('q'));
 
         return view('superadmin.provider-business-lines', [
-            'providers' => Provider::with(['buyer', 'businessLine', 'businessSubcategory'])
-                ->orderBy('business_name')
+            'providers' => Provider::query()
+                ->with(['buyer', 'businessLine', 'businessSubcategory'])
+                ->leftJoin('provider_business_lines as provider_categories', 'provider_categories.id', '=', 'providers.provider_business_line_id')
+                ->leftJoin('provider_business_subcategories as provider_subcategories', 'provider_subcategories.id', '=', 'providers.provider_business_subcategory_id')
+                ->select('providers.*')
+                ->orderByRaw("LOWER(COALESCE(provider_categories.name, providers.business_line, ''))")
+                ->orderByRaw("LOWER(COALESCE(provider_subcategories.name, providers.provider_business_subcategory, ''))")
+                ->orderByRaw('LOWER(providers.business_name)')
+                ->orderBy('providers.id')
                 ->get(),
             'lines' => ProviderBusinessLine::withCount('providers')
                 ->with([

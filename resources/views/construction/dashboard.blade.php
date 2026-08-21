@@ -5,10 +5,6 @@
         @php
             $money = fn ($value) => '$'.number_format((float) $value, 2);
             $carouselProjects = $projects->where('status', 'En ejecucion')->values();
-
-            if ($carouselProjects->isEmpty()) {
-                $carouselProjects = $projects->values();
-            }
         @endphp
 
         <section class="panel construction-carousel-panel" data-construction-carousel>
@@ -34,6 +30,9 @@
                         <a
                             class="construction-project-tile {{ $loop->first ? 'active' : '' }}"
                             href="#project-row-{{ $project->id }}"
+                            data-dashboard-project
+                            data-project-row="project-row-{{ $project->id }}"
+                            data-carousel-project-id="{{ $project->id }}"
                             aria-label="Ver {{ $project->project_key }} - {{ $project->name }} en el Panel general"
                         >
                             <span class="construction-project-avatar">
@@ -91,7 +90,36 @@
                                 <td>{{ number_format((float) $project->sellable_rentable_area, 2) }} m2</td>
                                 <td>{{ number_format((float) $project->parking_area, 2) }} m2</td>
                                 <td>{{ number_format((int) $project->levels_count) }}</td>
-                                <td><span class="status {{ $project->statusColor() }}">{{ $project->status }}</span></td>
+                                <td data-filter-value="{{ $project->status }}">
+                                    @if (in_array($project->id, $editableProjectIds, true))
+                                        <details class="status-menu">
+                                            <summary
+                                                class="status {{ $project->statusColor() }}"
+                                                aria-label="Cambiar estatus de {{ $project->project_key }}"
+                                            >{{ $project->status }}</summary>
+                                            <div class="status-menu-panel">
+                                                @foreach ($projectStatuses as $projectStatus)
+                                                    @continue($projectStatus === $project->status)
+                                                    @php
+                                                        $statusOptionClass = match ($projectStatus) {
+                                                            'Por iniciar' => 'project-status-option-warning',
+                                                            'En ejecucion' => 'project-status-option-running',
+                                                            default => 'project-status-option-completed',
+                                                        };
+                                                    @endphp
+                                                    <form class="inline-form" method="POST" action="{{ route('construction.projects.status.update', $project) }}">
+                                                        @csrf
+                                                        @method('PATCH')
+                                                        <input type="hidden" name="status" value="{{ $projectStatus }}">
+                                                        <button class="button small {{ $statusOptionClass }}" type="submit">{{ $projectStatus }}</button>
+                                                    </form>
+                                                @endforeach
+                                            </div>
+                                        </details>
+                                    @else
+                                        <span class="status {{ $project->statusColor() }}">{{ $project->status }}</span>
+                                    @endif
+                                </td>
                                 <td>{{ number_format((float) $project->physical_progress, 2) }}%</td>
                                 <td>{{ number_format((float) $project->financial_progress, 2) }}%</td>
                                 <td><strong>{{ $money($project->balance_to_pay) }}</strong></td>
@@ -136,6 +164,31 @@
             document.querySelectorAll('[data-construction-carousel]').forEach((carousel) => {
                 const track = carousel.querySelector('[data-construction-carousel-track]');
                 const scrollByTile = () => Math.max(220, Math.round((track?.clientWidth || 260) * 0.72));
+                const projectTiles = [...carousel.querySelectorAll('[data-dashboard-project]')];
+                const projectRows = [...document.querySelectorAll('[id^="project-row-"]')];
+
+                const selectProject = (selectedTile) => {
+                    const selectedRowId = selectedTile.dataset.projectRow;
+
+                    projectTiles.forEach((tile) => {
+                        tile.classList.toggle('active', tile === selectedTile);
+                    });
+
+                    projectRows.forEach((row) => {
+                        row.classList.toggle('is-highlighted', row.id === selectedRowId);
+                    });
+                };
+
+                projectTiles.forEach((tile) => {
+                    tile.addEventListener('click', (event) => {
+                        event.preventDefault();
+                        selectProject(tile);
+
+                        if (window.location.hash) {
+                            window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}`);
+                        }
+                    });
+                });
 
                 carousel.querySelector('[data-carousel-prev]')?.addEventListener('click', () => {
                     track?.scrollBy({ left: -scrollByTile(), behavior: 'smooth' });
@@ -144,6 +197,12 @@
                 carousel.querySelector('[data-carousel-next]')?.addEventListener('click', () => {
                     track?.scrollBy({ left: scrollByTile(), behavior: 'smooth' });
                 });
+
+                const hashTile = projectTiles.find((tile) => `#${tile.dataset.projectRow}` === window.location.hash);
+
+                if (hashTile) {
+                    selectProject(hashTile);
+                }
             });
         });
     </script>

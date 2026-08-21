@@ -412,13 +412,15 @@ class InventorySupplyOrderController extends Controller
         $company = Company::findOrFail($warehouse['company_id']);
         $updated = false;
         $warehouses = collect($company->warehouseObjects())
-            ->map(function (array $item) use ($warehouse, $validated, &$updated) {
+            ->map(function (array $item) use ($company, $warehouse, $validated, &$updated) {
                 if (! $updated && $item['name'] === $warehouse['real_warehouse']) {
                     $updated = true;
 
                     return [
                         'name' => $validated['warehouse'],
                         'short_name' => $validated['short_name'] ?? '',
+                        'address' => trim($validated['address'] ?? '')
+                            ?: ($item['address'] ?? trim((string) $company->address)),
                     ];
                 }
 
@@ -431,7 +433,6 @@ class InventorySupplyOrderController extends Controller
 
         $company->update([
             'warehouses' => $warehouses,
-            'address' => $validated['address'] ?? null,
         ]);
 
         return redirect()->route('inventory.warehouses.close')->with('status', 'Almacen actualizado.');
@@ -591,7 +592,7 @@ class InventorySupplyOrderController extends Controller
                     'warehouse' => $warehouse['name'],
                     'real_warehouse' => $warehouse['name'],
                     'short_name' => $warehouse['short_name'] ?: '—',
-                    'address' => $company->address ?: 'Sin direccion capturada',
+                    'address' => $warehouse['address'] ?: ($company->address ?: 'Sin direccion capturada'),
                 ]);
             })
         )->values();

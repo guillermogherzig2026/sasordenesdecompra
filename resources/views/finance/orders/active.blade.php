@@ -14,7 +14,7 @@
             </div>
 
             <div class="table-scroll">
-                <table data-excel-filter-table>
+                <table data-excel-filter-table data-no-column-tools>
                     <thead>
                                                 <tr>
                             <th data-excel-filter-column="0"><span>OC</span></th>
@@ -150,8 +150,32 @@
             justify-content: flex-start;
             margin-left: auto;
         }
-.finance-active-export {
+        .finance-active-export {
             margin-left: auto;
+        }
+
+        .finance-active-panel .excel-filter-head {
+            align-items: center;
+            display: inline-flex;
+            flex-wrap: nowrap;
+            gap: 6px;
+            justify-content: flex-start;
+            min-width: max-content;
+            white-space: nowrap;
+        }
+
+        .finance-active-panel .excel-filter-head > span:first-child {
+            flex: 0 0 auto;
+            white-space: nowrap;
+        }
+
+        .finance-active-panel .excel-filter-controls {
+            align-items: center;
+            display: inline-flex;
+            flex: 0 0 auto;
+            flex-wrap: nowrap;
+            gap: 6px;
+            white-space: nowrap;
         }
 
 
@@ -402,6 +426,37 @@
                     const filter = document.createElement('div');
                     filter.className = 'excel-filter';
 
+                    const controls = document.createElement('span');
+                    controls.className = 'excel-filter-controls';
+
+                    const orderButton = document.createElement('button');
+                    orderButton.type = 'button';
+                    orderButton.className = 'column-sort-button excel-filter-order';
+                    orderButton.textContent = '\u2195';
+                    orderButton.title = `Ordenar ${title}`;
+                    orderButton.setAttribute('aria-label', `Ordenar ${title}`);
+
+                    const applySort = (direction) => {
+                        table.querySelectorAll('.excel-filter-order').forEach((button) => {
+                            button.classList.remove('is-active');
+                            button.dataset.direction = '';
+                            button.textContent = '\u2195';
+                        });
+
+                        orderButton.dataset.direction = direction;
+                        orderButton.textContent = direction === 'asc' ? '\u2191' : '\u2193';
+                        orderButton.classList.add('is-active');
+                        sortRows(column, direction);
+                    };
+
+                    orderButton.addEventListener('click', (event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        applySort(orderButton.dataset.direction === 'asc' ? 'desc' : 'asc');
+                    });
+
+                    controls.append(filter, orderButton);
+
                     const toggle = document.createElement('button');
                     toggle.type = 'button';
                     toggle.className = 'excel-filter-toggle';
@@ -417,12 +472,12 @@
                     const sortAsc = document.createElement('button');
                     sortAsc.type = 'button';
                     sortAsc.textContent = 'A-Z';
-                    sortAsc.addEventListener('click', () => sortRows(column, 'asc'));
+                    sortAsc.addEventListener('click', () => applySort('asc'));
 
                     const sortDesc = document.createElement('button');
                     sortDesc.type = 'button';
                     sortDesc.textContent = 'Z-A';
-                    sortDesc.addEventListener('click', () => sortRows(column, 'desc'));
+                    sortDesc.addEventListener('click', () => applySort('desc'));
 
                     if (filterType === 'date-range') {
                         panel.classList.add('date-range-filter-panel');
@@ -621,7 +676,7 @@
                         calendar.append(calendarHeader, weekdays, days, summaryRange, overdue, actions);
                         panel.append(sortBox, calendar);
                         filter.append(toggle, panel);
-                        head.append(label, filter);
+                        head.append(label, controls);
                         header.textContent = '';
                         header.append(head);
 
@@ -737,7 +792,7 @@
                     actions.append(accept, cancel);
                     panel.append(sortBox, search, options, actions);
                     filter.append(toggle, panel);
-                    head.append(label, filter);
+                    head.append(label, controls);
                     header.textContent = '';
                     header.append(head);
                 });
@@ -745,8 +800,6 @@
         });
     </script>
 @endsection
-
-
 
 
 
