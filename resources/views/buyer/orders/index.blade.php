@@ -309,7 +309,9 @@
                     const filter = document.createElement('details');
                     filter.className = 'column-filter';
                     const summary = document.createElement('summary');
-                    summary.textContent = 'Filtro';
+                    summary.className = 'column-filter-toggle-icon';
+                    summary.title = `Filtrar ${label}`;
+                    summary.setAttribute('aria-label', `Filtrar ${label}`);
                     const panel = document.createElement('div');
                     panel.className = 'column-filter-panel';
                     const options = document.createElement('div');

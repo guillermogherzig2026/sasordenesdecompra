@@ -277,6 +277,7 @@ class FinanceAdminController extends Controller
             'warehouses' => ['nullable', 'array'],
             'warehouses.*.name' => ['required_with:warehouses', 'string', 'max:255'],
             'warehouses.*.short_name' => ['nullable', 'string', 'max:50'],
+            'warehouses.*.address' => ['nullable', 'string', 'max:1000'],
         ]);
 
         $companyPayload = [
@@ -288,7 +289,10 @@ class FinanceAdminController extends Controller
         ];
 
         if (Schema::hasColumn('companies', 'warehouses')) {
-            $companyPayload['warehouses'] = $this->parseWarehouses($validated['warehouses'] ?? []);
+            $companyPayload['warehouses'] = $this->parseWarehouses(
+                $validated['warehouses'] ?? [],
+                $validated['address']
+            );
         }
 
         $company = Company::create($companyPayload);
@@ -314,6 +318,7 @@ class FinanceAdminController extends Controller
             'warehouses' => ['nullable', 'array'],
             'warehouses.*.name' => ['required_with:warehouses', 'string', 'max:255'],
             'warehouses.*.short_name' => ['nullable', 'string', 'max:50'],
+            'warehouses.*.address' => ['nullable', 'string', 'max:1000'],
         ]);
 
         $oldName = $company->name;
@@ -331,7 +336,10 @@ class FinanceAdminController extends Controller
         ];
 
         if (Schema::hasColumn('companies', 'warehouses')) {
-            $companyPayload['warehouses'] = $this->parseWarehouses($validated['warehouses'] ?? []);
+            $companyPayload['warehouses'] = $this->parseWarehouses(
+                $validated['warehouses'] ?? [],
+                $validated['address']
+            );
         }
 
         $company->update($companyPayload);
@@ -565,17 +573,24 @@ class FinanceAdminController extends Controller
         return "Almacen Central {$name}";
     }
 
-    private function parseWarehouses(array $warehouses): array
+    private function parseWarehouses(array $warehouses, string $companyAddress): array
     {
-        return collect($warehouses)
+        $parsed = collect($warehouses)
             ->map(fn ($warehouse) => [
                 'name' => trim($warehouse['name'] ?? ''),
                 'short_name' => trim($warehouse['short_name'] ?? ''),
+                'address' => trim($warehouse['address'] ?? '') ?: trim($companyAddress),
             ])
             ->filter(fn ($warehouse) => filled($warehouse['name']))
             ->unique('name')
             ->values()
             ->all();
+
+        return $parsed ?: [[
+            'name' => 'Almacen principal',
+            'short_name' => 'Principal',
+            'address' => trim($companyAddress),
+        ]];
     }
 
     private function buyerSubrolesPayload(array $buyerSubroles): string

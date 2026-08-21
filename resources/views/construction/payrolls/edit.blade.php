@@ -17,6 +17,7 @@
                 'periodicity' => old('periodicity', $payroll->periodicity),
                 'period_start' => old('period_start', $payroll->period_start?->format('Y-m-d')),
                 'period_end' => old('period_end', $payroll->period_end?->format('Y-m-d')),
+                'period_end_indefinite' => old('period_end_indefinite', '1'),
                 'progress' => old('progress', $payroll->progress),
                 'amount' => old('amount', $payroll->amount),
                 'status' => old('status', $payroll->status),
@@ -24,7 +25,7 @@
             ];
         @endphp
 
-        <form class="panel payroll-form" method="POST" action="{{ route('construction.payrolls.update', $payroll) }}">
+        <form class="panel payroll-form payroll-edit-form" method="POST" action="{{ route('construction.payrolls.update', $payroll) }}">
             @csrf
             @method('PUT')
 

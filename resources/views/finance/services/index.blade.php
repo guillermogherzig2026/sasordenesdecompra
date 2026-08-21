@@ -149,6 +149,25 @@
     </x-app-shell>
 
     <style>
+        .service-month-table .th-filter {
+            align-items: center;
+            display: inline-flex;
+            flex-wrap: nowrap;
+            gap: 6px;
+            justify-content: flex-start;
+            min-width: max-content;
+            white-space: nowrap;
+        }
+
+        .service-month-table .th-filter > span,
+        .service-month-table .column-header-tools {
+            flex: 0 0 auto;
+        }
+
+        .service-month-table .column-header-tools {
+            justify-content: flex-start;
+        }
+
         .date-range-calendar { display: grid; gap: 12px; min-width: 0; width: 100%; }
         .column-filter-panel.date-range-filter-panel { position: fixed; width: 340px; max-height: none; overflow: visible; z-index: 2200; }
         .date-range-calendar-header { align-items: center; display: flex; justify-content: space-between; gap: 12px; }
@@ -259,8 +278,9 @@
                     const details = document.createElement('details');
                     details.className = 'column-filter';
                     const summary = document.createElement('summary');
-                    summary.textContent = 'Filtro';
+                    summary.className = 'column-filter-toggle-icon';
                     summary.title = `Filtrar ${label}`;
+                    summary.setAttribute('aria-label', `Filtrar ${label}`);
                     const panel = document.createElement('div');
                     panel.className = 'column-filter-panel';
 
@@ -459,5 +479,3 @@
         });
     </script>
 @endsection
-
-

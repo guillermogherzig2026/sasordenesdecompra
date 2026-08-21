@@ -214,17 +214,56 @@
                     </thead>
                     <tbody>
                         @forelse ($users as $managedUser)
+                            @php
+                                $passwordEditorOpen = $errors->has('password')
+                                    && (int) old('password_user_id') === $managedUser->id;
+                            @endphp
                             <tr>
                                 <td>
                                     <strong>{{ $managedUser->name }}</strong>
                                     <small>{{ $managedUser->email }}</small>
                                 </td>
-                                <td>
-                                    @if ($managedUser->plain_password)
-                                        <strong>{{ $managedUser->plain_password }}</strong>
-                                    @else
-                                        <span class="fine-print">No registrada</span>
-                                    @endif
+                                <td class="password-cell">
+                                    <div
+                                        class="password-inline-editor"
+                                        data-password-editor
+                                        data-original-password="{{ $managedUser->plain_password }}"
+                                    >
+                                        <div class="password-editor-display" data-password-display @if ($passwordEditorOpen) hidden @endif>
+                                            <strong>{{ $managedUser->plain_password ?: 'No disponible' }}</strong>
+                                            <button class="button ghost small" type="button" data-password-edit>Editar</button>
+                                        </div>
+                                        <form
+                                            class="password-editor-form"
+                                            method="POST"
+                                            action="{{ route('superadmin.users.update', $managedUser) }}"
+                                            data-password-form
+                                            @if (! $passwordEditorOpen) hidden @endif
+                                        >
+                                            @csrf
+                                            @method('PUT')
+                                            <input type="hidden" name="password_only" value="1">
+                                            <input type="hidden" name="password_user_id" value="{{ $managedUser->id }}">
+                                            <input
+                                                name="password"
+                                                type="text"
+                                                value="{{ $passwordEditorOpen ? old('password') : $managedUser->plain_password }}"
+                                                minlength="6"
+                                                maxlength="255"
+                                                required
+                                                aria-label="Contrasena de {{ $managedUser->name }}"
+                                            >
+                                            @if ($passwordEditorOpen)
+                                                @error('password')
+                                                    <small class="form-error">{{ $message }}</small>
+                                                @enderror
+                                            @endif
+                                            <div class="password-editor-actions">
+                                                <button class="button primary small" type="submit">Guardar</button>
+                                                <button class="button ghost small" type="button" data-password-cancel>Cancelar</button>
+                                            </div>
+                                        </form>
+                                    </div>
                                 </td>
                                 <td>
                                     <span class="role-chip">{{ $roleLabels[$managedUser->role] ?? $managedUser->role }}</span>
@@ -291,10 +330,9 @@
                                     <form class="stack" method="POST" action="{{ route('superadmin.users.update', $managedUser) }}">
                                         @csrf
                                         @method('PUT')
-                                        <div class="grid-3">
+                                        <div class="grid-2">
                                             <label>Nombre<input name="name" value="{{ $managedUser->name }}" required></label>
                                             <label>Correo<input name="email" type="email" value="{{ $managedUser->email }}" required></label>
-                                            <label>Nueva contrasena<input name="password" type="text" placeholder="Sin cambio"></label>
                                         </div>
                                         <div class="grid-2">
                                             <div class="role-subcategory-stack">
@@ -393,7 +431,6 @@
                                             </div>
                                         </div>
                                         <div class="form-actions">
-                                            <span class="fine-print">Deja la contrasena vacia para conservar la actual.</span>
                                             <button class="button primary small" type="submit">Guardar cambios</button>
                                         </div>
                                     </form>
@@ -428,6 +465,50 @@
             @endif
         </section>
 
+        <style>
+            .password-cell {
+                min-width: 250px;
+            }
+
+            .password-inline-editor [hidden] {
+                display: none !important;
+            }
+
+            .password-editor-display,
+            .password-editor-actions {
+                display: flex;
+                align-items: center;
+                gap: 6px;
+            }
+
+            .password-editor-display {
+                justify-content: space-between;
+            }
+
+            .password-editor-display strong {
+                overflow-wrap: anywhere;
+            }
+
+            .password-editor-form {
+                display: grid;
+                gap: 6px;
+            }
+
+            .password-editor-form input[name="password"] {
+                min-height: 34px;
+                width: 100%;
+                padding: 6px 8px;
+            }
+
+            .password-editor-actions {
+                flex-wrap: wrap;
+            }
+
+            .form-error {
+                color: #b42318;
+            }
+        </style>
+
         <script>
             document.querySelectorAll('.role-select').forEach((select) => {
                 const scope = select.closest('form') || document;
@@ -452,7 +533,31 @@
                     button.textContent = isHidden ? 'Cerrar' : 'Editar';
                 });
             });
+
+            document.querySelectorAll('[data-password-editor]').forEach((editor) => {
+                const display = editor.querySelector('[data-password-display]');
+                const form = editor.querySelector('[data-password-form]');
+                const input = form?.querySelector('input[name="password"]');
+                const editButton = editor.querySelector('[data-password-edit]');
+                const cancelButton = editor.querySelector('[data-password-cancel]');
+
+                if (!display || !form || !input) return;
+
+                const originalPassword = editor.dataset.originalPassword || '';
+
+                editButton?.addEventListener('click', () => {
+                    display.hidden = true;
+                    form.hidden = false;
+                    input.focus();
+                    input.select();
+                });
+
+                cancelButton?.addEventListener('click', () => {
+                    input.value = originalPassword;
+                    form.hidden = true;
+                    display.hidden = false;
+                });
+            });
         </script>
     </x-app-shell>
 @endsection
-

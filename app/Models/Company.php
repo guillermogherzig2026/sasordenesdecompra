@@ -60,8 +60,16 @@ class Company extends Model
     {
         return collect($this->warehouses ?: [])
             ->map(fn ($warehouse) => is_array($warehouse)
-                ? ['name' => trim($warehouse['name'] ?? ''), 'short_name' => trim($warehouse['short_name'] ?? '')]
-                : ['name' => trim((string) $warehouse), 'short_name' => '']
+                ? [
+                    'name' => trim($warehouse['name'] ?? ''),
+                    'short_name' => trim($warehouse['short_name'] ?? ''),
+                    'address' => trim($warehouse['address'] ?? '') ?: trim((string) $this->address),
+                ]
+                : [
+                    'name' => trim((string) $warehouse),
+                    'short_name' => '',
+                    'address' => trim((string) $this->address),
+                ]
             )
             ->filter(fn ($warehouse) => filled($warehouse['name']))
             ->values()

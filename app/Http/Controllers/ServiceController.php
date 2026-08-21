@@ -488,6 +488,8 @@ class ServiceController extends Controller
         $validated['is_domiciled'] = $request->boolean('is_domiciled');
         $validated['payment_interval_days'] = (int) $paymentLapse;
 
+        $startDate = null;
+
         if ($startDay && $startMonth && $startYear) {
             if (! checkdate((int) $startMonth, (int) $startDay, (int) $startYear)) {
                 throw ValidationException::withMessages([
@@ -495,7 +497,8 @@ class ServiceController extends Controller
                 ]);
             }
 
-            $validated['start_date'] = Carbon::create($startYear, $startMonth, $startDay)->toDateString();
+            $startDate = Carbon::create($startYear, $startMonth, $startDay)->startOfDay();
+            $validated['start_date'] = $startDate->toDateString();
         }
 
         if ($request->has('cutoff_day')) {
@@ -509,9 +512,20 @@ class ServiceController extends Controller
                 ]);
             }
 
-            $validated['cutoff_day'] = (int) $request->input('cutoff_day');
-            $validated['cutoff_month'] = (int) $request->input('cutoff_month');
-            $validated['cutoff_year'] = (int) $request->input('cutoff_year');
+            $cutoffDay = (int) $request->input('cutoff_day');
+            $cutoffMonth = (int) $request->input('cutoff_month');
+            $cutoffYear = (int) $request->input('cutoff_year');
+            $cutoffDate = Carbon::create($cutoffYear, $cutoffMonth, $cutoffDay)->startOfDay();
+
+            if ($startDate && $cutoffDate->lt($startDate)) {
+                throw ValidationException::withMessages([
+                    'cutoff_day' => 'La fecha de corte debe ser igual o posterior a la fecha de inicio del periodo.',
+                ]);
+            }
+
+            $validated['cutoff_day'] = $cutoffDay;
+            $validated['cutoff_month'] = $cutoffMonth;
+            $validated['cutoff_year'] = $cutoffYear;
             $validated['due_days_after_cutoff'] = $paymentLapse;
         }
 

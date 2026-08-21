@@ -79,8 +79,9 @@
                     </select>
                 </label>
                 <label>
-                    Almacen
-                    <select id="warehouse-select" name="warehouse" data-selected="{{ $selectedWarehouse }}"></select>
+                    Almacen o departamento de recepcion
+                    <select id="warehouse-select" name="warehouse" data-selected="{{ $selectedWarehouse }}" aria-describedby="warehouse-help" required></select>
+                    <span id="warehouse-help" class="fine-print" aria-live="polite"></span>
                 </label>
                 <label>
                     Proveedor
@@ -171,7 +172,7 @@
                     <span>Total de articulos</span>
                     <strong id="order-total">$0.00</strong>
                 </div>
-                <button class="button primary" type="submit">{{ $order ? 'Guardar cambios' : 'Enviar OC' }}</button>
+                <button class="button primary" id="order-submit" type="submit">{{ $order ? 'Guardar cambios' : 'Enviar OC' }}</button>
             </div>
         </form>
 
@@ -180,6 +181,8 @@
             const addButton = document.querySelector('#add-item');
             const companySelect = document.querySelector('#company-select');
             const warehouseSelect = document.querySelector('#warehouse-select');
+            const warehouseHelp = document.querySelector('#warehouse-help');
+            const orderSubmit = document.querySelector('#order-submit');
             const warehousesByCompany = @json($warehousesByCompany);
             const creditCheckbox = document.querySelector('#is-credit');
             const creditDays = document.querySelector('#credit-days');
@@ -196,15 +199,26 @@
                 const selected = warehouseSelect.dataset.selected || warehouseSelect.value;
                 const warehouses = warehousesByCompany[companySelect.value] || [];
                 warehouseSelect.innerHTML = '';
+                warehouseSelect.required = true;
 
                 if (!warehouses.length) {
-                    warehouseSelect.required = false;
-                    warehouseSelect.insertAdjacentHTML('beforeend', '<option value="">Sin almacen asignado</option>');
+                    const companySelected = Boolean(companySelect.value);
+                    warehouseSelect.disabled = true;
+                    warehouseSelect.insertAdjacentHTML(
+                        'beforeend',
+                        `<option value="">${companySelected ? 'La empresa no tiene almacenes disponibles' : 'Selecciona una empresa primero'}</option>`
+                    );
+                    warehouseHelp.textContent = companySelected
+                        ? 'Registra un almacen para la empresa antes de enviar la orden de compra.'
+                        : 'Selecciona una empresa para consultar sus almacenes.';
+                    orderSubmit.disabled = true;
                     return;
                 }
 
-                warehouseSelect.required = true;
-                warehouseSelect.insertAdjacentHTML('beforeend', '<option value="">Seleccionar almacen...</option>');
+                warehouseSelect.disabled = false;
+                warehouseHelp.textContent = '';
+                orderSubmit.disabled = false;
+                warehouseSelect.insertAdjacentHTML('beforeend', '<option value="">Seleccionar almacen o departamento de recepcion...</option>');
                 warehouses.forEach((warehouse) => {
                     const label = warehouse.short_name ? `${warehouse.name} (${warehouse.short_name})` : warehouse.name;
                     const option = new Option(label, warehouse.name, false, warehouse.name === selected);

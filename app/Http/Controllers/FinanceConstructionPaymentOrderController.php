@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\ConstructionAuditLog;
 use App\Models\ConstructionPaymentOrder;
+use App\Services\ConstructionPayrollScheduleService;
 use App\Support\StoredFileResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -11,9 +12,14 @@ use Illuminate\Support\Facades\Auth;
 
 class FinanceConstructionPaymentOrderController extends Controller
 {
+    public function __construct(
+        private readonly ConstructionPayrollScheduleService $payrollSchedule
+    ) {}
+
     public function active(Request $request)
     {
         $this->ensureFinance();
+        $this->payrollSchedule->generateDueOccurrences();
         $query = trim((string) $request->query('q'));
 
         return view('finance.construction-payment-orders.active', [
@@ -64,7 +70,14 @@ class FinanceConstructionPaymentOrderController extends Controller
             'paid_by' => Auth::id(),
         ]);
 
-        if ($paymentOrder->payroll) {
+        if (
+            $paymentOrder->payroll
+            && ! in_array(
+                $paymentOrder->payroll->periodicity,
+                ConstructionPayrollScheduleService::RECURRING_PERIODICITIES,
+                true,
+            )
+        ) {
             $paymentOrder->payroll->update([
                 'status' => 'Pagada',
                 'payment_date' => $validated['paid_on'],

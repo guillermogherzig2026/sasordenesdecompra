@@ -147,6 +147,8 @@
             .construction-overview-table tbody tr { scroll-margin-top: 18px; }
             .construction-overview-table tbody tr:target td { background: #effbf7; }
             .construction-overview-table tbody tr:target .construction-actions-column { background: #effbf7; }
+            .construction-overview-table tbody tr.is-highlighted td { background: #effbf7; }
+            .construction-overview-table tbody tr.is-highlighted .construction-actions-column { background: #effbf7; }
             .generator-levels-panel { padding: 14px 18px; gap: 10px; }
             .generator-levels-panel .panel-header h2 { margin: 0; font-size: 1.05rem; }
             .generator-level-shell { min-width: 0; display: grid; grid-template-columns: 32px minmax(0, 1fr) 32px; align-items: center; gap: 10px; }
@@ -276,7 +278,36 @@
             .labor-catalog-table td:nth-child(3) { min-width: 220px; white-space: normal; }
             .payroll-dialog { width: min(900px, calc(100vw - 42px)); }
             .payroll-form { display: grid; gap: 14px; }
+            .payroll-edit-form { min-height: auto !important; padding: 16px; gap: 10px; }
+            .payroll-edit-form > .grid-2,
+            .payroll-edit-form > .payroll-form-actions { width: min(100%, 1060px); justify-self: start; }
+            .payroll-edit-form > label { width: min(100%, 524px); justify-self: start; }
+            .payroll-edit-form .panel-header { min-height: 34px; align-items: flex-start; }
+            .payroll-edit-form .panel-header-title { gap: 2px; }
+            .payroll-edit-form .grid-2 { gap: 8px 12px; }
+            .payroll-edit-form label,
+            .payroll-edit-form .payroll-periodicity-field,
+            .payroll-edit-form .payroll-period-end-field { gap: 4px; font-size: .82rem; }
+            .payroll-edit-form :is(input, select) { min-height: 34px; padding: 6px 9px; border-radius: 6px; font-size: .88rem; }
+            .payroll-edit-form .payroll-periodicity-description { min-height: 0; font-size: .76rem; line-height: 1.2; }
+            .payroll-edit-form .payroll-period-end-control { gap: 7px; }
+            .payroll-edit-form .payroll-period-end-toggle { min-height: 34px; padding: 5px 9px; border-radius: 6px; gap: 6px; font-size: .82rem; }
+            .payroll-edit-form .payroll-period-end-toggle input { width: auto; min-height: 0; padding: 0; }
+            .payroll-edit-form .button { min-height: 34px; padding: 6px 10px; border-radius: 6px; font-size: .84rem; }
             .payroll-form-actions { justify-content: flex-end; }
+            .payroll-periodicity-field { display: grid; gap: 7px; align-content: start; }
+            .payroll-periodicity-description { min-height: 1.25rem; margin: 0; line-height: 1.35; font-weight: 500; }
+            .payroll-period-end-field { display: grid; gap: 7px; color: #344054; font-weight: 650; }
+            .payroll-period-end-control { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 10px; }
+            .payroll-period-end-toggle { min-height: 42px; padding: 8px 12px; display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--line); border-radius: 8px; background: #f8fbff; color: var(--text); font-weight: 750; white-space: nowrap; cursor: pointer; }
+            .payroll-period-end-toggle input { width: auto; min-height: 0; margin: 0; }
+            .payroll-period-end-toggle:has(input:checked) { border-color: #8bd8b4; background: #effbf5; color: #11613b; }
+            .payroll-period-end-control > input[type="date"]:disabled { background: #eef2f6; color: var(--muted); cursor: not-allowed; }
+            .payroll-form [data-payroll-payment-due][readonly] { background: #eef2f6; color: #344054; cursor: not-allowed; }
+            .payroll-currency-input { position: relative; display: block; }
+            .payroll-currency-symbol { position: absolute; z-index: 1; top: 50%; left: 11px; transform: translateY(-50%); color: var(--primary-strong); font-weight: 850; pointer-events: none; }
+            .payroll-currency-input input { padding-left: 30px; font-variant-numeric: tabular-nums; }
+            .payroll-edit-form .payroll-currency-input input { padding-left: 28px; }
             .labor-tracking-panel { gap: 16px; min-height: 0; }
             .labor-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
             .labor-tabs { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
@@ -344,13 +375,19 @@
             .supply-orders-table-scroll { flex: 1 1 auto; max-height: none; min-height: 360px; padding-bottom: 4px; }
             .supply-orders-table { min-width: 1540px; }
             body { padding-bottom: 18px; }
-            .th-filter { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 6px; min-width: 118px; }
+            .th-filter { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 6px; min-width: 118px; }
             .th-filter > span { min-width: 0; }
+            .column-header-tools { display: inline-flex; align-items: center; justify-content: flex-end; gap: 6px; min-width: max-content; }
+            .th-filter > .column-header-tools { min-width: max-content; }
+            .column-header-tools > :is(.column-filter, .excel-filter, .column-sort-button) { flex: 0 0 auto; }
             .column-filter { position: relative; display: inline-block; }
             .column-filter summary { display: inline-flex; align-items: center; justify-content: center; min-height: 28px; padding: 5px 8px; border: 1px solid var(--line); border-radius: 6px; background: #fff; color: var(--primary-strong); cursor: pointer; list-style: none; text-transform: none; font-size: .76rem; font-weight: 900; user-select: none; box-shadow: 0 2px 8px rgba(35, 48, 73, .08); }
             .column-filter summary::-webkit-details-marker { display: none; }
             .column-filter summary::after { content: 'v'; margin-left: 5px; font-size: .7rem; opacity: .7; }
             .column-filter[open] summary::after { content: '^'; }
+            .column-filter summary.column-filter-toggle-icon { width: 28px; height: 28px; min-height: 28px; padding: 0; }
+            .column-filter summary.column-filter-toggle-icon::after { content: ''; width: 0; height: 0; margin: 2px 0 0; border-right: 4px solid transparent; border-left: 4px solid transparent; border-top: 5px solid currentColor; opacity: .8; }
+            .column-filter[open] summary.column-filter-toggle-icon::after { content: ''; margin: 0 0 2px; transform: rotate(180deg); }
             .column-filter summary.is-filtered { color: #fff; border-color: var(--primary); background: var(--primary); }
             .column-sort-button { display: inline-grid; place-items: center; width: 28px; height: 28px; margin-left: 0; padding: 0; border: 1px solid var(--line); border-radius: 999px; background: #fff; color: var(--primary-strong); cursor: pointer; font-size: .95rem; font-weight: 900; line-height: 1; vertical-align: middle; }
             .column-sort-button:hover, .column-sort-button.is-active { border-color: var(--primary); background: #e5f3f7; }
@@ -407,6 +444,9 @@
             .status-menu-panel .button.primary.small { color: #087443; border-color: #087443; background: #e7f7ed; }
             .status-menu-panel .button.ghost.small { color: #9a6a00; border-color: #9a6a00; background: #fff6d9; }
             .status-menu-panel .button.danger.small { color: #b42318; border-color: #b42318; background: #fdecec; }
+            .status-menu-panel .button.project-status-option-warning { color: #9a6a00; border-color: #9a6a00; background: #fff6d9; }
+            .status-menu-panel .button.project-status-option-running { color: #176b87; border-color: #176b87; background: #e5f3f7; }
+            .status-menu-panel .button.project-status-option-completed { color: #087443; border-color: #087443; background: #e7f7ed; }
             .supply-detail-dialog { width: min(760px, calc(100vw - 42px)); border: 0; border-radius: 10px; padding: 0; color: var(--text); box-shadow: 0 24px 70px rgba(24, 34, 53, .28); }
             .provider-line-dialog { width: min(1180px, calc(100vw - 42px)); }
             .supply-detail-dialog::backdrop { background: rgba(16, 43, 58, .38); }
@@ -427,11 +467,14 @@
             .provider-catalog-summary::-webkit-details-marker { display: none; }
             .provider-catalog-summary h2, .provider-catalog-summary p { margin: 0; }
             .provider-catalog-summary h2 { margin-bottom: 8px; }
+            .provider-catalog-summary-actions { display: flex; align-items: center; gap: 10px; flex: 0 0 auto; }
             .provider-catalog-toggle { width: 38px; height: 38px; min-height: 38px; padding: 0; font-size: 1.3rem; font-weight: 900; }
             .provider-catalog-toggle::before { content: '+'; }
             .provider-catalog-panel[open] .provider-catalog-toggle::before { content: '-'; }
             .provider-catalog-list { max-height: min(56vh, 460px); }
             .provider-catalog-list table { min-width: 1180px; }
+            .provider-category-panel-actions { flex-direction: column; align-items: flex-end; }
+            .provider-category-toggle { width: 34px; height: 34px; min-height: 34px; padding: 0; font-size: 1.2rem; font-weight: 900; line-height: 1; }
             .provider-lines-toolbar { display: grid; justify-items: start; gap: 8px; }
             .provider-lines-toolbar input { width: min(100%, 280px); }
             .provider-lines-button-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
@@ -641,6 +684,10 @@
                 .construction-carousel-nav { width: 30px; height: 30px; min-height: 30px; }
                 .construction-project-tile { flex-basis: 166px; min-height: 116px; padding: 10px; }
                 .generator-levels-panel, .generator-detail-panel { padding: 14px; }
+                .payroll-period-end-control { grid-template-columns: 1fr; }
+                .payroll-edit-form > .grid-2,
+                .payroll-edit-form > label,
+                .payroll-edit-form > .payroll-form-actions { width: 100%; }
                 .generator-level-shell { grid-template-columns: 28px minmax(0, 1fr) 28px; gap: 7px; }
                 .generator-level-nav { width: 28px; height: 28px; min-height: 28px; }
                 .generator-level-card { flex-basis: 164px; }
@@ -898,9 +945,9 @@
                         const filter = document.createElement('details');
                         filter.className = 'column-filter';
                         const summary = document.createElement('summary');
-                        summary.textContent = 'Filtro';
-                        summary.title = 'Filtrar esta columna';
-                        summary.setAttribute('aria-label', 'Filtrar esta columna');
+                        summary.className = 'column-filter-toggle-icon';
+                        summary.title = `Filtrar ${label}`;
+                        summary.setAttribute('aria-label', `Filtrar ${label}`);
                         const panel = document.createElement('div');
                         panel.className = 'column-filter-panel';
                         const search = table.hasAttribute('data-filter-search')
@@ -1239,6 +1286,31 @@
                         ? { type: 'number', value: numeric }
                         : { type: 'text', value: text };
                 };
+                const placeSortButton = (header, button) => {
+                    const filterHeader = header.querySelector('.th-filter, .excel-filter-head');
+                    if (!filterHeader) {
+                        header.appendChild(button);
+                        return;
+                    }
+
+                    let controls = Array.from(filterHeader.children).find((child) =>
+                        child.classList.contains('column-header-tools') || child.classList.contains('excel-filter-controls')
+                    );
+                    if (!controls) {
+                        const filter = Array.from(filterHeader.children).find((child) =>
+                            child.matches('.column-filter, .excel-filter')
+                        );
+                        controls = document.createElement('span');
+                        controls.className = 'column-header-tools';
+                        if (filter) {
+                            filter.replaceWith(controls);
+                            controls.appendChild(filter);
+                        } else {
+                            filterHeader.appendChild(controls);
+                        }
+                    }
+                    controls.appendChild(button);
+                };
                 const addSortButtons = () => {
                     document.querySelectorAll('.panel table').forEach((table) => {
                         if (table.matches('[data-no-column-tools]') || table.closest('form') || table.dataset.sortButtonsReady) return;
@@ -1246,7 +1318,7 @@
                         if (!headers.length) return;
                         table.dataset.sortButtonsReady = 'true';
                         headers.forEach((header, column) => {
-                            if (header.hasAttribute('data-no-sort')) return;
+                            if (header.hasAttribute('data-no-sort') || header.querySelector('.column-sort-button')) return;
                             const button = document.createElement('button');
                             button.type = 'button';
                             button.className = 'column-sort-button';
@@ -1279,9 +1351,7 @@
                                     })
                                     .forEach((row) => table.tBodies[0].appendChild(row));
                             });
-                            const filterHeader = header.querySelector('.th-filter');
-                            if (filterHeader) filterHeader.appendChild(button);
-                            else header.appendChild(button);
+                            placeSortButton(header, button);
                         });
                     });
                 };

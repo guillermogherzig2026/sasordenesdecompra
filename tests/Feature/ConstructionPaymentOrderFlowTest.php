@@ -41,7 +41,7 @@ class ConstructionPaymentOrderFlowTest extends TestCase
 
         $labor->assertOk();
         $labor->assertSee('Fecha limite de pago');
-        $labor->assertSee('30/06/2026');
+        $labor->assertSee('03/07/2026');
     }
 
     public function test_superadmin_can_create_a_new_estimate_package_from_the_catalog(): void
@@ -92,7 +92,7 @@ class ConstructionPaymentOrderFlowTest extends TestCase
             ->assertSee('PAQ-TEST-009');
     }
 
-    public function test_finance_payment_moves_a_payroll_to_both_histories(): void
+    public function test_finance_payment_moves_a_weekly_occurrence_without_closing_the_schedule(): void
     {
         Storage::fake('local');
         $user = $this->superadmin();
@@ -114,8 +114,8 @@ class ConstructionPaymentOrderFlowTest extends TestCase
         Storage::disk('local')->assertExists($order->payment_file_path);
         $this->assertDatabaseHas('construction_payrolls', [
             'id' => $order->construction_payroll_id,
-            'status' => 'Pagada',
-            'payment_date' => '2026-08-17 00:00:00',
+            'status' => 'En revision',
+            'payment_date' => null,
         ]);
 
         $this->actingAs($user)

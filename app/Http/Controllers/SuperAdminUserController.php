@@ -101,10 +101,13 @@ class SuperAdminUserController extends Controller
     {
         $this->ensureSuperAdmin();
 
+        if ($request->boolean('password_only')) {
+            return $this->updatePassword($request, $user);
+        }
+
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', Rule::unique('users', 'email')->ignore($user->id)],
-            'password' => ['nullable', 'string', 'min:6'],
             'role' => ['required', Rule::in(self::ROLES)],
             'buyer_subroles' => ['required_if:role,buyer', 'array', 'min:1'],
             'buyer_subroles.*' => ['required', Rule::in(self::BUYER_SUBROLES)],
@@ -131,15 +134,35 @@ class SuperAdminUserController extends Controller
             'companies' => $this->companiesForRole($validated['role'], $validated['companies'] ?? [], $validated['warehouses'] ?? [], $validated['supply_warehouses'] ?? []),
         ];
 
-        if (filled($validated['password'] ?? null)) {
-            $payload['password'] = $validated['password'];
-            $payload['plain_password'] = $validated['password'];
-        }
-
         $user->update($payload);
         $this->audit($user, 'superadmin_user_updated', "Usuario {$user->email} actualizado por Super Administrador.");
 
         return redirect()->route('superadmin.users.index')->with('status', 'Usuario actualizado.');
+    }
+
+    private function updatePassword(Request $request, User $user)
+    {
+        $validated = $request->validate([
+            'password' => ['required', 'string', 'min:6', 'max:255'],
+            'password_user_id' => ['required', 'integer'],
+        ]);
+
+        abort_unless((int) $validated['password_user_id'] === $user->id, 404);
+
+        $user->update([
+            'password' => $validated['password'],
+            'plain_password' => $validated['password'],
+        ]);
+
+        $this->audit(
+            $user,
+            'superadmin_user_password_updated',
+            "Contrasena de {$user->email} actualizada por Super Administrador."
+        );
+
+        return redirect()
+            ->route('superadmin.users.index')
+            ->with('status', 'Contrasena actualizada.');
     }
 
     public function toggle(User $user)

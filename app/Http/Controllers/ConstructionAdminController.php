@@ -8,20 +8,30 @@ use App\Models\ConstructionClient;
 use App\Models\ConstructionPaymentOrder;
 use App\Models\ConstructionPayroll;
 use App\Models\ConstructionProject;
+use App\Models\ConstructionScheduleItem;
 use App\Models\ConstructionUnitPrice;
 use App\Models\User;
+use App\Services\ConstructionPayrollScheduleService;
 use App\Support\StoredFileResponse;
+use Carbon\CarbonImmutable;
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cookie;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 class ConstructionAdminController extends Controller
 {
+    public function __construct(
+        private readonly ConstructionPayrollScheduleService $payrollSchedule
+    ) {}
+
     public function dashboard(Request $request): View
     {
         $projects = ConstructionProject::query()
@@ -54,6 +64,7 @@ class ConstructionAdminController extends Controller
             'projects' => $projects,
             'summary' => $summary,
             'editableProjectIds' => $editableProjectIds,
+            'projectStatuses' => ConstructionProject::STATUSES,
             'auditLogs' => ConstructionAuditLog::with(['user', 'project'])->latest('occurred_at')->limit(6)->get(),
         ]);
     }
@@ -86,7 +97,7 @@ class ConstructionAdminController extends Controller
             'Todas' => (clone $baseQuery)->count(),
             'Por iniciar' => (clone $baseQuery)->where('status', 'Por iniciar')->count(),
             'En ejecucion' => (clone $baseQuery)->where('status', 'En ejecucion')->count(),
-            'Terminada' => (clone $baseQuery)->where('status', 'Terminada')->count(),
+            'Concluida' => (clone $baseQuery)->whereIn('status', ['Concluida', 'Terminada'])->count(),
         ];
 
         return view('construction.projects.index', [
@@ -116,6 +127,7 @@ class ConstructionAdminController extends Controller
             'companies' => Company::orderBy('name')->get(),
             'clients' => ConstructionClient::orderBy('name')->get(),
             'users' => User::orderBy('name')->get(),
+            'statuses' => ConstructionProject::STATUSES,
         ]);
     }
 
@@ -139,7 +151,7 @@ class ConstructionAdminController extends Controller
 
         $this->recordAudit($request, $project, 'Obra creada', "Se creo la obra {$project->project_key}.");
 
-        return redirect(route('construction.dashboard').'#project-row-'.$project->id)
+        return redirect()->route('construction.dashboard')
             ->with('status', 'Obra creada correctamente.');
     }
 
@@ -159,6 +171,7 @@ class ConstructionAdminController extends Controller
             'companies' => Company::orderBy('name')->get(),
             'clients' => ConstructionClient::orderBy('name')->get(),
             'users' => User::orderBy('name')->get(),
+            'statuses' => ConstructionProject::STATUSES,
         ]);
     }
 
@@ -183,6 +196,32 @@ class ConstructionAdminController extends Controller
 
         return redirect(route('construction.dashboard').'#project-row-'.$project->id)
             ->with('status', 'Obra actualizada correctamente.');
+    }
+
+    public function updateStatus(Request $request, ConstructionProject $project): RedirectResponse
+    {
+        abort_unless($this->canEditProject($request->user(), $project), 403);
+
+        $newStatus = $request->validate([
+            'status' => ['required', Rule::in(ConstructionProject::STATUSES)],
+        ])['status'];
+        $oldStatus = $project->status;
+
+        if ($oldStatus !== $newStatus) {
+            $project->update(['status' => $newStatus]);
+
+            $this->recordAudit(
+                $request,
+                $project,
+                'Estatus de obra actualizado',
+                "Se cambio el estatus de {$project->project_key} de {$oldStatus} a {$newStatus}.",
+                ['status' => $oldStatus],
+                ['status' => $newStatus],
+            );
+        }
+
+        return redirect()->route('construction.dashboard')
+            ->with('status', "Estatus de {$project->project_key} actualizado a {$newStatus}.");
     }
 
     public function destroy(Request $request, ConstructionProject $project): RedirectResponse
@@ -255,8 +294,15 @@ class ConstructionAdminController extends Controller
 
         abort_unless($this->canEditProject($request->user(), $project), 403);
 
-        $payroll = ConstructionPayroll::create($data);
-        $this->syncPayrollPaymentOrder($payroll);
+        $payroll = DB::transaction(function () use ($data): ConstructionPayroll {
+            ConstructionPayroll::query()->orderByDesc('id')->lockForUpdate()->first();
+            $data['code'] = $this->nextPayrollCode();
+
+            $payroll = ConstructionPayroll::create($data);
+            $this->syncPayrollPaymentOrder($payroll);
+
+            return $payroll;
+        });
         $this->recordAudit(
             $request,
             $project,
@@ -338,7 +384,7 @@ class ConstructionAdminController extends Controller
             'payroll' => $payroll,
             'projects' => $projects,
             'payrollPeriodicityOptions' => ['Semanal', 'Quincenal', 'Mensual'],
-            'payrollStatusOptions' => ['Borrador', 'En revision', 'Aprobada', 'Pagada', 'Cancelada'],
+            'payrollStatusOptions' => ConstructionPayroll::STATUSES,
         ]);
     }
 
@@ -346,7 +392,7 @@ class ConstructionAdminController extends Controller
     {
         abort_unless($this->canEditProject($request->user(), $payroll->project), 403);
 
-        $data = $this->payrollData($request, $payroll);
+        $data = $this->payrollData($request);
         $project = ConstructionProject::findOrFail($data['construction_project_id']);
 
         abort_unless($this->canEditProject($request->user(), $project), 403);
@@ -370,6 +416,43 @@ class ConstructionAdminController extends Controller
                 'open_payroll' => 1,
             ])
             ->with('status', "Nomina {$payroll->code} actualizada correctamente.");
+    }
+
+    public function updatePayrollStatus(Request $request, ConstructionPayroll $payroll): RedirectResponse
+    {
+        $payroll->loadMissing('project');
+        $project = $payroll->project;
+
+        abort_unless($project !== null, 404);
+        abort_unless($this->canEditProject($request->user(), $project), 403);
+
+        $newStatus = $request->validate([
+            'status' => ['required', Rule::in(ConstructionPayroll::CATALOG_STATUSES)],
+        ])['status'];
+        $oldStatus = $payroll->status;
+
+        if ($oldStatus !== $newStatus) {
+            $payroll->update(['status' => $newStatus]);
+            $this->syncPayrollPaymentOrder($payroll->fresh());
+
+            $this->recordAudit(
+                $request,
+                $project,
+                'Estatus de nomina actualizado',
+                "Se cambio el estatus de {$payroll->code} de {$oldStatus} a {$newStatus}.",
+                ['status' => $oldStatus],
+                ['status' => $newStatus],
+            );
+        }
+
+        $returnUrl = route('construction.placeholder', [
+            'section' => 'mano-obra',
+            'project' => $project->id,
+            'open_payroll' => 1,
+        ]).'#payroll-row-'.$payroll->id;
+
+        return redirect($returnUrl)
+            ->with('status', "Estatus de {$payroll->code} actualizado a {$newStatus}.");
     }
 
     public function destroyPayroll(Request $request, ConstructionPayroll $payroll): RedirectResponse
@@ -484,6 +567,89 @@ class ConstructionAdminController extends Controller
             ->with('status', "Estimacion {$code} eliminada correctamente.");
     }
 
+    public function storeScheduleItem(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'construction_project_id' => ['required', 'integer', 'exists:construction_projects,id'],
+            ...$this->scheduleItemRules(),
+        ]);
+        $project = ConstructionProject::query()
+            ->visibleTo($request->user())
+            ->findOrFail($validated['construction_project_id']);
+
+        abort_unless($this->canEditProject($request->user(), $project), 403);
+        unset($validated['construction_project_id']);
+
+        $scheduleItem = DB::transaction(function () use ($project, $validated, $request): ConstructionScheduleItem {
+            return $project->scheduleItems()->create([
+                ...$this->scheduleItemData($project, $validated),
+                'created_by_user_id' => $request->user()->id,
+            ]);
+        });
+
+        $this->recordAudit(
+            $request,
+            $project,
+            'Alcance de calendario creado',
+            "Se agrego el alcance {$scheduleItem->title} al calendario.",
+            null,
+            $scheduleItem->only($this->scheduleItemAuditFields()),
+        );
+
+        return $this->scheduleCalendarRedirect($project, $scheduleItem->start_date?->format('Y-m'))
+            ->with('status', "Alcance {$scheduleItem->title} agregado correctamente.");
+    }
+
+    public function updateScheduleItem(Request $request, ConstructionScheduleItem $scheduleItem): RedirectResponse
+    {
+        $project = $scheduleItem->project;
+        $this->authorizeProject($request, $project);
+        abort_unless($this->canEditProject($request->user(), $project), 403);
+
+        $oldValues = $scheduleItem->only($this->scheduleItemAuditFields());
+        $validated = $request->validate($this->scheduleItemRules());
+        $scheduleItem = DB::transaction(function () use ($project, $scheduleItem, $validated): ConstructionScheduleItem {
+            $scheduleItem->update($this->scheduleItemData($project, $validated, $scheduleItem));
+
+            return $scheduleItem->fresh();
+        });
+
+        $this->recordAudit(
+            $request,
+            $project,
+            'Alcance de calendario actualizado',
+            "Se actualizo el alcance {$scheduleItem->title}.",
+            $oldValues,
+            $scheduleItem->only($this->scheduleItemAuditFields()),
+        );
+
+        return $this->scheduleCalendarRedirect($project, $scheduleItem->start_date?->format('Y-m'))
+            ->with('status', "Alcance {$scheduleItem->title} actualizado correctamente.");
+    }
+
+    public function destroyScheduleItem(Request $request, ConstructionScheduleItem $scheduleItem): RedirectResponse
+    {
+        $project = $scheduleItem->project;
+        $this->authorizeProject($request, $project);
+        abort_unless($this->canEditProject($request->user(), $project), 403);
+
+        $title = $scheduleItem->title;
+        $month = $scheduleItem->start_date?->format('Y-m');
+        $oldValues = $scheduleItem->only($this->scheduleItemAuditFields());
+        $scheduleItem->delete();
+
+        $this->recordAudit(
+            $request,
+            $project,
+            'Alcance de calendario eliminado',
+            "Se elimino el alcance {$title} del calendario.",
+            $oldValues,
+        );
+
+        return $this->scheduleCalendarRedirect($project, $month)
+            ->with('status', "Alcance {$title} eliminado correctamente.");
+    }
+
     public function placeholder(Request $request, string $section): View|RedirectResponse
     {
         if ($section === 'compras') {
@@ -494,7 +660,13 @@ class ConstructionAdminController extends Controller
             return redirect()->route('construction.providers.index');
         }
 
+        if ($section === 'calendario') {
+            return $this->constructionCalendar($request);
+        }
+
         if ($section === 'mano-obra') {
+            $this->payrollSchedule->generateDueOccurrences();
+
             $projects = ConstructionProject::query()
                 ->visibleTo($request->user())
                 ->with(['client', 'responsible'])
@@ -511,22 +683,37 @@ class ConstructionAdminController extends Controller
             $selectedProjectId = $activeProjects->contains('id', $requestedProjectId)
                 ? $requestedProjectId
                 : $activeProjects->first()?->id;
-            $paymentOrders = ConstructionPaymentOrder::query()
+            $payrolls = ConstructionPayroll::query()
+                ->whereIn('construction_project_id', $activeProjects->pluck('id'))
+                ->with('paymentOrders')
+                ->orderBy('code')
+                ->get();
+            $estimateOrders = ConstructionPaymentOrder::query()
+                ->whereIn('construction_project_id', $activeProjects->pluck('id'))
+                ->where('type', 'Estimacion')
+                ->with('project')
+                ->orderBy('code')
+                ->get();
+            $pendingPaymentOrders = ConstructionPaymentOrder::query()
+                ->pending()
                 ->whereIn('construction_project_id', $activeProjects->pluck('id'))
                 ->with(['project', 'payroll'])
+                ->orderBy('payment_due_date')
                 ->orderBy('code')
                 ->get();
 
             return view('construction.labor-tracking', [
                 'projects' => $projects,
                 'selectedProjectId' => $selectedProjectId,
-                'catalogRows' => $this->laborTrackingRows($paymentOrders),
-                'laborRows' => $this->laborTrackingRows($paymentOrders->filter(fn (ConstructionPaymentOrder $order): bool =>
-                    blank($order->payment_file_path)
-                    && ! in_array($order->status, ['Pagada', 'Pagado', 'Cancelada', 'Cancelado'], true)
-                )),
+                'nextPayrollCode' => $this->nextPayrollCode(),
+                'catalogRows' => array_merge(
+                    $this->payrollCatalogRows($payrolls),
+                    $this->laborTrackingRows($estimateOrders),
+                ),
+                'laborRows' => $this->laborTrackingRows($pendingPaymentOrders),
                 'payrollPeriodicityOptions' => ['Semanal', 'Quincenal', 'Mensual'],
-                'payrollStatusOptions' => ['Borrador', 'En revision', 'Aprobada', 'Pagada', 'Cancelada'],
+                'payrollStatusOptions' => ConstructionPayroll::STATUSES,
+                'payrollCatalogStatusOptions' => ConstructionPayroll::CATALOG_STATUSES,
             ]);
         }
 
@@ -591,6 +778,242 @@ class ConstructionAdminController extends Controller
             'materialsCatalog' => $showMaterialsCatalog ? $this->materialsExplosionCatalogData() : [],
             'showGeneratorPanel' => $showGeneratorPanel,
             'generatorPanel' => $showGeneratorPanel ? $this->generatorPanelData() : [],
+        ]);
+    }
+
+    private function constructionCalendar(Request $request): View
+    {
+        $projects = ConstructionProject::query()
+            ->visibleTo($request->user())
+            ->with(['client', 'responsible'])
+            ->orderBy('project_key')
+            ->get();
+        $activeProjects = $projects->where('status', 'En ejecucion')->values();
+
+        if ($activeProjects->isEmpty()) {
+            $activeProjects = $projects->values();
+        }
+
+        $calendarCookieSuffix = (string) $request->user()->getAuthIdentifier();
+        $projectCookieName = "construction_calendar_project_{$calendarCookieSuffix}";
+        $monthCookieName = "construction_calendar_month_{$calendarCookieSuffix}";
+        $requestedProjectId = $request->has('project')
+            ? $request->integer('project')
+            : (int) $request->cookie($projectCookieName);
+        $selectedProject = $activeProjects->firstWhere('id', $requestedProjectId)
+            ?? $activeProjects->first();
+        $monthValue = trim((string) ($request->query('month')
+            ?? $request->cookie($monthCookieName)
+            ?? now()->format('Y-m')));
+
+        if (! preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', $monthValue)) {
+            $monthValue = now()->format('Y-m');
+        }
+
+        if ($selectedProject) {
+            Cookie::queue(Cookie::forever($projectCookieName, (string) $selectedProject->id));
+        }
+
+        Cookie::queue(Cookie::forever($monthCookieName, $monthValue));
+
+        $monthStart = CarbonImmutable::parse($monthValue.'-01')->startOfMonth();
+        $gridStart = $monthStart->startOfWeek(CarbonInterface::MONDAY);
+        $gridEnd = $monthStart->endOfMonth()->endOfWeek(CarbonInterface::SUNDAY);
+        $scheduleItems = collect();
+        $projectScheduleItems = collect();
+
+        if ($selectedProject) {
+            $scheduleItems = $selectedProject->scheduleItems()
+                ->whereDate('start_date', '<=', $gridEnd)
+                ->whereDate('end_date', '>=', $gridStart)
+                ->orderBy('start_date')
+                ->orderBy('end_date')
+                ->orderBy('title')
+                ->get();
+            $projectScheduleItems = $selectedProject->scheduleItems()
+                ->orderBy('contractor')
+                ->orderBy('title')
+                ->get(['contractor', 'title']);
+        }
+
+        $contractors = $projectScheduleItems->pluck('contractor')->filter()->unique()->values();
+        $scopes = $projectScheduleItems->pluck('title')->filter()->unique()->values();
+        $palette = [
+            ['line' => '#139c95', 'background' => '#e7f8f5', 'text' => '#08665f'],
+            ['line' => '#3b82f6', 'background' => '#eaf2ff', 'text' => '#164e9c'],
+            ['line' => '#f47a24', 'background' => '#fff0e5', 'text' => '#a8470a'],
+            ['line' => '#9b63d4', 'background' => '#f3eafa', 'text' => '#65329b'],
+            ['line' => '#d9467b', 'background' => '#fdeaf1', 'text' => '#9d204d'],
+            ['line' => '#64748b', 'background' => '#eef2f7', 'text' => '#334155'],
+        ];
+        $contractorStyles = [];
+
+        foreach ($contractors as $index => $contractor) {
+            $contractorStyles[$contractor] = $palette[$index % count($palette)];
+        }
+
+        return view('construction.calendar', [
+            'projects' => $projects,
+            'activeProjects' => $activeProjects,
+            'selectedProject' => $selectedProject,
+            'selectedProjectId' => $selectedProject?->id,
+            'canEditCalendar' => $selectedProject
+                ? $this->canEditProject($request->user(), $selectedProject)
+                : false,
+            'monthValue' => $monthStart->format('Y-m'),
+            'monthTitle' => ucfirst($monthStart->locale('es')->translatedFormat('F Y')),
+            'previousMonth' => $monthStart->subMonth()->format('Y-m'),
+            'nextMonth' => $monthStart->addMonth()->format('Y-m'),
+            'todayMonth' => CarbonImmutable::today()->format('Y-m'),
+            'calendarWeeks' => $this->calendarWeeks($gridStart, $gridEnd, $monthStart, $scheduleItems),
+            'scheduleItems' => $scheduleItems,
+            'contractors' => $contractors,
+            'scopes' => $scopes,
+            'contractorStyles' => $contractorStyles,
+            'scheduleStatuses' => ConstructionScheduleItem::STATUSES,
+        ]);
+    }
+
+    private function calendarWeeks(
+        CarbonImmutable $gridStart,
+        CarbonImmutable $gridEnd,
+        CarbonImmutable $monthStart,
+        Collection $scheduleItems,
+    ): array {
+        $weeks = [];
+
+        for ($weekStart = $gridStart; $weekStart->lte($gridEnd); $weekStart = $weekStart->addWeek()) {
+            $weekEnd = $weekStart->addDays(6);
+            $segments = [];
+            $laneEndColumns = [];
+            $weekItems = $scheduleItems
+                ->filter(fn (ConstructionScheduleItem $item): bool => $item->start_date->lte($weekEnd) && $item->end_date->gte($weekStart))
+                ->sortBy(fn (ConstructionScheduleItem $item): string => $item->start_date->format('Y-m-d').'|'.$item->end_date->format('Y-m-d').'|'.$item->title);
+
+            foreach ($weekItems as $item) {
+                $itemStart = CarbonImmutable::parse($item->start_date->format('Y-m-d'));
+                $itemEnd = CarbonImmutable::parse($item->end_date->format('Y-m-d'));
+                $segmentStart = $itemStart->lt($weekStart) ? $weekStart : $itemStart;
+                $segmentEnd = $itemEnd->gt($weekEnd) ? $weekEnd : $itemEnd;
+                $startColumn = (int) $weekStart->diffInDays($segmentStart) + 1;
+                $endColumn = (int) $weekStart->diffInDays($segmentEnd) + 1;
+                $lane = 0;
+
+                while (($laneEndColumns[$lane] ?? 0) >= $startColumn) {
+                    $lane++;
+                }
+
+                $laneEndColumns[$lane] = $endColumn;
+                $segments[] = [
+                    'item' => $item,
+                    'start_column' => $startColumn,
+                    'span' => $endColumn - $startColumn + 1,
+                    'lane' => $lane,
+                ];
+            }
+
+            $days = [];
+
+            for ($dayIndex = 0; $dayIndex < 7; $dayIndex++) {
+                $date = $weekStart->addDays($dayIndex);
+                $days[] = [
+                    'date' => $date,
+                    'in_month' => $date->month === $monthStart->month && $date->year === $monthStart->year,
+                    'is_today' => $date->isToday(),
+                ];
+            }
+
+            $weeks[] = [
+                'days' => $days,
+                'segments' => $segments,
+                'lanes' => max(count($laneEndColumns), 1),
+            ];
+        }
+
+        return $weeks;
+    }
+
+    private function scheduleItemRules(): array
+    {
+        return [
+            'title' => ['required', 'string', 'max:160'],
+            'contractor' => ['required', 'string', 'max:160'],
+            'description' => ['nullable', 'string', 'max:1200'],
+            'start_date' => ['required', 'date'],
+            'end_date' => ['required', 'date', 'after_or_equal:start_date'],
+            'progress' => ['required', 'integer', 'between:0,100'],
+            'status' => ['required', Rule::in(ConstructionScheduleItem::STATUSES)],
+        ];
+    }
+
+    private function scheduleItemData(
+        ConstructionProject $project,
+        array $data,
+        ?ConstructionScheduleItem $scheduleItem = null,
+    ): array {
+        $contractor = preg_replace('/\s+/u', ' ', trim($data['contractor'])) ?: trim($data['contractor']);
+        $contractorKey = Str::lower($contractor);
+        $currentContractorKey = $scheduleItem?->contractor_key
+            ?: ($scheduleItem ? Str::lower($scheduleItem->contractor) : null);
+
+        $data['contractor'] = $contractor;
+        $data['contractor_key'] = $contractorKey;
+
+        if (! $scheduleItem || ! $scheduleItem->contractor_sequence || $currentContractorKey !== $contractorKey) {
+            $data['contractor_sequence'] = $this->nextScheduleItemSequence($project, $contractor, $contractorKey);
+        }
+
+        return $data;
+    }
+
+    private function nextScheduleItemSequence(
+        ConstructionProject $project,
+        string $contractor,
+        string $contractorKey,
+    ): int {
+        $counter = DB::table('construction_schedule_contractor_counters')
+            ->where('construction_project_id', $project->id)
+            ->where('contractor_key', $contractorKey)
+            ->lockForUpdate()
+            ->first();
+        $now = now();
+
+        if (! $counter) {
+            DB::table('construction_schedule_contractor_counters')->insert([
+                'construction_project_id' => $project->id,
+                'contractor_key' => $contractorKey,
+                'contractor' => $contractor,
+                'last_sequence' => 1,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ]);
+
+            return 1;
+        }
+
+        $nextSequence = (int) $counter->last_sequence + 1;
+        DB::table('construction_schedule_contractor_counters')
+            ->where('id', $counter->id)
+            ->update([
+                'contractor' => $contractor,
+                'last_sequence' => $nextSequence,
+                'updated_at' => $now,
+            ]);
+
+        return $nextSequence;
+    }
+
+    private function scheduleItemAuditFields(): array
+    {
+        return ['title', 'contractor', 'contractor_sequence', 'description', 'start_date', 'end_date', 'progress', 'status'];
+    }
+
+    private function scheduleCalendarRedirect(ConstructionProject $project, ?string $month): RedirectResponse
+    {
+        return redirect()->route('construction.placeholder', [
+            'section' => 'calendario',
+            'project' => $project->id,
+            'month' => $month ?: now()->format('Y-m'),
         ]);
     }
 
@@ -871,7 +1294,7 @@ class ConstructionAdminController extends Controller
             'location' => ['nullable', 'string', 'max:255'],
             'project_type' => ['nullable', 'string', 'max:120'],
             'modality' => ['required', 'string', 'max:120'],
-            'status' => ['required', 'string', 'max:120'],
+            'status' => ['required', Rule::in(ConstructionProject::STATUSES)],
             'start_date' => ['nullable', 'date'],
             'estimated_end_date' => ['nullable', 'date'],
             'contracted_value' => ['nullable', 'numeric', 'min:0'],
@@ -913,28 +1336,109 @@ class ConstructionAdminController extends Controller
         return $data;
     }
 
-    private function payrollData(Request $request, ?ConstructionPayroll $payroll = null): array
+    private function nextPayrollCode(): string
     {
-        return $request->validate([
+        $sequence = ConstructionPayroll::query()
+            ->pluck('code')
+            ->reduce(function (int $currentMax, mixed $code): int {
+                if (! is_string($code) || ! preg_match('/(\d+)$/', $code, $matches)) {
+                    return $currentMax;
+                }
+
+                return max($currentMax, (int) $matches[1]);
+            }, 0);
+
+        do {
+            $sequence++;
+            $code = sprintf('NOM-%05d', $sequence);
+        } while (
+            ConstructionPayroll::query()->where('code', $code)->exists()
+            || ConstructionPaymentOrder::query()->where('code', $code)->exists()
+        );
+
+        return $code;
+    }
+
+    private function payrollData(Request $request): array
+    {
+        $request->merge([
+            'amount' => $this->normalizeCurrencyAmount($request->input('amount')),
+        ]);
+
+        if (
+            in_array(
+                $request->input('periodicity'),
+                ConstructionPayrollScheduleService::RECURRING_PERIODICITIES,
+                true,
+            )
+            && filled($request->input('period_start'))
+        ) {
+            try {
+                $request->merge([
+                    'payment_due_date' => $this->payrollSchedule
+                        ->firstPaymentDueDateFor(
+                            $request->input('periodicity'),
+                            $request->input('period_start'),
+                        )
+                        ->toDateString(),
+                ]);
+            } catch (\Throwable) {
+                // La validacion de fecha mostrara el error correspondiente.
+            }
+        }
+
+        $periodEndIndefinite = $request->boolean('period_end_indefinite');
+
+        $data = $request->validate([
             'construction_project_id' => ['required', 'integer', 'exists:construction_projects,id'],
-            'code' => [
-                'required',
-                'string',
-                'max:40',
-                Rule::unique('construction_payrolls', 'code')->ignore($payroll?->id),
-                Rule::unique('construction_payment_orders', 'code')->ignore($payroll?->paymentOrder?->id),
-            ],
             'contractor' => ['required', 'string', 'max:255'],
             'description' => ['required', 'string', 'max:255'],
             'area' => ['nullable', 'string', 'max:120'],
             'periodicity' => ['required', Rule::in(['Semanal', 'Quincenal', 'Mensual'])],
             'period_start' => ['required', 'date'],
-            'period_end' => ['required', 'date', 'after_or_equal:period_start'],
-            'payment_due_date' => ['required', 'date', 'after_or_equal:period_end'],
+            'period_end_indefinite' => ['nullable', 'boolean'],
+            'period_end' => [
+                Rule::requiredIf(! $periodEndIndefinite),
+                'nullable',
+                'date',
+                'after_or_equal:period_start',
+            ],
+            'payment_due_date' => [
+                'required',
+                'date',
+                'after_or_equal:period_start',
+            ],
             'progress' => ['required', 'numeric', 'min:0', 'max:100'],
             'amount' => ['required', 'numeric', 'min:0'],
-            'status' => ['required', Rule::in(['Borrador', 'En revision', 'Aprobada', 'Pagada', 'Cancelada'])],
+            'status' => ['required', Rule::in(ConstructionPayroll::STATUSES)],
         ]);
+
+        unset($data['period_end_indefinite']);
+        $data['period_end'] = $periodEndIndefinite ? null : $data['period_end'];
+
+        if (in_array(
+            $data['periodicity'],
+            ConstructionPayrollScheduleService::RECURRING_PERIODICITIES,
+            true,
+        )) {
+            $data['payment_due_date'] = $this->payrollSchedule
+                ->firstPaymentDueDateFor($data['periodicity'], $data['period_start'])
+                ->toDateString();
+        }
+
+        return $data;
+    }
+
+    private function normalizeCurrencyAmount(mixed $value): mixed
+    {
+        if (! is_string($value)) {
+            return $value;
+        }
+
+        $normalized = trim($value);
+        $normalized = preg_replace('/[$,\s]/u', '', $normalized);
+
+        return $normalized === '' ? $value : $normalized;
     }
 
     private function filterOptions(): array
@@ -944,7 +1448,7 @@ class ConstructionAdminController extends Controller
             'clients' => ConstructionClient::orderBy('name')->get(),
             'responsibles' => User::orderBy('name')->get(),
             'modalities' => ['Precio alzado', 'Administracion', 'Hibrida'],
-            'statuses' => ['Por iniciar', 'En ejecucion', 'Terminada', 'Suspendida'],
+            'statuses' => ConstructionProject::STATUSES,
         ];
     }
 
@@ -1024,28 +1528,32 @@ class ConstructionAdminController extends Controller
 
     private function syncPayrollPaymentOrder(ConstructionPayroll $payroll): void
     {
-        $paymentOrder = ConstructionPaymentOrder::firstOrNew([
-            'construction_payroll_id' => $payroll->id,
-        ]);
-        $wasPaid = filled($paymentOrder->payment_file_path);
+        $this->payrollSchedule->synchronize($payroll);
+    }
 
-        $paymentOrder->fill([
-            'construction_project_id' => $payroll->construction_project_id,
-            'type' => 'Nomina',
-            'code' => $payroll->code,
-            'description' => $payroll->description,
-            'contractor' => $payroll->contractor,
-            'area' => $payroll->area,
-            'periodicity' => $payroll->periodicity,
-            'period_start' => $payroll->period_start,
-            'period_end' => $payroll->period_end,
-            'period_reference' => null,
-            'payment_due_date' => $payroll->payment_due_date,
-            'progress' => $payroll->progress,
-            'amount' => $payroll->amount,
-            'status' => $wasPaid ? 'Pagado' : $payroll->status,
-        ]);
-        $paymentOrder->save();
+    private function payrollCatalogRows(Collection $payrolls): array
+    {
+        return $payrolls->map(function (ConstructionPayroll $payroll): array {
+            $paidOrders = $payroll->paymentOrders
+                ->filter(fn (ConstructionPaymentOrder $order): bool => filled($order->payment_file_path));
+
+            return [
+                'id' => $payroll->id,
+                'payment_order_id' => $payroll->paymentOrders->first()?->id,
+                'project_id' => $payroll->construction_project_id,
+                'type' => 'Nomina',
+                'code' => $payroll->code,
+                'description' => $payroll->description,
+                'area' => $payroll->area ?: 'Mano de obra',
+                'responsible' => $payroll->contractor ?: '-',
+                'periodicity' => $payroll->periodicity,
+                'amount' => (float) $payroll->amount,
+                'disbursed_amount' => (float) $paidOrders->sum('amount'),
+                'status' => $payroll->status,
+                'status_class' => $this->payrollStatusClass($payroll->status),
+                'delete_url' => route('construction.payrolls.destroy', $payroll),
+            ];
+        })->values()->all();
     }
 
     private function laborTrackingRows(Collection $paymentOrders): array

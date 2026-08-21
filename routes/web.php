@@ -12,6 +12,7 @@ use App\Http\Controllers\FinancePurchaseOrderController;
 use App\Http\Controllers\FinanceReimbursementOrderController;
 use App\Http\Controllers\FinanceServicePaymentController;
 use App\Http\Controllers\FinanceSupplyOrderController;
+use App\Http\Controllers\HumanResourcesController;
 use App\Http\Controllers\InventoryReceiptController;
 use App\Http\Controllers\InventorySupplyOrderController;
 use App\Http\Controllers\ReportController;
@@ -184,6 +185,11 @@ Route::middleware('auth')->prefix('superadmin')->name('superadmin.')->group(func
     Route::delete('/giros-proveeduria/subcategorias/{subcategory}', [SuperAdminProviderBusinessLineController::class, 'destroySubcategory'])->name('provider-lines.subcategories.destroy');
 });
 
+Route::middleware('auth')->prefix('recursos-humanos')->name('human-resources.')->group(function () {
+    Route::get('/aplicacion/{section?}', [HumanResourcesController::class, 'embed'])->name('embed');
+    Route::get('/{section?}', [HumanResourcesController::class, 'show'])->name('show');
+});
+
 Route::middleware('auth')->prefix('administracion-obra')->name('construction.')->group(function () {
     Route::get('/', [ConstructionAdminController::class, 'dashboard'])->name('dashboard');
     Route::get('/obras', [ConstructionAdminController::class, 'projects'])->name('projects.index');
@@ -192,6 +198,7 @@ Route::middleware('auth')->prefix('administracion-obra')->name('construction.')-
     Route::get('/obras/{project}', [ConstructionAdminController::class, 'show'])->name('projects.show');
     Route::get('/obras/{project}/editar', [ConstructionAdminController::class, 'edit'])->name('projects.edit');
     Route::put('/obras/{project}', [ConstructionAdminController::class, 'update'])->name('projects.update');
+    Route::patch('/obras/{project}/estatus', [ConstructionAdminController::class, 'updateStatus'])->name('projects.status.update');
     Route::delete('/obras/{project}', [ConstructionAdminController::class, 'destroy'])->name('projects.destroy');
     Route::get('/bitacora', [ConstructionAdminController::class, 'audit'])->name('audit');
     Route::get('/usuarios-permisos', [ConstructionAdminController::class, 'usersAccess'])->name('users-access');
@@ -200,7 +207,11 @@ Route::middleware('auth')->prefix('administracion-obra')->name('construction.')-
     Route::post('/estimaciones', [ConstructionAdminController::class, 'storeEstimate'])->name('estimates.store');
     Route::get('/nominas/{payroll}/editar', [ConstructionAdminController::class, 'editPayroll'])->name('payrolls.edit');
     Route::put('/nominas/{payroll}', [ConstructionAdminController::class, 'updatePayroll'])->name('payrolls.update');
+    Route::patch('/nominas/{payroll}/estatus', [ConstructionAdminController::class, 'updatePayrollStatus'])->name('payrolls.status.update');
     Route::delete('/nominas/{payroll}', [ConstructionAdminController::class, 'destroyPayroll'])->name('payrolls.destroy');
+    Route::post('/calendario/alcances', [ConstructionAdminController::class, 'storeScheduleItem'])->name('schedule-items.store');
+    Route::put('/calendario/alcances/{scheduleItem}', [ConstructionAdminController::class, 'updateScheduleItem'])->name('schedule-items.update');
+    Route::delete('/calendario/alcances/{scheduleItem}', [ConstructionAdminController::class, 'destroyScheduleItem'])->name('schedule-items.destroy');
     Route::post('/pagos-vigentes/{paymentOrder}/factura', [ConstructionAdminController::class, 'storePaymentInvoice'])->name('payment-orders.invoice.store');
     Route::get('/pagos-vigentes/{paymentOrder}/factura', [ConstructionAdminController::class, 'paymentInvoice'])->name('payment-orders.invoice');
     Route::get('/pagos-vigentes/{paymentOrder}/pago', [ConstructionAdminController::class, 'paymentReceipt'])->name('payment-orders.payment');

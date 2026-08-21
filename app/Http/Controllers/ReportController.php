@@ -15,6 +15,11 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ReportController extends Controller
 {
+    private const EXCEL_TEXT_HEADERS = [
+        'Numero Servicio',
+        'No. Servicio',
+    ];
+
     public function index()
     {
         return view('reports.index');
@@ -455,7 +460,11 @@ class ReportController extends Controller
             foreach ($rows as $row) {
                 echo '<tr>';
                 foreach ($headers as $header) {
-                    echo '<td>'.htmlspecialchars((string) ($row[$header] ?? ''), ENT_QUOTES, 'UTF-8').'</td>';
+                    $attributes = in_array($header, self::EXCEL_TEXT_HEADERS, true)
+                        ? ' style="mso-number-format:\'\\@\';"'
+                        : '';
+
+                    echo '<td'.$attributes.'>'.htmlspecialchars((string) ($row[$header] ?? ''), ENT_QUOTES, 'UTF-8').'</td>';
                 }
                 echo '</tr>';
             }
