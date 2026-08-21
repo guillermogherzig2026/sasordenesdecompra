@@ -130,6 +130,8 @@ class FinanceAdminController extends Controller
                     ->orWhere('rfc', 'like', "%{$query}%")
                     ->orWhere('business_line', 'like', "%{$query}%")
                     ->orWhere('provider_business_subcategory', 'like', "%{$query}%")
+                    ->orWhere('contact_name', 'like', "%{$query}%")
+                    ->orWhere('phone', 'like', "%{$query}%")
                     ->orWhere('bank', 'like', "%{$query}%")
                     ->orWhereHas('buyer', fn ($buyer) => $buyer->where('name', 'like', "%{$query}%"));
             }))
@@ -152,6 +154,9 @@ class FinanceAdminController extends Controller
             'buyer_id' => ['required', 'integer', Rule::exists('users', 'id')->where(fn ($query) => $query->where('role', 'buyer')->where('active', true))],
             'business_name' => ['required', 'string', 'max:255'],
             'rfc' => ['required', 'string', 'max:20', Rule::unique('providers', 'rfc')->where(fn ($query) => $query->where('buyer_id', $request->integer('buyer_id')))],
+            'contact_name' => ['nullable', 'string', 'max:255'],
+            'phone' => ['nullable', 'string', 'max:50'],
+            'address' => ['nullable', 'string', 'max:1000'],
             'business_line_id' => ['required', 'integer', Rule::exists('provider_business_lines', 'id')->where('active', true)],
             'business_subcategory_id' => ['nullable', 'integer', Rule::exists('provider_business_subcategories', 'id')->where('active', true)],
             'bank' => ['required', 'string', 'max:120'],
@@ -167,6 +172,9 @@ class FinanceAdminController extends Controller
             'buyer_id' => $validated['buyer_id'],
             'business_name' => $validated['business_name'],
             'rfc' => $validated['rfc'],
+            'contact_name' => $validated['contact_name'] ?? null,
+            'phone' => $validated['phone'] ?? null,
+            'address' => $validated['address'] ?? null,
             'business_line' => $line->name,
             'provider_business_line_id' => $line->id,
             'provider_business_subcategory_id' => $subcategory?->id,
@@ -189,6 +197,9 @@ class FinanceAdminController extends Controller
         $validated = $request->validate([
             'business_name' => ['required', 'string', 'max:255'],
             'rfc' => ['required', 'string', 'max:20'],
+            'contact_name' => ['nullable', 'string', 'max:255'],
+            'phone' => ['nullable', 'string', 'max:50'],
+            'address' => ['nullable', 'string', 'max:1000'],
             'business_line_id' => ['required', 'integer', Rule::exists('provider_business_lines', 'id')->where('active', true)],
             'business_subcategory_id' => ['nullable', 'integer', Rule::exists('provider_business_subcategories', 'id')->where('active', true)],
             'bank' => ['required', 'string', 'max:120'],
@@ -203,6 +214,9 @@ class FinanceAdminController extends Controller
         $provider->update([
             'business_name' => $validated['business_name'],
             'rfc' => $validated['rfc'],
+            'contact_name' => $validated['contact_name'] ?? null,
+            'phone' => $validated['phone'] ?? null,
+            'address' => $validated['address'] ?? null,
             'business_line' => $line->name,
             'provider_business_line_id' => $line->id,
             'provider_business_subcategory_id' => $subcategory?->id,

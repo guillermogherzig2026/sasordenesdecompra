@@ -32,6 +32,7 @@ class BuyerPurchaseOrderController extends Controller
             ->when($panel === 'paid', fn ($builder) => $builder->where('status', 'paid'))
             ->when($panel === 'pending-payment', fn ($builder) => $builder->whereIn('status', ['sent', 'approved']))
             ->when($panel === 'rejected', fn ($builder) => $builder->where('status', 'rejected'))
+            ->when($panel === 'all', fn ($builder) => $builder->where('status', '!=', 'rejected'))
             ->when($query, function ($builder) use ($query) {
                 $builder->where(function ($inner) use ($query) {
                     $inner->where('folio', 'like', "%{$query}%")
@@ -47,9 +48,9 @@ class BuyerPurchaseOrderController extends Controller
                         ->limit(1)
                 ),
                 fn ($builder) => $builder->when(
-                    in_array($panel, ['pending-payment', 'rejected'], true),
-                    fn ($inner) => $inner->orderBy('due_date'),
-                    fn ($inner) => $inner->orderBy('due_date')
+                    $panel === 'all',
+                    fn ($inner) => $inner->orderByDesc('created_at')->orderByDesc('id'),
+                    fn ($inner) => $inner->orderBy('due_date')->orderByDesc('id')
                 )
             )
             ->get();

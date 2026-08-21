@@ -44,6 +44,12 @@
             </div>
 
             <div class="grid-3">
+                <label>Contacto<input name="contact_name" value="{{ old('contact_name', $provider->contact_name) }}"></label>
+                <label>Teléfono<input name="phone" value="{{ old('phone', $provider->phone) }}"></label>
+                <label>Dirección<input name="address" value="{{ old('address', $provider->address) }}"></label>
+            </div>
+
+            <div class="grid-3">
                 <label>
                     Banco
                     <input name="bank" value="{{ old('bank', $provider->bank) }}" required>

@@ -47,7 +47,9 @@
             .notes-wrap { align-self: start; width: 52%; margin: 70px auto 0; border: 2px solid #000; }
             .notes-title { padding: 4px; border-bottom: 1px solid #000; background: #e7f1f7; text-align: center; font-size: 16px; }
             .notes-body { min-height: 85px; padding: 5px; font-size: 10px; line-height: 1.35; white-space: pre-line; }
-            .signature { padding-bottom: 80px; text-align: center; font-weight: 900; align-self: end; }
+            .signature { padding: 0 20px 70px; text-align: center; font-weight: 900; align-self: end; }
+            .signature-label { display: block; }
+            .signature-name { display: block; margin-top: 6px; font-size: 12px; text-transform: uppercase; }
             .muted { color: #444; }
             .strong { font-weight: 900; }
             @media print {
@@ -72,7 +74,25 @@
             $orderNotes = trim((string) $order->observations);
             $companyNotes = trim((string) $order->company->purchase_order_notes);
             $notes = $orderNotes ?: ($companyNotes ?: $defaultNotes);
-            $orderReference = $order->reference ?: $order->provider->reference;
+            $orderReference = trim((string) ($order->reference ?: $order->provider->reference));
+            $orderReference = preg_replace('/^referencia\s*:?\s*/iu', '', $orderReference);
+            $spanishMonths = [
+                1 => 'Ene', 2 => 'Feb', 3 => 'Mar', 4 => 'Abr',
+                5 => 'May', 6 => 'Jun', 7 => 'Jul', 8 => 'Ago',
+                9 => 'Sep', 10 => 'Oct', 11 => 'Nov', 12 => 'Dic',
+            ];
+            $formatSpanishDate = static function ($date, bool $shortYear = false) use ($spanishMonths): string {
+                if (! $date) {
+                    return 'N/A';
+                }
+
+                return sprintf(
+                    '%02d-%s-%s',
+                    $date->day,
+                    $spanishMonths[$date->month],
+                    $date->format($shortYear ? 'y' : 'Y'),
+                );
+            };
         @endphp
 
         <div class="print-actions">
@@ -103,11 +123,11 @@
                     </div>
                     <div class="info-row">
                         <div class="label">Fecha de elaboracion:</div>
-                        <div class="value center">{{ $order->created_on?->format('d-M-y') }}</div>
+                        <div class="value center">{{ $formatSpanishDate($order->created_on, true) }}</div>
                     </div>
                     <div class="info-row" style="grid-column: 1 / -1;">
-                        <div class="label">Depto solicita:</div>
-                        <div class="value">COMPRAS</div>
+                        <div class="label">Almacén destino:</div>
+                        <div class="value strong">{{ $order->warehouse ?: 'Sin almacén asignado' }}</div>
                     </div>
                 </section>
 
@@ -125,10 +145,10 @@
                             <div>{{ $order->provider->bank }} cuenta: {{ $order->provider->account_number }}</div>
                             <div>Clabe: {{ $order->provider->clabe }}</div>
                             <br>
-                            <div>N/A</div>
+                            <div>{{ $order->provider->address ?: 'N/A' }}</div>
                             <br>
-                            <div>{{ $order->buyer->name }}</div>
-                            <div>N/A</div>
+                            <div>{{ $order->provider->contact_name ?: 'N/A' }}</div>
+                            <div>{{ $order->provider->phone ?: 'N/A' }}</div>
                         </div>
                     </div>
                     <div class="provider-right">
@@ -150,7 +170,7 @@
                 <section>
                     <div class="delivery-row">
                         <div class="label">Fecha de entrega propuesta:</div>
-                        <div class="value center">{{ $order->delivery_date?->format('d-M-Y') }}</div>
+                        <div class="value center">{{ $formatSpanishDate($order->delivery_date) }}</div>
                         <div class="label">*Hora de entrega acordada de pedido "Urgente":</div>
                         <div class="value center">N/A</div>
                     </div>
@@ -204,7 +224,10 @@
                     <div class="notes-body">{{ $notes }}</div>
                 </section>
 
-                <footer class="signature">Elaboro</footer>
+                <footer class="signature">
+                    <span class="signature-label">Elaboró</span>
+                    <span class="signature-name">{{ $order->buyer?->name ?? 'Usuario no identificado' }}</span>
+                </footer>
             </section>
         </main>
     </body>

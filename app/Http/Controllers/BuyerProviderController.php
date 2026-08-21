@@ -106,6 +106,9 @@ class BuyerProviderController extends Controller
         $validated = $request->validate([
             'business_name' => ['required', 'string', 'max:255'],
             'rfc' => ['required', 'string', 'max:20', $rfcRule],
+            'contact_name' => ['nullable', 'string', 'max:255'],
+            'phone' => ['nullable', 'string', 'max:50'],
+            'address' => ['nullable', 'string', 'max:1000'],
             'business_line_id' => ['required', 'integer', Rule::exists('provider_business_lines', 'id')->where('active', true)],
             'business_subcategory_id' => ['nullable', 'integer', Rule::exists('provider_business_subcategories', 'id')->where('active', true)],
             'bank' => ['required', 'string', 'max:120'],
@@ -127,6 +130,9 @@ class BuyerProviderController extends Controller
         return [
             'business_name' => $validated['business_name'],
             'rfc' => strtoupper(trim($validated['rfc'])),
+            'contact_name' => $validated['contact_name'] ?? null,
+            'phone' => $validated['phone'] ?? null,
+            'address' => $validated['address'] ?? null,
             'business_line' => $line->name,
             'provider_business_line_id' => $line->id,
             'provider_business_subcategory_id' => $subcategory?->id,

@@ -60,6 +60,12 @@
                     </label>
                 </div>
 
+                <div class="grid-3">
+                    <label>Contacto<input name="contact_name" value="{{ old('contact_name') }}"></label>
+                    <label>Teléfono<input name="phone" value="{{ old('phone') }}"></label>
+                    <label>Dirección<input name="address" value="{{ old('address') }}"></label>
+                </div>
+
                 <div class="grid-2">
                     <label>
                         CLABE
@@ -99,6 +105,9 @@
                             <th>Comprador</th>
                             <th>Razon Social</th>
                             <th>RFC</th>
+                            <th>Contacto</th>
+                            <th>Teléfono</th>
+                            <th>Dirección</th>
                             <th>Giro</th>
                             <th>Subcategoria</th>
                             <th>Banco</th>
@@ -115,6 +124,9 @@
                                 <td>{{ $provider->buyer?->name ?? 'Sin comprador' }}</td>
                                 <td>{{ $provider->business_name }}</td>
                                 <td>{{ $provider->rfc }}</td>
+                                <td>{{ $provider->contact_name ?: 'N/A' }}</td>
+                                <td>{{ $provider->phone ?: 'N/A' }}</td>
+                                <td>{{ $provider->address ?: 'N/A' }}</td>
                                 <td>{{ $provider->business_line }}</td>
                                 <td>{{ $provider->businessSubcategory?->name ?? $provider->provider_business_subcategory ?? 'Sin subcategoria' }}</td>
                                 <td>{{ $provider->bank }}</td>
@@ -124,7 +136,7 @@
                                 <td>{{ $provider->created_at?->format('d/m/Y') }}</td>
                             </tr>
                         @empty
-                            <tr><td colspan="11">Aun no hay proveedores registrados.</td></tr>
+                            <tr><td colspan="14">Aun no hay proveedores registrados.</td></tr>
                         @endforelse
                     </tbody>
                 </table>

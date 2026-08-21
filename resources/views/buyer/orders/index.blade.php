@@ -9,7 +9,7 @@
     ];
 
     $descriptions = [
-        'all' => 'Consulta, edita o cancela tus OC antes de aprobacion.',
+        'all' => 'Ordenes capturadas de la mas reciente a la mas antigua.',
         'paid' => 'Ordenes de compra pagadas, ordenadas por fecha de pago de mas reciente a mas antigua.',
         'pending-payment' => 'Ordenes que aun no cambian a estatus Pagada.',
         'rejected' => 'Ordenes de compra rechazadas por Finanzas.',
@@ -34,7 +34,7 @@
             'rejected' => 'Ordenes de obra rechazadas',
         ];
         $descriptions = [
-            'all' => 'Ordenes vinculadas exclusivamente a proyectos de Administracion de obra.',
+            'all' => 'Ordenes de obra capturadas de la mas reciente a la mas antigua.',
             'paid' => 'Ordenes pagadas vinculadas a proyectos de obra.',
             'pending-payment' => 'Ordenes de obra que aun no cambian a estatus Pagada.',
             'rejected' => 'Ordenes de obra rechazadas.',
@@ -191,7 +191,9 @@
                                 @endphp
                                 <tr data-filter-row>
                                     <td data-filter-value="{{ $order->folio }} {{ $order->constructionProject?->project_key }} {{ $order->constructionProject?->name }}">
-                                        <strong>{{ $order->folio }}</strong>
+                                        <strong>
+                                            <a href="{{ $orderRoute('buyer.orders.print', $order) }}" target="_blank">{{ $order->folio }}</a>
+                                        </strong>
                                         @if ($constructionContext && $order->constructionProject)
                                             <small class="fine-print">{{ $order->constructionProject->project_key }} - {{ $order->constructionProject->name }}</small>
                                         @endif
@@ -366,4 +368,3 @@
         });
     </script>
 @endsection
-

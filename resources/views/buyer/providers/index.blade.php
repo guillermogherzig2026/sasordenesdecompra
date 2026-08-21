@@ -20,6 +20,11 @@
                         <input name="rfc" value="{{ old('rfc') }}" required>
                     </label>
                 </div>
+                <div class="grid-3">
+                    <label>Contacto<input name="contact_name" value="{{ old('contact_name') }}"></label>
+                    <label>Teléfono<input name="phone" value="{{ old('phone') }}"></label>
+                    <label>Dirección<input name="address" value="{{ old('address') }}"></label>
+                </div>
                 <div class="grid-4">
                     <label>
                         Giro de proveeduria
@@ -82,6 +87,9 @@
                         <tr>
                             <th>Razon social</th>
                             <th>RFC</th>
+                            <th>Contacto</th>
+                            <th>Teléfono</th>
+                            <th>Dirección</th>
                             <th>Giro</th>
                             <th>Subcategoria</th>
                             <th>Banco</th>
@@ -96,6 +104,9 @@
                             <tr>
                                 <td><strong>{{ $provider->business_name }}</strong></td>
                                 <td>{{ $provider->rfc }}</td>
+                                <td>{{ $provider->contact_name ?: 'N/A' }}</td>
+                                <td>{{ $provider->phone ?: 'N/A' }}</td>
+                                <td>{{ $provider->address ?: 'N/A' }}</td>
                                 <td>{{ $provider->business_line }}</td>
                                 <td>{{ $provider->businessSubcategory?->name ?? $provider->provider_business_subcategory ?? 'Sin subcategoria' }}</td>
                                 <td>{{ $provider->bank }}</td>
@@ -107,7 +118,7 @@
                                 </td>
                             </tr>
                             <tr class="editor-row" id="provider-editor-{{ $provider->id }}" hidden>
-                                <td colspan="9">
+                                <td colspan="12">
                                     <form class="stack" method="POST" action="{{ route($providerRoutePrefix.'.update', $provider) }}">
                                         @csrf
                                         @method('PUT')
@@ -133,6 +144,11 @@
                                             </label>
                                         </div>
                                         <div class="grid-3">
+                                            <label>Contacto<input name="contact_name" value="{{ old('contact_name', $provider->contact_name) }}"></label>
+                                            <label>Teléfono<input name="phone" value="{{ old('phone', $provider->phone) }}"></label>
+                                            <label>Dirección<input name="address" value="{{ old('address', $provider->address) }}"></label>
+                                        </div>
+                                        <div class="grid-3">
                                             <label>Banco<input name="bank" value="{{ old('bank', $provider->bank) }}" required></label>
                                             <label>Cuenta<input name="account_number" value="{{ old('account_number', $provider->account_number) }}" required></label>
                                             <label>CLABE<input name="clabe" value="{{ old('clabe', $provider->clabe) }}" maxlength="18" required></label>
@@ -147,7 +163,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="9">No hay proveedores registrados.</td>
+                                <td colspan="12">No hay proveedores registrados.</td>
                             </tr>
                         @endforelse
                     </tbody>
