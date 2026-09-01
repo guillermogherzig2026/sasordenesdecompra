@@ -75,12 +75,12 @@
                                 </td>
                                 <td>
                                     @if ($order->payment)
-                                        <a class="attachment-pill" href="{{ route('finance.orders.payment-receipt', $order) }}" target="_blank"><span>Adjunto</span>{{ $order->payment->original_name }}</a>
+                                        <a class="button ghost small" href="{{ route('finance.orders.payment-receipt', $order) }}" target="_blank" rel="noopener" aria-label="Ver comprobante de pago">Ver</a>
                                         @if ($order->status === 'paid')
-                                            <form class="replace-payment-form" method="POST" action="{{ route('finance.orders.payment-receipt.replace', $order) }}" enctype="multipart/form-data">
+                                            <form class="replace-payment-form" method="POST" action="{{ route('finance.orders.payment-receipt.replace', $order) }}" enctype="multipart/form-data" data-replace-payment-form>
                                                 @csrf
-                                                <input id="payment-file-{{ $order->id }}" name="payment_file" type="file" required>
-                                                <button class="button ghost small" type="submit">Cambiar comprobante</button>
+                                                <input id="payment-file-{{ $order->id }}" name="payment_file" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" required hidden data-replace-payment-input>
+                                                <button class="button ghost small" type="button" data-replace-payment-trigger>Cambiar comprobante</button>
                                             </form>
                                         @endif
                                     @else
@@ -108,6 +108,17 @@
                 </table>
             </div>
         </section>
+
+        <dialog class="confirm-dialog" id="replace-payment-confirmation" aria-labelledby="replace-payment-title" data-replace-payment-dialog>
+            <div class="confirm-card">
+                <h3 id="replace-payment-title">Sustituir comprobante</h3>
+                <p>Se va a sustituir el archivo, ¿estás seguro?</p>
+                <div class="form-actions">
+                    <button class="button ghost" type="button" data-replace-payment-cancel>No</button>
+                    <button class="button primary" type="button" data-replace-payment-confirm>Sí</button>
+                </div>
+            </div>
+        </dialog>
     </x-app-shell>
     <script>
         document.body.dataset.generalExportReady = 'true';
@@ -126,8 +137,7 @@
     </style>
 
     <style>
-        .replace-payment-form { margin-top: 8px; display: grid; gap: 6px; max-width: 320px; }
-        .replace-payment-form input[type=file] { width: 100%; max-width: 300px; font-size: .78rem; }
+        .replace-payment-form { margin-top: 8px; }
         .replace-payment-form .button { justify-self: start; }
         .rejection-popover { position: relative; display: inline-block; }
         .rejection-popover summary { cursor: pointer; list-style: none; }
@@ -142,6 +152,59 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
+            const replacementDialog = document.querySelector('[data-replace-payment-dialog]');
+            const replacementCancel = replacementDialog?.querySelector('[data-replace-payment-cancel]');
+            const replacementConfirm = replacementDialog?.querySelector('[data-replace-payment-confirm]');
+            let pendingReplacementForm = null;
+
+            const cancelReplacement = () => {
+                const selectedInput = pendingReplacementForm?.querySelector('[data-replace-payment-input]');
+                if (selectedInput) {
+                    selectedInput.value = '';
+                }
+                pendingReplacementForm = null;
+
+                if (replacementDialog?.open) {
+                    replacementDialog.close();
+                }
+            };
+
+            document.querySelectorAll('[data-replace-payment-form]').forEach((form) => {
+                const input = form.querySelector('[data-replace-payment-input]');
+                const trigger = form.querySelector('[data-replace-payment-trigger]');
+
+                trigger?.addEventListener('click', () => {
+                    input.value = '';
+                    input.click();
+                });
+
+                input?.addEventListener('change', () => {
+                    if (!input.files?.length || !replacementDialog) {
+                        return;
+                    }
+
+                    pendingReplacementForm = form;
+                    replacementDialog.showModal();
+                });
+            });
+
+            replacementCancel?.addEventListener('click', cancelReplacement);
+            replacementDialog?.addEventListener('cancel', (event) => {
+                event.preventDefault();
+                cancelReplacement();
+            });
+
+            replacementConfirm?.addEventListener('click', () => {
+                if (!pendingReplacementForm) {
+                    return;
+                }
+
+                const form = pendingReplacementForm;
+                pendingReplacementForm = null;
+                replacementDialog.close();
+                form.requestSubmit();
+            });
+
             document.querySelectorAll('.rejection-popover-close').forEach((button) => {
                 button.addEventListener('click', (event) => {
                     event.preventDefault();
@@ -160,4 +223,3 @@
         });
     </script>
 @endsection
-

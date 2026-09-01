@@ -15,10 +15,14 @@ use App\Http\Controllers\FinanceSupplyOrderController;
 use App\Http\Controllers\InventoryReceiptController;
 use App\Http\Controllers\InventorySupplyOrderController;
 use App\Http\Controllers\ReportController;
+use App\Http\Controllers\SecurityCompanyController;
 use App\Http\Controllers\ServiceController;
+use App\Http\Controllers\SuperAdminGovernmentContractController;
+use App\Http\Controllers\SuperAdminPlazaController;
 use App\Http\Controllers\SuperAdminProviderBusinessLineController;
 use App\Http\Controllers\SuperAdminUserController;
 use App\Http\Controllers\SupplyOrderDigitalController;
+use App\Http\Middleware\EnforceNavigationPermission;
 use App\Models\AuditLog;
 use App\Models\Company;
 use App\Models\PurchaseOrder;
@@ -161,7 +165,7 @@ Route::get('/dashboard', function () {
             ->limit(6)
             ->get(),
     ]);
-})->middleware('auth')->name('dashboard');
+})->middleware(['auth', EnforceNavigationPermission::class])->name('dashboard');
 
 Route::middleware('auth')->group(function () {
     Route::get('/reportes', fn () => redirect()->route('dashboard'))->name('reports.index');
@@ -169,7 +173,17 @@ Route::middleware('auth')->group(function () {
     Route::get('/empresas/{company}/logo', [CompanyAssetController::class, 'logo'])->name('companies.logo');
 });
 
-Route::middleware('auth')->prefix('superadmin')->name('superadmin.')->group(function () {
+Route::middleware(['auth', EnforceNavigationPermission::class])->prefix('superadmin')->name('superadmin.')->group(function () {
+    Route::get('/contratos-gobierno', [SuperAdminGovernmentContractController::class, 'index'])->name('government-contracts.index');
+    Route::get('/contratos-gobierno/panel', [SuperAdminGovernmentContractController::class, 'panel'])->name('government-contracts.panel');
+    Route::get('/administracion-plazas', [SuperAdminPlazaController::class, 'index'])->name('plazas.index');
+    Route::get('/administracion-plazas/administracion', [SuperAdminPlazaController::class, 'administration'])->name('plazas.administration');
+    Route::get('/administracion-plazas/contratos', [SuperAdminPlazaController::class, 'contracts'])->name('plazas.contracts');
+    Route::get('/administracion-plazas/marketplace', [SuperAdminPlazaController::class, 'marketplace'])->name('plazas.marketplace');
+    Route::get('/administracion-plazas/catalogo-propiedades', [SuperAdminPlazaController::class, 'properties'])->name('plazas.properties');
+    Route::get('/administracion-plazas/alta-usuarios', [SuperAdminPlazaController::class, 'users'])->name('plazas.users');
+    Route::get('/administracion-plazas/catalogo-arrendatarios', [SuperAdminPlazaController::class, 'tenants'])->name('plazas.tenants');
+    Route::get('/administracion-plazas/panel', [SuperAdminPlazaController::class, 'panel'])->name('plazas.panel');
     Route::get('/usuarios', [SuperAdminUserController::class, 'index'])->name('users.index');
     Route::post('/usuarios', [SuperAdminUserController::class, 'store'])->name('users.store');
     Route::put('/usuarios/{user}', [SuperAdminUserController::class, 'update'])->name('users.update');
@@ -184,7 +198,18 @@ Route::middleware('auth')->prefix('superadmin')->name('superadmin.')->group(func
     Route::delete('/giros-proveeduria/subcategorias/{subcategory}', [SuperAdminProviderBusinessLineController::class, 'destroySubcategory'])->name('provider-lines.subcategories.destroy');
 });
 
-Route::middleware('auth')->prefix('administracion-obra')->name('construction.')->group(function () {
+Route::view('/recursos-humanos', 'human-resources.index')
+    ->middleware(['auth', EnforceNavigationPermission::class])
+    ->name('human-resources.index');
+
+Route::middleware(['auth', EnforceNavigationPermission::class])->prefix('seguridad-vigilancia')->name('security.')->group(function () {
+    Route::get('/', [SecurityCompanyController::class, 'index'])->name('index');
+    Route::post('/empresas', [SecurityCompanyController::class, 'store'])->name('companies.store');
+    Route::post('/sucursales', [SecurityCompanyController::class, 'storeBranch'])->name('branches.store');
+    Route::patch('/sucursales/{securityBranch}', [SecurityCompanyController::class, 'updateBranch'])->name('branches.update');
+});
+
+Route::middleware(['auth', EnforceNavigationPermission::class])->prefix('administracion-obra')->name('construction.')->group(function () {
     Route::get('/', [ConstructionAdminController::class, 'dashboard'])->name('dashboard');
     Route::get('/obras', [ConstructionAdminController::class, 'projects'])->name('projects.index');
     Route::get('/obras/nueva', [ConstructionAdminController::class, 'create'])->name('projects.create');
@@ -211,7 +236,7 @@ Route::middleware('auth')->prefix('administracion-obra')->name('construction.')-
     Route::get('/secciones/{section}', [ConstructionAdminController::class, 'placeholder'])->name('placeholder');
 });
 
-Route::middleware('auth')->prefix('comprador')->name('buyer.')->group(function () {
+Route::middleware(['auth', EnforceNavigationPermission::class])->prefix('comprador')->name('buyer.')->group(function () {
     Route::get('/ordenes', [BuyerPurchaseOrderController::class, 'index'])->name('orders.index');
     Route::get('/ordenes/nueva', [BuyerPurchaseOrderController::class, 'create'])->name('orders.create');
     Route::post('/ordenes', [BuyerPurchaseOrderController::class, 'store'])->name('orders.store');
@@ -240,7 +265,7 @@ Route::middleware('auth')->prefix('comprador')->name('buyer.')->group(function (
     Route::get('/reembolsos/{reimbursementOrder}/pago', [BuyerReimbursementOrderController::class, 'payment'])->name('reimbursement-orders.payment');
 });
 
-Route::middleware('auth')->prefix('finanzas')->name('finance.')->group(function () {
+Route::middleware(['auth', EnforceNavigationPermission::class])->prefix('finanzas')->name('finance.')->group(function () {
     Route::get('/ordenes-vigentes', [FinancePurchaseOrderController::class, 'active'])->name('orders.active');
     Route::patch('/ordenes/{purchaseOrder}/aprobar', [FinancePurchaseOrderController::class, 'approve'])->name('orders.approve');
     Route::patch('/ordenes/{purchaseOrder}/rechazar', [FinancePurchaseOrderController::class, 'reject'])->name('orders.reject');
@@ -294,7 +319,7 @@ Route::middleware('auth')->prefix('finanzas')->name('finance.')->group(function 
     Route::delete('/empresas/{company}', [FinanceAdminController::class, 'destroyCompany'])->name('admin.companies.destroy');
 });
 
-Route::middleware('auth')->prefix('inventarios')->name('inventory.')->group(function () {
+Route::middleware(['auth', EnforceNavigationPermission::class])->prefix('inventarios')->name('inventory.')->group(function () {
     Route::get('/ordenes-pagadas', [InventoryReceiptController::class, 'index'])->name('orders.index');
     Route::get('/ordenes/{purchaseOrder}/pdf', [InventoryReceiptController::class, 'print'])->name('orders.print');
     Route::get('/ordenes/{purchaseOrder}/comprobante-pago', [FinancePurchaseOrderController::class, 'paymentReceipt'])->name('orders.payment-receipt');
@@ -324,7 +349,7 @@ Route::middleware('auth')->prefix('inventarios')->name('inventory.')->group(func
     Route::get('/os/{supplyOrder}/remision', [InventorySupplyOrderController::class, 'remission'])->name('supply-orders.remission');
 });
 
-Route::middleware('auth')->prefix('servicios')->name('services.')->group(function () {
+Route::middleware(['auth', EnforceNavigationPermission::class])->prefix('servicios')->name('services.')->group(function () {
     Route::get('/alta', [ServiceController::class, 'create'])->name('create');
     Route::post('/alta', [ServiceController::class, 'store'])->name('store');
     Route::get('/catalogo', [ServiceController::class, 'catalog'])->name('catalog');

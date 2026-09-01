@@ -133,27 +133,31 @@
             </section>
         @elseif ($user->role === 'finance')
         @elseif ($user->role === 'buyer')
-            <section class="panel">
-                <div class="panel-header">
-                    <div>
-                        <h2>Nueva orden de compra</h2>
-                        <p class="fine-print">Captura proveedor, fechas, empresa autorizada y articulos. La OC se envia a Finanzas automaticamente.</p>
+            @if ($user->canNavigateTo('procurement.orders.create'))
+                <section class="panel">
+                    <div class="panel-header">
+                        <div>
+                            <h2>Nueva orden de compra</h2>
+                            <p class="fine-print">Captura proveedor, fechas, empresa autorizada y articulos. La OC se envia a Finanzas automaticamente.</p>
+                        </div>
+                        <a class="button primary" href="{{ route('buyer.orders.create') }}">Crear OC</a>
                     </div>
-                    <a class="button primary" href="{{ route('buyer.orders.create') }}">Crear OC</a>
-                </div>
-            </section>
+                </section>
+            @endif
 
         @elseif ($user->role === 'inventory')
         @elseif (in_array($user->role, ['services', 'administrative_assistant'], true))
-            <section class="panel">
-                <div class="panel-header">
-                    <div>
-                        <h2>Seguimiento de servicios</h2>
-                        <p class="fine-print">Da de alta servicios recurrentes, revisa fechas de corte y adjunta facturas por periodo.</p>
+            @if ($user->canNavigateTo('services.create') || $user->canNavigateTo('finance.services.create'))
+                <section class="panel">
+                    <div class="panel-header">
+                        <div>
+                            <h2>Seguimiento de servicios</h2>
+                            <p class="fine-print">Da de alta servicios recurrentes, revisa fechas de corte y adjunta facturas por periodo.</p>
+                        </div>
+                        <a class="button primary" href="{{ route('services.create') }}">Alta servicio</a>
                     </div>
-                    <a class="button primary" href="{{ route('services.create') }}">Alta servicio</a>
-                </div>
-            </section>
+                </section>
+            @endif
 
             <section class="panel">
                 <div class="panel-header">
