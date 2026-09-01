@@ -597,13 +597,13 @@ class ServiceController extends Controller
     {
         $user = Auth::user();
 
-        abort_unless($user?->active && in_array($user->role, ['finance', 'services', 'administrative_assistant', 'superadmin'], true), 403);
+        abort_unless($user?->canAccessRole('services') || $user?->canAccessRole('finance'), 403);
     }
 
     private function ensureServiceHistory(): void
     {
         $user = Auth::user();
 
-        abort_unless($user?->active && in_array($user->role, ['finance', 'administrative_assistant', 'superadmin'], true), 403);
+        abort_unless($user?->canAccessRole('services') || $user?->canAccessRole('finance'), 403);
     }
 }

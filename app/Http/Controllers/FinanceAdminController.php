@@ -8,6 +8,7 @@ use App\Models\Provider;
 use App\Models\ProviderBusinessLine;
 use App\Models\ProviderBusinessSubcategory;
 use App\Models\User;
+use App\Support\NavigationPermissionCatalog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -27,6 +28,7 @@ class FinanceAdminController extends Controller
             'users' => User::whereIn('role', ['buyer', 'inventory', 'administrative_assistant'])->orderBy('name')->get(),
             'companies' => Company::orderBy('name')->get(),
             'supplyWarehouses' => $this->supplyWarehouseAuthorizationRows(),
+            'navigationCatalog' => NavigationPermissionCatalog::categories(),
         ]);
     }
 
@@ -38,9 +40,6 @@ class FinanceAdminController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'unique:users,email'],
             'password' => ['required', 'string', 'min:6'],
-            'role' => ['required', 'in:buyer,inventory,administrative_assistant'],
-            'buyer_subroles' => ['required_if:role,buyer', 'array', 'min:1'],
-            'buyer_subroles.*' => ['required', Rule::in(self::BUYER_SUBROLES)],
             'companies' => ['array'],
             'companies.*' => ['string'],
             'supply_warehouses' => ['array'],
@@ -48,18 +47,25 @@ class FinanceAdminController extends Controller
             'warehouses' => ['array'],
             'warehouses.*' => ['array'],
             'warehouses.*.*' => ['string', 'max:255'],
+            'menu_permissions_configured' => ['nullable', 'boolean'],
+            'menu_permissions' => ['nullable', 'array'],
+            'menu_permissions.*' => ['string', Rule::in(NavigationPermissionCatalog::allKeys())],
         ]);
 
-        $companies = $this->companyAssignmentsForRole($validated['role'], $validated['companies'] ?? [], $validated['warehouses'] ?? [], $validated['supply_warehouses'] ?? []);
+        $menuPermissions = $this->menuPermissionsPayload($request, $validated);
+        $role = $this->roleForMenuPermissions($menuPermissions);
+        $buyerSubroles = $this->buyerSubrolesForMenuPermissions($menuPermissions);
+        $companies = $this->companyAssignments($validated['companies'] ?? [], $validated['warehouses'] ?? [], $validated['supply_warehouses'] ?? []);
 
         $user = User::create([
             'name' => $validated['name'],
             'email' => strtolower($validated['email']),
             'password' => $validated['password'],
             'plain_password' => $validated['password'],
-            'role' => $validated['role'],
-            'buyer_subrole' => $validated['role'] === 'buyer' ? $this->buyerSubrolesPayload($validated['buyer_subroles'] ?? []) : null,
+            'role' => $role,
+            'buyer_subrole' => $role === 'buyer' ? $this->buyerSubrolesPayload($buyerSubroles) : null,
             'companies' => $companies,
+            'menu_permissions' => $menuPermissions,
             'active' => true,
         ]);
 
@@ -77,9 +83,6 @@ class FinanceAdminController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', Rule::unique('users', 'email')->ignore($user->id)],
             'password' => ['nullable', 'string', 'min:6'],
-            'role' => ['required', 'in:buyer,inventory,administrative_assistant'],
-            'buyer_subroles' => ['required_if:role,buyer', 'array', 'min:1'],
-            'buyer_subroles.*' => ['required', Rule::in(self::BUYER_SUBROLES)],
             'companies' => ['array'],
             'companies.*' => ['string'],
             'supply_warehouses' => ['array'],
@@ -87,14 +90,22 @@ class FinanceAdminController extends Controller
             'warehouses' => ['array'],
             'warehouses.*' => ['array'],
             'warehouses.*.*' => ['string', 'max:255'],
+            'menu_permissions_configured' => ['nullable', 'boolean'],
+            'menu_permissions' => ['nullable', 'array'],
+            'menu_permissions.*' => ['string', Rule::in(NavigationPermissionCatalog::allKeys())],
         ]);
+
+        $menuPermissions = $this->menuPermissionsPayload($request, $validated, $user->role, $user->buyerSubroles());
+        $role = $this->roleForMenuPermissions($menuPermissions);
+        $buyerSubroles = $this->buyerSubrolesForMenuPermissions($menuPermissions);
 
         $payload = [
             'name' => $validated['name'],
             'email' => strtolower($validated['email']),
-            'role' => $validated['role'],
-            'buyer_subrole' => $validated['role'] === 'buyer' ? $this->buyerSubrolesPayload($validated['buyer_subroles'] ?? []) : null,
-            'companies' => $this->companyAssignmentsForRole($validated['role'], $validated['companies'] ?? [], $validated['warehouses'] ?? [], $validated['supply_warehouses'] ?? []),
+            'role' => $role,
+            'buyer_subrole' => $role === 'buyer' ? $this->buyerSubrolesPayload($buyerSubroles) : null,
+            'companies' => $this->companyAssignments($validated['companies'] ?? [], $validated['warehouses'] ?? [], $validated['supply_warehouses'] ?? []),
+            'menu_permissions' => $menuPermissions,
         ];
 
         if (! empty($validated['password'])) {
@@ -105,7 +116,9 @@ class FinanceAdminController extends Controller
         $user->update($payload);
         $this->audit($user, 'user_updated', "Usuario {$user->email} actualizado por Finanzas.");
 
-        return redirect()->route('finance.admin.users')->with('status', 'Usuario actualizado correctamente.');
+        return redirect()
+            ->route('finance.admin.users', ['view' => 'users'])
+            ->with('status', 'Usuario actualizado correctamente.');
     }
 
     public function toggleUser(User $user)
@@ -419,12 +432,8 @@ class FinanceAdminController extends Controller
         });
     }
 
-    private function companyAssignmentsForRole(string $role, array $companyKeys, array $warehousesByCompany, array $supplyWarehouseKeys = []): array
+    private function companyAssignments(array $companyKeys, array $warehousesByCompany, array $supplyWarehouseKeys = []): array
     {
-        if (! in_array($role, ['buyer', 'inventory'], true)) {
-            return Company::orderBy('name')->pluck('name')->all();
-        }
-
         $companies = Company::orderBy('name')->get();
         $companiesById = $companies->keyBy(fn (Company $company) => (string) $company->id);
         $companiesByName = $companies->keyBy('name');
@@ -602,6 +611,61 @@ class FinanceAdminController extends Controller
             ->values();
 
         return $subroles->isNotEmpty() ? $subroles->implode(',') : 'purchases';
+    }
+
+    private function roleForMenuPermissions(array $permissions): string
+    {
+        $permissions = NavigationPermissionCatalog::normalize($permissions);
+
+        if (array_intersect($permissions, NavigationPermissionCatalog::categoryKeys('procurement')) !== []) {
+            return 'buyer';
+        }
+
+        if (array_intersect($permissions, NavigationPermissionCatalog::categoryKeys('inventory')) !== []) {
+            return 'inventory';
+        }
+
+        return 'administrative_assistant';
+    }
+
+    private function buyerSubrolesForMenuPermissions(array $permissions): array
+    {
+        $permissions = NavigationPermissionCatalog::normalize($permissions);
+        $groups = NavigationPermissionCatalog::categories()['procurement']['groups'] ?? [];
+        $subroleGroups = [
+            'purchases' => ['purchase_orders', 'providers'],
+            'supplies' => ['supply_orders'],
+            'reimbursements' => ['reimbursement_orders'],
+        ];
+
+        return collect($subroleGroups)
+            ->filter(function (array $groupKeys) use ($groups, $permissions) {
+                $groupPermissions = collect($groupKeys)
+                    ->flatMap(fn (string $groupKey) => $groups[$groupKey]['items'] ?? [])
+                    ->all();
+
+                return array_intersect($permissions, $groupPermissions) !== [];
+            })
+            ->keys()
+            ->values()
+            ->all();
+    }
+
+    private function menuPermissionsPayload(
+        Request $request,
+        array $validated,
+        string $fallbackRole = 'administrative_assistant',
+        array $fallbackBuyerSubroles = ['purchases']
+    ): array
+    {
+        if ($request->boolean('menu_permissions_configured')) {
+            return NavigationPermissionCatalog::normalize($validated['menu_permissions'] ?? []);
+        }
+
+        return NavigationPermissionCatalog::defaultsForRole(
+            $fallbackRole,
+            $fallbackBuyerSubroles
+        );
     }
 
     private function audit($model, string $action, string $description): void

@@ -1,0 +1,118 @@
+.government-contract-carousel {
+    min-width: 0;
+    display: grid;
+    gap: 12px;
+    padding: 4px 0 2px;
+}
+
+.contract-carousel-heading {
+    display: grid;
+    gap: 2px;
+}
+
+.contract-carousel-heading h2 {
+    margin: 0;
+    font-size: 20px;
+    line-height: 1.2;
+}
+
+.contract-carousel-shell {
+    min-width: 0;
+    display: grid;
+    grid-template-columns: 42px minmax(0, 1fr) 42px;
+    align-items: center;
+    gap: 10px;
+}
+
+.contract-carousel-track {
+    min-width: 0;
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(280px, 360px);
+    align-items: stretch;
+    gap: 10px;
+    padding: 2px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-inline: contain;
+    scrollbar-width: thin;
+}
+
+.contract-carousel-card,
+.contract-carousel-new {
+    width: 100%;
+    height: 100%;
+    scroll-snap-align: start;
+}
+
+.contract-carousel-arrow {
+    width: 42px;
+    height: 42px;
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    background: var(--surface);
+    color: var(--text);
+    box-shadow: 0 8px 18px #142c4014;
+    font-size: 20px;
+    font-weight: 900;
+    line-height: 1;
+}
+
+.contract-carousel-arrow:hover:not(:disabled) {
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+.contract-carousel-arrow:disabled {
+    opacity: 0.35;
+}
+
+.contract-carousel-new {
+    min-height: 210px;
+    border-style: dashed;
+    place-content: center;
+    place-items: center;
+    gap: 12px;
+    color: var(--accent);
+}
+
+.contract-carousel-new:hover {
+    background: var(--surface-3);
+}
+
+.contract-carousel-new-icon {
+    width: 54px;
+    height: 54px;
+    border: 1px solid var(--accent);
+    border-radius: 50%;
+    display: inline-grid;
+    place-items: center;
+    font-size: 28px;
+    font-weight: 400;
+    line-height: 1;
+}
+
+.contract-carousel-new strong {
+    font-size: 16px;
+}
+
+.contract-card-grid-source,
+.contract-new-button-source {
+    display: none !important;
+}
+
+@media (width <= 960px) {
+    .contract-carousel-shell {
+        grid-template-columns: 38px minmax(0, 1fr) 38px;
+        gap: 7px;
+    }
+
+    .contract-carousel-track {
+        grid-auto-columns: minmax(250px, 82vw);
+    }
+
+    .contract-carousel-arrow {
+        width: 38px;
+        height: 38px;
+    }
+}

@@ -7,14 +7,24 @@
 @php
     $companies = collect($companies);
     $supplyWarehouses = collect($supplyWarehouses);
-    $selectedCompanyNames = $managedUser ? $managedUser->authorizedCompanyNames() : $companies->pluck('name')->all();
+    $selectedCompanyNames = $managedUser ? $managedUser->authorizedCompanyNames() : [];
 @endphp
 
-<div class="companies-box">
+<section class="companies-box authorization-step authorization-scope-step">
+    <div class="authorization-step-header">
+        <div class="authorization-step-title">
+            <span class="authorization-step-number">3</span>
+            <div>
+                <h3>Define las empresas y los almacenes</h3>
+                <p>Selecciona qué empresas y qué almacenes podrá controlar el usuario.</p>
+            </div>
+        </div>
+    </div>
+
     <div class="company-selector auth-split-selector" data-company-selector data-company-warehouse-selector>
         <div class="auth-selector-pane auth-company-pane">
             <div class="company-selector-header">
-                <label>Empresas autorizadas</label>
+                <label>Empresas que podrá controlar</label>
                 <span data-company-count></span>
             </div>
             <input class="company-selector-search" type="search" placeholder="Buscar empresa...">
@@ -35,7 +45,7 @@
 
         <div class="auth-selector-pane auth-warehouse-pane">
             <div class="company-selector-header">
-                <label>Almacenes autorizados</label>
+                <label>Almacenes que podrá controlar</label>
                 <span data-warehouse-count></span>
             </div>
             <div class="auth-warehouse-scroll">
@@ -56,18 +66,18 @@
                                         continue;
                                     }
                                     $selectedWarehouses = $managedUser ? $managedUser->authorizedWarehousesFor($company->name) : [];
-                                    $warehouseSelected = $managedUser ? in_array($supplyWarehouse['label'], $selectedWarehouses, true) : true;
+                                    $warehouseSelected = $managedUser ? in_array($supplyWarehouse['label'], $selectedWarehouses, true) : false;
                                     $companySelected = in_array($company->name, $selectedCompanyNames, true);
                                 @endphp
                                 <tr class="auth-supply-warehouse-row" data-warehouse-row data-company-id="{{ $company->id }}">
-                                    <td>
+                                    <td data-label="Empresa">
                                         <label class="auth-table-check">
                                             <input name="supply_warehouses[]" type="checkbox" value="{{ $supplyWarehouse['key'] }}|{{ $company->id }}" @checked($warehouseSelected && $companySelected)>
                                             <span>{{ $company->name }}</span>
                                         </label>
                                     </td>
-                                    <td>{{ $supplyWarehouse['label'] }}</td>
-                                    <td>{{ $supplyWarehouse['address'] ?: ($company->address ?: 'Sin ubicacion registrada') }}</td>
+                                    <td data-label="Alias de almacén">{{ $supplyWarehouse['label'] }}</td>
+                                    <td data-label="Ubicación">{{ $supplyWarehouse['address'] ?: ($company->address ?: 'Sin ubicacion registrada') }}</td>
                                 </tr>
                             @endforeach
                         @endforeach
@@ -81,17 +91,17 @@
                                 @php
                                     $warehouseSelected = $managedUser
                                         ? (empty($selectedWarehouses) ? $companySelected : in_array($warehouse['name'], $selectedWarehouses, true))
-                                        : true;
+                                        : false;
                                 @endphp
                                 <tr data-warehouse-row data-company-id="{{ $company->id }}">
-                                    <td>
+                                    <td data-label="Empresa">
                                         <label class="auth-table-check">
                                             <input name="warehouses[{{ $company->id }}][]" type="checkbox" value="{{ $warehouse['name'] }}" @checked($warehouseSelected && $companySelected)>
                                             <span>{{ $company->name }}</span>
                                         </label>
                                     </td>
-                                    <td>{{ $warehouse['short_name'] ?: $warehouse['name'] }}</td>
-                                    <td>{{ $company->address ?: 'Sin ubicacion registrada' }}</td>
+                                    <td data-label="Alias de almacén">{{ $warehouse['short_name'] ?: $warehouse['name'] }}</td>
+                                    <td data-label="Ubicación">{{ $company->address ?: 'Sin ubicacion registrada' }}</td>
                                 </tr>
                             @endforeach
                         @endforeach
@@ -104,4 +114,4 @@
             </div>
         </div>
     </div>
-</div>
+</section>

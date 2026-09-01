@@ -35,6 +35,7 @@
         : \App\Models\ReimbursementOrder::whereIn('status', ['sent', 'approved'])->count();
     $pendingConstructionPaymentOrderBadgeCount = \App\Models\ConstructionPaymentOrder::query()->pending()->count();
     $isConstructionPurchaseContext = auth()->user()->role === 'superadmin' && request('context') === 'construction';
+    $homeDashboardPermission = \App\Support\NavigationPermissionCatalog::HOME_DASHBOARD;
 
     $purchaseNavItems = [
         ['label' => 'Nueva OC', 'url' => route('buyer.orders.create'), 'active' => ! $isConstructionPurchaseContext && request()->routeIs('buyer.orders.create'), 'menu_box' => 'purchases', 'menu_box_start' => true, 'menu_box_title' => 'Ordenes de compra'],
@@ -66,7 +67,7 @@
 
     $buyerSubroles = auth()->user()->role === 'buyer' ? auth()->user()->buyerSubroles() : [];
     $buyerNavItems = [
-        ['label' => 'Dashboard', 'url' => route('dashboard'), 'active' => request()->routeIs('dashboard')],
+        ['label' => 'Panel de inicio', 'url' => route('dashboard'), 'active' => request()->routeIs('dashboard'), 'permission' => $homeDashboardPermission],
     ];
 
     if (in_array('purchases', $buyerSubroles, true)) {
@@ -85,9 +86,38 @@
         $buyerNavItems[] = ['label' => 'Alta de Proveedor', 'url' => route('buyer.providers.index'), 'active' => request()->routeIs('buyer.providers.*')];
     }
 
+    $governmentContractNavItems = collect(\App\Support\GovernmentContractNavigation::items())
+        ->map(function (array $item, string $section) {
+            $isDefault = $section === \App\Support\GovernmentContractNavigation::defaultSection();
+
+            return [
+                'label' => $item['label'],
+                'url' => $isDefault
+                    ? route('superadmin.government-contracts.index')
+                    : route('superadmin.government-contracts.index', ['section' => $section]),
+                'active' => request()->routeIs('superadmin.government-contracts.index')
+                    && \App\Support\GovernmentContractNavigation::normalizeSection(request('section')) === $section,
+                'permission' => $item['permission'],
+            ];
+        })
+        ->values()
+        ->all();
+
+    $plazaNavItems = collect(\App\Support\PlazaNavigation::items())
+        ->map(function (array $item) {
+            return [
+                'label' => $item['label'],
+                'url' => route($item['route']),
+                'active' => request()->routeIs($item['route']),
+                'permission' => $item['permission'],
+            ];
+        })
+        ->values()
+        ->all();
+
     $superAdminNavGroups = [
         'Superadministrador' => [
-            ['label' => 'Dashboard', 'url' => route('dashboard'), 'active' => request()->routeIs('dashboard')],
+            ['label' => 'Panel de inicio', 'url' => route('dashboard'), 'active' => request()->routeIs('dashboard'), 'permission' => $homeDashboardPermission],
             ['label' => 'Usuarios y Roles', 'url' => route('superadmin.users.index'), 'active' => request()->routeIs('superadmin.users.*')],
             ['label' => 'Proveedores', 'url' => route('superadmin.provider-lines.index'), 'active' => request()->routeIs('superadmin.provider-lines.*')],
         ],
@@ -125,9 +155,10 @@
             ['label' => 'Alta Servicio', 'url' => route('services.create'), 'active' => request()->routeIs('services.create')],
             ['label' => 'Catalogo Servicios', 'url' => route('services.catalog'), 'active' => request()->routeIs('services.catalog')],
             ['label' => 'Vista por Mes', 'url' => route('services.months'), 'active' => request()->routeIs('services.months') || request()->routeIs('services.receipt')],
+            ['label' => 'Historial de Servicios', 'url' => route('services.history'), 'active' => request()->routeIs('services.history')],
         ],
         'Recursos Humanos' => [
-            ['label' => 'Inicio', 'url' => route('human-resources.show', 'inicio'), 'active' => request()->routeIs('human-resources.show') && (request()->route('section') ?? 'inicio') === 'inicio'],
+            ['label' => 'Inicio', 'url' => route('human-resources.index'), 'active' => request()->routeIs('human-resources.index') || (request()->routeIs('human-resources.show') && (request()->route('section') ?? 'inicio') === 'inicio')],
             ['label' => 'Registro de candidatos', 'url' => route('human-resources.show', 'candidatos'), 'active' => request()->routeIs('human-resources.show') && request()->route('section') === 'candidatos'],
             ['label' => 'Contratos', 'url' => route('human-resources.show', 'contratos'), 'active' => request()->routeIs('human-resources.show') && request()->route('section') === 'contratos'],
             ['label' => 'Empleados', 'url' => route('human-resources.show', 'empleados'), 'active' => request()->routeIs('human-resources.show') && request()->route('section') === 'empleados'],
@@ -154,54 +185,139 @@
             ['label' => 'Alta de proveedor', 'url' => route('construction.providers.index'), 'active' => request()->routeIs('construction.providers.*') || (request()->routeIs('construction.placeholder') && request()->route('section') === 'proveedores'), 'menu_box' => 'construction-materiales', 'menu_box_end' => true],
 
         ],
+        'Administracion de Plazas' => $plazaNavItems,
+        'Contratos Gobierno' => $governmentContractNavItems,
+        'Seguridad y Vigilancia' => [
+            ['label' => 'Empresas', 'url' => route('security.index'), 'active' => request()->routeIs('security.index') && in_array(request()->query('section'), [null, '', 'companies'], true)],
+            ['label' => 'Sucursales', 'url' => route('security.index', ['section' => 'branches']), 'active' => request()->routeIs('security.index') && request()->query('section') === 'branches'],
+            ['label' => 'Analíticos', 'url' => route('security.index', ['section' => 'analytics']), 'active' => request()->routeIs('security.index') && request()->query('section') === 'analytics'],
+            ['label' => 'Alertas', 'url' => route('security.index', ['section' => 'alerts']), 'active' => request()->routeIs('security.index') && request()->query('section') === 'alerts'],
+            ['label' => 'Usuarios', 'url' => route('security.index', ['section' => 'users']), 'active' => request()->routeIs('security.index') && request()->query('section') === 'users'],
+            ['label' => 'Reportes', 'url' => route('security.index', ['section' => 'reports']), 'active' => request()->routeIs('security.index') && request()->query('section') === 'reports'],
+            ['label' => 'Cámaras', 'url' => route('security.index', ['section' => 'cameras']), 'active' => request()->routeIs('security.index') && request()->query('section') === 'cameras'],
+            ['label' => 'Configuración', 'url' => route('security.index', ['section' => 'configuration']), 'active' => request()->routeIs('security.index') && request()->query('section') === 'configuration'],
+        ],
     ];
 
-    $navItems = match (auth()->user()->role) {
-        'superadmin' => [],
-        'finance' => [
-            ['label' => 'Dashboard', 'url' => route('dashboard'), 'active' => request()->routeIs('dashboard')],
-            ['label' => 'OC Vigentes', 'url' => route('finance.orders.active'), 'active' => request()->routeIs('finance.orders.active') || request()->routeIs('finance.orders.payment'), 'pending_badge' => true, 'menu_box' => 'oc', 'menu_box_start' => true, 'menu_box_title' => 'Ordenes de compra'],
-            ['label' => 'OC Historial', 'url' => route('finance.orders.history'), 'active' => request()->routeIs('finance.orders.history'), 'menu_box' => 'oc', 'menu_box_end' => true],
-            ['label' => 'OP Pendientes', 'url' => route('finance.construction-payment-orders.active'), 'active' => request()->routeIs('finance.construction-payment-orders.active'), 'badge_count' => $pendingConstructionPaymentOrderBadgeCount, 'menu_box' => 'op', 'menu_box_start' => true, 'menu_box_title' => 'Ordenes de Pago de Obra'],
-            ['label' => 'OP Historial', 'url' => route('finance.construction-payment-orders.history'), 'active' => request()->routeIs('finance.construction-payment-orders.history'), 'menu_box' => 'op', 'menu_box_end' => true],
-            ['label' => 'Pago Servicios', 'url' => route('finance.services.index'), 'active' => request()->routeIs('finance.services.*'), 'menu_box' => 'services', 'menu_box_start' => true, 'menu_box_title' => 'Servicios'],
-            ['label' => 'Historial de Servicios', 'url' => route('services.history'), 'active' => request()->routeIs('services.history'), 'menu_box' => 'services', 'menu_box_end' => true],
-            ['label' => 'OS Vigentes', 'url' => route('finance.supply-orders.active'), 'active' => request()->routeIs('finance.supply-orders.active'), 'badge_count' => $pendingSupplyBadgeCount, 'menu_box' => 'os', 'menu_box_start' => true, 'menu_box_title' => 'Ordenes de suministro'],
-            ['label' => 'OS Historial', 'url' => route('finance.supply-orders.history'), 'active' => request()->routeIs('finance.supply-orders.history'), 'menu_box' => 'os', 'menu_box_end' => true],
-            ['label' => 'OR Vigentes', 'url' => route('finance.reimbursement-orders.active'), 'active' => request()->routeIs('finance.reimbursement-orders.active'), 'badge_count' => $pendingReimbursementBadgeCount, 'menu_box' => 'or', 'menu_box_start' => true, 'menu_box_title' => 'Ordenes de reembolso'],
-            ['label' => 'OR Historial', 'url' => route('finance.reimbursement-orders.history'), 'active' => request()->routeIs('finance.reimbursement-orders.history'), 'menu_box' => 'or', 'menu_box_end' => true],
-            ['label' => 'Autorizaciones', 'url' => route('finance.admin.users'), 'active' => request()->routeIs('finance.admin.users')],
-            ['label' => 'Alta Proveedores', 'url' => route('finance.admin.providers'), 'active' => request()->routeIs('finance.admin.providers')],
-            ['label' => 'Alta Empresas', 'url' => route('finance.admin.companies'), 'active' => request()->routeIs('finance.admin.companies')],
-            ['label' => 'Alta Servicio', 'url' => route('services.create'), 'active' => request()->routeIs('services.create')],
-            ['label' => 'Catalogo Servicios', 'url' => route('services.catalog'), 'active' => request()->routeIs('services.catalog') || request()->routeIs('services.edit') || request()->routeIs('services.update')],
+    $navigationPermissionMap = [
+        'Finanzas' => [
+            'OC Vigentes' => 'finance.orders.active',
+            'OC Historial' => 'finance.orders.history',
+            'OP Pendientes' => 'finance.construction.active',
+            'OP Historial' => 'finance.construction.history',
+            'Pago Servicios' => 'finance.services.payments',
+            'Historial de Servicios' => 'finance.services.history',
+            'OS Vigentes' => 'finance.supply.active',
+            'OS Historial' => 'finance.supply.history',
+            'OR Vigentes' => 'finance.reimbursements.active',
+            'OR Historial' => 'finance.reimbursements.history',
+            'Autorizaciones' => 'finance.authorizations',
+            'Alta Proveedores' => 'finance.providers',
+            'Alta Empresas' => 'finance.companies',
+            'Alta Servicio' => 'finance.services.create',
+            'Catalogo Servicios' => 'finance.services.catalog',
         ],
-        'buyer' => $buyerNavItems,
-        'inventory' => [
-            ['label' => 'Dashboard', 'url' => route('dashboard'), 'active' => request()->routeIs('dashboard')],
-            ['label' => 'OC Pagadas', 'url' => route('inventory.orders.index'), 'active' => request()->routeIs('inventory.orders.index') || request()->routeIs('inventory.orders.receipt')],
-            ['label' => 'Historial', 'url' => route('inventory.orders.history'), 'active' => request()->routeIs('inventory.orders.history')],
-            ['label' => 'OS por Entregar', 'url' => route('inventory.supply-orders.active'), 'active' => request()->routeIs('inventory.supply-orders.*'), 'badge_count' => $inventorySupplyBadgeCount],
-            ['label' => 'Inventarios', 'url' => route('inventory.stock.index'), 'active' => request()->routeIs('inventory.stock.*')],
-            ['label' => 'Almacenes', 'url' => route('inventory.warehouses.index'), 'active' => request()->routeIs('inventory.warehouses.*')],
+        'Compras y Suministros' => [
+            'Nueva OC' => 'procurement.orders.create',
+            'Pagadas' => 'procurement.orders.paid',
+            'Pendientes de Pago' => 'procurement.orders.pending_payment',
+            'Mis Ordenes' => 'procurement.orders.mine',
+            'Rechazadas' => 'procurement.orders.rejected',
+            'Nueva OS' => 'procurement.supply.create',
+            'OS Pendientes' => 'procurement.supply.pending',
+            'OS Historial' => 'procurement.supply.history',
+            'Nueva OR' => 'procurement.reimbursements.create',
+            'OR Pendientes' => 'procurement.reimbursements.pending',
+            'OR Historial' => 'procurement.reimbursements.history',
+            'Alta de Proveedor' => 'procurement.providers',
         ],
-        'services' => [
-            ['label' => 'Dashboard', 'url' => route('dashboard'), 'active' => request()->routeIs('dashboard')],
-            ['label' => 'Alta Servicio', 'url' => route('services.create'), 'active' => request()->routeIs('services.create')],
-            ['label' => 'Catalogo Servicios', 'url' => route('services.catalog'), 'active' => request()->routeIs('services.catalog')],
-            ['label' => 'Vista por Meses', 'url' => route('services.months'), 'active' => request()->routeIs('services.months') || request()->routeIs('services.receipt')],
+        'Almacenes e Inventarios' => [
+            'OC Pagadas' => 'inventory.orders.paid',
+            'Historial' => 'inventory.orders.history',
+            'OS por Entregar' => 'inventory.supply.active',
+            'Inventarios' => 'inventory.stock',
+            'Almacenes' => 'inventory.warehouses',
         ],
-        'administrative_assistant' => [
-            ['label' => 'Dashboard', 'url' => route('dashboard'), 'active' => request()->routeIs('dashboard')],
-            ['label' => 'Alta Servicio', 'url' => route('services.create'), 'active' => request()->routeIs('services.create')],
-            ['label' => 'Catalogo Servicios', 'url' => route('services.catalog'), 'active' => request()->routeIs('services.catalog')],
-            ['label' => 'Vista por Mes', 'url' => route('services.months'), 'active' => request()->routeIs('services.months') || request()->routeIs('services.receipt')],
-            ['label' => 'Historial de Servicios', 'url' => route('services.history'), 'active' => request()->routeIs('services.history')],
+        'Servicios' => [
+            'Alta Servicio' => 'services.create',
+            'Catalogo Servicios' => 'services.catalog',
+            'Vista por Mes' => 'services.months',
+            'Historial de Servicios' => 'services.history',
         ],
-        default => [
-            ['label' => 'Dashboard', 'url' => route('dashboard'), 'active' => request()->routeIs('dashboard')],
+        'Recursos Humanos' => [
+            'Inicio' => 'human_resources.dashboard',
+            'Registro de candidatos' => 'human_resources.candidates',
+            'Contratos' => 'human_resources.contracts',
+            'Empleados' => 'human_resources.employees',
+            'Pendientes de Aprobación' => 'human_resources.pending_approvals',
+            'Nómina' => 'human_resources.payroll',
+            'Horas extras' => 'human_resources.overtime',
+            'Reportes' => 'human_resources.reports',
+            'Configuración' => 'human_resources.configuration',
+            'Gerentes y Sucursales' => 'human_resources.managers_branches',
         ],
-    };
+        'Administracion de obra' => [
+            'Panel general' => 'construction.dashboard',
+            'Generadores de obra' => 'construction.generators',
+            'Materiales e insumos' => 'construction.materials',
+            'Mano de obra' => 'construction.labor',
+            'Calendario' => 'construction.calendar',
+            'Historial de pagos' => 'construction.payments',
+            'Ordenes de suministro' => 'construction.supply',
+            'Almacenes' => 'construction.warehouses',
+            'Compras' => 'construction.purchases',
+            'Tabulador de precios unitarios' => 'construction.unit_prices',
+            'Alta de proveedor' => 'construction.providers',
+        ],
+        'Administracion de Plazas' => [
+            'Panel general' => 'plazas.dashboard',
+            'Administracion y Cobranza' => 'plazas.administration',
+            'Contratos' => 'plazas.contracts',
+            'Marketplace' => 'plazas.marketplace',
+            'Arrendatarios' => 'plazas.tenants',
+            'Catalogo de unidades' => 'plazas.properties',
+            'Alta de Usuarios' => 'plazas.users',
+        ],
+        'Seguridad y Vigilancia' => [
+            'Empresas' => 'security.dashboard',
+            'Sucursales' => 'security.branches',
+            'Analíticos' => 'security.analytics',
+            'Alertas' => 'security.alerts',
+            'Usuarios' => 'security.users',
+            'Reportes' => 'security.reports',
+            'Cámaras' => 'security.cameras',
+            'Configuración' => 'security.configuration',
+        ],
+    ];
+
+    $superAdminNavGroups = collect($superAdminNavGroups)
+        ->map(fn (array $items, string $groupLabel) => collect($items)
+            ->map(function (array $item) use ($navigationPermissionMap, $groupLabel) {
+                $item['permission'] = $item['permission'] ?? ($navigationPermissionMap[$groupLabel][$item['label']] ?? null);
+
+                return $item;
+            })
+            ->all())
+        ->all();
+
+    $currentUser = auth()->user();
+    $visibleNavGroups = $currentUser->role === 'superadmin'
+        ? $superAdminNavGroups
+        : collect($superAdminNavGroups)
+            ->except('Superadministrador')
+            ->map(fn (array $items) => collect($items)
+                ->filter(fn (array $item) => filled($item['permission']) && $currentUser->canNavigateTo($item['permission']))
+                ->map(function (array $item) {
+                    unset($item['menu_box'], $item['menu_box_start'], $item['menu_box_end'], $item['menu_box_title']);
+
+                    return $item;
+                })
+                ->values()
+                ->all())
+            ->filter()
+            ->all();
+    $suppressGlobalMessages = request()->routeIs('security.index')
+        && request()->query('section') === 'branches';
 @endphp
 
 <div class="app-shell">
@@ -214,8 +330,10 @@
             </div>
         </div>
         <nav class="nav-list" aria-label="Menu principal">
-            @if (auth()->user()->role === 'superadmin')
-                @foreach ($superAdminNavGroups as $groupLabel => $items)
+            @if ($currentUser->role !== 'superadmin' && $currentUser->canNavigateTo($homeDashboardPermission))
+                <a class="button nav-button {{ request()->routeIs('dashboard') ? 'active' : '' }}" href="{{ route('dashboard') }}">Panel de inicio</a>
+            @endif
+            @foreach ($visibleNavGroups as $groupLabel => $items)
                     @php
                         $groupIsActive = collect($items)->contains(fn ($item) => $item['active']);
                     @endphp
@@ -246,22 +364,7 @@
                             @endforeach
                         </div>
                     </details>
-                @endforeach
-            @else
-                @foreach ($navItems as $item)
-                    @php $badgeCount = $item['badge_count'] ?? (($item['pending_badge'] ?? false) ? $pendingOrderBadgeCount : null); @endphp
-                    @if ($item['menu_box_start'] ?? false)
-                        <div class="nav-box nav-box-{{ $item['menu_box'] ?? 'default' }}">
-                            @if ($item['menu_box_title'] ?? false)
-                                <span class="nav-box-title">{{ $item['menu_box_title'] }}</span>
-                            @endif
-                    @endif
-                    <a class="button nav-button {{ $item['active'] ? 'active' : '' }}" href="{{ $item['url'] }}">{{ $item['label'] }}@if ($badgeCount !== null)<span class="nav-pending-badge {{ $badgeCount ? '' : 'is-empty' }}">{{ $badgeCount }}</span>@endif</a>
-                    @if ($item['menu_box_end'] ?? false)
-                        </div>
-                    @endif
-                @endforeach
-            @endif
+            @endforeach
         </nav>
     </aside>
 
@@ -286,11 +389,11 @@
         </header>
 
         <section class="view">
-            @if (session('status'))
+            @if (! $suppressGlobalMessages && session('status'))
                 <div class="alert">{{ session('status') }}</div>
             @endif
 
-            @if ($errors->any())
+            @if (! $suppressGlobalMessages && $errors->any())
                 <div class="error-list">
                     <strong>Revisa los datos capturados.</strong>
                     <ul>
