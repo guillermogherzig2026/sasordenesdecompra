@@ -105,22 +105,13 @@ class ServiceController extends Controller
     {
         $this->ensureServiceHistory();
 
-        $month = now()->startOfMonth();
-        $items = $this->paidHistoryItemsForMonth($month);
-        $months = [[
-            'month_key' => $month->format('Y-m'),
-            'label' => $this->monthLabel($month),
-            'items' => $items,
-            ...$this->monthTotals($items),
-        ]];
-
         return view('services.months', [
-            'months' => $months,
+            'months' => $this->historyMonthsPayload(),
             'next_week_total' => 0,
             'title' => 'Historial de Servicios',
             'downloadReport' => null,
-            'monthSubtitle' => 'Servicios pagados durante el mes en curso.',
-            'emptyMessage' => 'No hay servicios pagados durante el mes en curso.',
+            'monthSubtitle' => 'Servicios pagados durante este mes.',
+            'emptyMessage' => 'No hay servicios pagados durante este mes.',
             'historyMode' => true,
             'metricLabels' => [
                 'total' => 'Monto pagado del mes',
@@ -266,14 +257,86 @@ class ServiceController extends Controller
         })->all();
     }
 
-    private function paidHistoryItemsForMonth(Carbon $month): Collection
+    private function historyMonthsPayload(): array
     {
-        $paidReceipts = RecurringServiceReceipt::with('recurringService.receipts')
+        $latestMonth = now()->startOfMonth();
+        $paidReceipts = RecurringServiceReceipt::with('recurringService')
             ->whereNotNull('payment_file_path')
-            ->whereYear('payment_paid_on', $month->year)
-            ->whereMonth('payment_paid_on', $month->month)
+            ->whereNotNull('payment_paid_on')
             ->get()
-            ->filter(fn(RecurringServiceReceipt $receipt) => $receipt->recurringService && $receipt->recurringService->status !== 'inactive')
+            ->filter(fn (RecurringServiceReceipt $receipt) => $receipt->recurringService);
+        $domiciledServices = RecurringService::with('receipts')
+            ->where('status', '!=', 'inactive')
+            ->where('is_domiciled', true)
+            ->get();
+        $earliestMonth = $this->earliestHistoryMonth($latestMonth, $paidReceipts, $domiciledServices);
+        $months = [];
+
+        for ($month = $latestMonth->copy(); $month->gte($earliestMonth); $month->subMonthNoOverflow()) {
+            $items = $this->paidHistoryItemsForMonth($month, $paidReceipts, $domiciledServices);
+            $months[] = [
+                'month_key' => $month->format('Y-m'),
+                'label' => $this->monthLabel($month),
+                'items' => $items,
+                ...$this->monthTotals($items),
+            ];
+        }
+
+        return $months;
+    }
+
+    private function earliestHistoryMonth(
+        Carbon $latestMonth,
+        Collection $paidReceipts,
+        Collection $domiciledServices,
+    ): Carbon
+    {
+        $dates = $paidReceipts->pluck('payment_paid_on');
+
+        $domiciledServices->each(function (RecurringService $service) use ($dates): void {
+            $dates->push($this->firstDomiciledPaymentDate($service));
+        });
+
+        $earliestDate = $dates
+            ->filter()
+            ->map(fn ($date) => Carbon::parse($date)->startOfMonth())
+            ->filter(fn (Carbon $date) => $date->lte($latestMonth))
+            ->sortBy(fn (Carbon $date) => $date->timestamp)
+            ->first();
+
+        return $earliestDate ?? $latestMonth;
+    }
+
+    private function firstDomiciledPaymentDate(RecurringService $service): Carbon
+    {
+        $startDate = $service->start_date->copy()->startOfDay();
+
+        if (! $service->cutoff_day) {
+            return $startDate;
+        }
+
+        $cutoff = Carbon::create(
+            $service->cutoff_year ?: $startDate->year,
+            $service->cutoff_month ?: $startDate->month,
+            $service->cutoff_day,
+        )->startOfDay();
+
+        if ($cutoff->lt($startDate)) {
+            $cutoff->addYear();
+        }
+
+        return $cutoff->addDays(max((int) $service->payment_interval_days, 1));
+    }
+
+    private function paidHistoryItemsForMonth(
+        Carbon $month,
+        Collection $paidReceipts,
+        Collection $domiciledServices,
+    ): Collection
+    {
+        $monthKey = $month->format('Y-m');
+        $paidItems = $paidReceipts
+            ->filter(fn (RecurringServiceReceipt $receipt) => $receipt->payment_paid_on?->format('Y-m') === $monthKey)
             ->map(function (RecurringServiceReceipt $receipt) {
                 $service = $receipt->recurringService;
                 $dueDate = $receipt->due_date?->toDateString() ?? now()->toDateString();
@@ -289,16 +352,13 @@ class ServiceController extends Controller
                 ];
             });
 
-        $domiciled = RecurringService::with('receipts')
-            ->where('status', '!=', 'inactive')
-            ->where('is_domiciled', true)
-            ->get()
-            ->flatMap(fn(RecurringService $service) => $this->occurrencesForMonth($service, $month));
+        $domiciled = $domiciledServices
+            ->flatMap(fn (RecurringService $service) => $this->occurrencesForMonth($service, $month));
 
-        return collect($paidReceipts->all())
+        return collect($paidItems->all())
             ->merge($domiciled)
-            ->unique(fn(array $item) => $item['service']->id.'|'.$item['due_date'])
-            ->sortBy(fn(array $item) => $item['receipt']?->payment_paid_on?->toDateString() ?? ($item['payment_due_date'] ?? $item['due_date']))
+            ->unique(fn (array $item) => $item['service']->id.'|'.$item['due_date'])
+            ->sortBy(fn (array $item) => $item['receipt']?->payment_paid_on?->toDateString() ?? ($item['payment_due_date'] ?? $item['due_date']))
             ->values();
     }
 

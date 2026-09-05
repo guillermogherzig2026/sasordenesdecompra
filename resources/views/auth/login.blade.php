@@ -21,13 +21,16 @@
             <form method="POST" action="{{ route('login.store') }}" class="stack">
                 @csrf
                 <label>
-                    Correo
-                    <input name="email" type="email" value="{{ old('email') }}" autocomplete="username" required autofocus>
+                    Correo o usuario
+                    <input name="login" value="{{ old('login', old('email')) }}" autocomplete="username" autocapitalize="none" required autofocus>
                 </label>
                 <label>
                     Contrasena
                     <input name="password" type="password" autocomplete="current-password" required>
                 </label>
+                @error('login')
+                    <p class="form-error">{{ $message }}</p>
+                @enderror
                 @error('email')
                     <p class="form-error">{{ $message }}</p>
                 @enderror

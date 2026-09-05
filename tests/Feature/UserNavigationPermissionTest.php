@@ -6,6 +6,7 @@ use App\Models\Company;
 use App\Models\User;
 use App\Support\NavigationPermissionCatalog;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
 
 class UserNavigationPermissionTest extends TestCase
@@ -31,6 +32,11 @@ class UserNavigationPermissionTest extends TestCase
         $response->assertSee('data-authorization-view-target="users"', false);
         $response->assertSee('Nuevo usuario');
         $response->assertSee('Ver usuarios');
+        $response->assertSee('name="first_name"', false);
+        $response->assertSee('name="paternal_last_name"', false);
+        $response->assertSee('name="maternal_last_name"', false);
+        $response->assertSee('name="username"', false);
+        $response->assertSee('data-credential-generator', false);
         $response->assertSee('data-role-navigation-manager', false);
         $response->assertSee('aria-controls="user-authorization-create-content"', false);
         $response->assertSee('aria-controls="authorized-users-content"', false);
@@ -93,6 +99,48 @@ class UserNavigationPermissionTest extends TestCase
         $response->assertSee('value="security.users"', false);
         $response->assertSee('value="security.reports"', false);
         $response->assertSee('value="security.configuration"', false);
+    }
+
+    public function test_personal_name_fields_generate_and_save_login_credentials(): void
+    {
+        $superAdmin = User::factory()->create([
+            'role' => 'superadmin',
+            'active' => true,
+        ]);
+
+        $response = $this->actingAs($superAdmin)->post(route('finance.admin.users.store'), [
+            'first_name' => 'Jose Arturo',
+            'paternal_last_name' => 'Gomez',
+            'maternal_last_name' => 'Cuellar',
+            'email' => 'jose.gomez@example.com',
+        ]);
+
+        $response->assertRedirect(route('finance.admin.users'));
+
+        $user = User::where('email', 'jose.gomez@example.com')->firstOrFail();
+        $this->assertSame('Jose Arturo', $user->first_name);
+        $this->assertSame('Gomez', $user->paternal_last_name);
+        $this->assertSame('Cuellar', $user->maternal_last_name);
+        $this->assertSame('Jose Arturo Gomez Cuellar', $user->name);
+        $this->assertSame('jagomezc', $user->username);
+        $this->assertMatchesRegularExpression('/^jagomezc202[4-6]$/', $user->plain_password);
+        $this->assertTrue(Hash::check($user->plain_password, $user->password));
+    }
+
+    public function test_a_user_can_log_in_with_the_generated_username(): void
+    {
+        $user = User::factory()->create([
+            'username' => 'jagomezc',
+            'password' => 'jagomezc2024',
+            'active' => true,
+        ]);
+
+        $this->post(route('login.store'), [
+            'login' => 'jagomezc',
+            'password' => 'jagomezc2024',
+        ])->assertRedirect(route('dashboard'));
+
+        $this->assertAuthenticatedAs($user);
     }
 
     public function test_selected_navigation_permissions_are_saved_for_a_user(): void

@@ -75,14 +75,16 @@
                                 </td>
                                 <td>
                                     @if ($order->payment)
-                                        <a class="button ghost small" href="{{ route('finance.orders.payment-receipt', $order) }}" target="_blank" rel="noopener" aria-label="Ver comprobante de pago">Ver</a>
-                                        @if ($order->status === 'paid')
-                                            <form class="replace-payment-form" method="POST" action="{{ route('finance.orders.payment-receipt.replace', $order) }}" enctype="multipart/form-data" data-replace-payment-form>
-                                                @csrf
-                                                <input id="payment-file-{{ $order->id }}" name="payment_file" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" required hidden data-replace-payment-input>
-                                                <button class="button ghost small" type="button" data-replace-payment-trigger>Cambiar comprobante</button>
-                                            </form>
-                                        @endif
+                                        <div class="payment-actions">
+                                            <a class="button ghost small" href="{{ route('finance.orders.payment-receipt', $order) }}" target="_blank" rel="noopener" aria-label="Ver comprobante de pago">Ver</a>
+                                            @if ($order->status === 'paid')
+                                                <form class="replace-payment-form" method="POST" action="{{ route('finance.orders.payment-receipt.replace', $order) }}" enctype="multipart/form-data" data-replace-payment-form>
+                                                    @csrf
+                                                    <input id="payment-file-{{ $order->id }}" name="payment_file" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" required hidden data-replace-payment-input>
+                                                    <button class="button ghost small payment-replace-button" type="button" data-replace-payment-trigger>Sustituir</button>
+                                                </form>
+                                            @endif
+                                        </div>
                                     @else
                                         Sin pago
                                     @endif
@@ -137,8 +139,9 @@
     </style>
 
     <style>
-        .replace-payment-form { margin-top: 8px; }
-        .replace-payment-form .button { justify-self: start; }
+        .payment-actions { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+        .replace-payment-form { display: inline-flex; margin: 0; }
+        .payment-replace-button { min-height: 30px; padding: 5px 8px; border-radius: 6px; font-size: .78rem; line-height: 1; }
         .rejection-popover { position: relative; display: inline-block; }
         .rejection-popover summary { cursor: pointer; list-style: none; }
         .rejection-popover summary::-webkit-details-marker { display: none; }

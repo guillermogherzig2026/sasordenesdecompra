@@ -33,6 +33,7 @@ class ConstructionPaymentOrderFlowTest extends TestCase
             'Factura',
             'Pago',
             'Fecha de Pago',
+            'Descartar',
         ]);
         $finance->assertSee('NOM-S26');
         $finance->assertSee('PAQ-005');
@@ -40,6 +41,11 @@ class ConstructionPaymentOrderFlowTest extends TestCase
         $labor = $this->actingAs($user)->get(route('construction.placeholder', 'mano-obra'));
 
         $labor->assertOk();
+        $labor->assertSee('data-labor-all-projects', false);
+        $labor->assertSee('data-project-id="all"', false);
+        $labor->assertSee('Mostrar pagos de todas las obras');
+        $labor->assertSee('<th>Obra</th>', false);
+        $labor->assertSee('class="labor-project-cell"', false);
         $labor->assertSee('Fecha limite de pago');
         $labor->assertSee('03/07/2026');
     }
@@ -135,7 +141,57 @@ class ConstructionPaymentOrderFlowTest extends TestCase
             ->assertSee('17/08/2026');
     }
 
-    public function test_invoice_uploaded_from_labor_is_visible_to_finance(): void
+    public function test_finance_can_discard_a_payment_occurrence_into_both_histories(): void
+    {
+        $user = $this->superadmin();
+        $order = ConstructionPaymentOrder::where('code', 'NOM-S26')->firstOrFail();
+        $payrollId = $order->construction_payroll_id;
+
+        $response = $this->actingAs($user)->patch(
+            route('finance.construction-payment-orders.discard', $order)
+        );
+
+        $response->assertRedirect(route('finance.construction-payment-orders.history'));
+        $response->assertSessionHas('status', 'NOM-S26 descartada y enviada al historial.');
+
+        $order->refresh();
+        $this->assertSame('Descartada', $order->status);
+        $this->assertSame('canceled', $order->statusClass());
+        $this->assertNotNull($order->discarded_at);
+        $this->assertSame($user->id, $order->discarded_by);
+        $this->assertNull($order->payment_file_path);
+        $this->assertDatabaseHas('construction_payrolls', [
+            'id' => $payrollId,
+            'code' => 'NOM-S26',
+        ]);
+        $this->assertDatabaseHas('construction_audit_logs', [
+            'construction_project_id' => $order->construction_project_id,
+            'action' => 'Orden de pago descartada',
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('finance.construction-payment-orders.active'))
+            ->assertDontSee('data-payment-code="NOM-S26"', false);
+        $this->actingAs($user)
+            ->get(route('finance.construction-payment-orders.history'))
+            ->assertSee('data-payment-code="NOM-S26"', false)
+            ->assertSee('Descartada');
+        $this->actingAs($user)
+            ->get(route('construction.placeholder', [
+                'section' => 'mano-obra',
+                'project' => $order->construction_project_id,
+            ]))
+            ->assertDontSee('data-labor-code="NOM-S26"', false);
+        $this->actingAs($user)
+            ->get(route('construction.placeholder', [
+                'section' => 'pagos',
+                'project' => $order->construction_project_id,
+            ]))
+            ->assertSee('data-payment-code="NOM-S26"', false)
+            ->assertSee('Descartada');
+    }
+
+    public function test_invoice_documents_uploaded_from_labor_are_available_from_the_modal(): void
     {
         Storage::fake('local');
         $user = $this->superadmin();
@@ -145,6 +201,14 @@ class ConstructionPaymentOrderFlowTest extends TestCase
             'section' => 'mano-obra',
             'project' => $order->construction_project_id,
         ]);
+
+        $this->assertSame(0, $order->invoiceDocumentCount());
+        $this->assertSame('empty', $order->invoiceDocumentStatus());
+        $this->actingAs($user)
+            ->get($laborUrl)
+            ->assertSee('class="button ghost small invoice-upload-button invoice-upload-empty"', false)
+            ->assertSee('data-invoice-document-count="0"', false);
+
         $this->actingAs($user)
             ->from($laborUrl)
             ->post(
@@ -154,8 +218,65 @@ class ConstructionPaymentOrderFlowTest extends TestCase
             ->assertRedirect($laborUrl);
 
         $order->refresh();
+        $this->assertSame(1, $order->invoiceDocumentCount());
+        $this->assertSame('partial', $order->invoiceDocumentStatus());
+        $this->actingAs($user)
+            ->get($laborUrl)
+            ->assertSee('class="button ghost small invoice-upload-button invoice-upload-partial"', false)
+            ->assertSee('data-invoice-document-count="1"', false);
+
+        $this->actingAs($user)
+            ->from($laborUrl)
+            ->post(
+                route('construction.payment-orders.invoice.store', $order),
+                ['invoice_xml_file' => UploadedFile::fake()->create('factura-nomina.xml', 20, 'application/xml')]
+            )
+            ->assertRedirect($laborUrl);
+
+        $order->refresh();
+        $this->assertSame(2, $order->invoiceDocumentCount());
+        $this->assertSame('partial', $order->invoiceDocumentStatus());
+
+        $this->actingAs($user)
+            ->from($laborUrl)
+            ->post(
+                route('construction.payment-orders.invoice.store', $order),
+                ['fiscal_verification_file' => UploadedFile::fake()->create('verificacion-fiscal.pdf', 60, 'application/pdf')]
+            )
+            ->assertRedirect($laborUrl);
+
+        $order->refresh();
+        $this->assertSame(3, $order->invoiceDocumentCount());
+        $this->assertSame('complete', $order->invoiceDocumentStatus());
         $this->assertNotNull($order->invoice_file_path);
+        $this->assertNotNull($order->invoice_xml_file_path);
+        $this->assertNotNull($order->fiscal_verification_file_path);
         Storage::disk('local')->assertExists($order->invoice_file_path);
+        Storage::disk('local')->assertExists($order->invoice_xml_file_path);
+        Storage::disk('local')->assertExists($order->fiscal_verification_file_path);
+
+        $labor = $this->actingAs($user)->get($laborUrl);
+        $labor->assertOk();
+        $labor->assertSee('class="button ghost small invoice-upload-button invoice-upload-complete"', false);
+        $labor->assertSee('data-invoice-document-count="3"', false);
+        $labor->assertSee('data-supply-detail-open="invoice-documents-dialog-'.$order->id.'"', false);
+        $labor->assertSee('Subir factura PDF');
+        $labor->assertSee('Subir XML');
+        $labor->assertSee('Subir verificaci&oacute;n fiscal PDF', false);
+        $labor->assertSee('name="invoice_file"', false);
+        $labor->assertSee('name="invoice_xml_file"', false);
+        $labor->assertSee('name="fiscal_verification_file"', false);
+
+        $this->actingAs($user)
+            ->get(route('construction.payment-orders.invoice', $order))
+            ->assertOk();
+        $this->actingAs($user)
+            ->get(route('construction.payment-orders.invoice.xml', $order))
+            ->assertOk();
+        $this->actingAs($user)
+            ->get(route('construction.payment-orders.invoice.fiscal-verification', $order))
+            ->assertOk();
+
         $this->actingAs($user)
             ->get(route('finance.construction-payment-orders.active'))
             ->assertSee(route('finance.construction-payment-orders.invoice', $order), false);
@@ -180,6 +301,64 @@ class ConstructionPaymentOrderFlowTest extends TestCase
             'action' => 'Estimacion eliminada',
             'description' => 'Se elimino la estimacion PAQ-005.',
         ]);
+    }
+
+    public function test_removing_a_current_payroll_payment_keeps_its_payroll_catalog_entry(): void
+    {
+        $user = $this->superadmin();
+        $order = ConstructionPaymentOrder::where('code', 'NOM-S26')->firstOrFail();
+        $payrollId = $order->construction_payroll_id;
+        $laborUrl = route('construction.placeholder', [
+            'section' => 'mano-obra',
+            'project' => $order->construction_project_id,
+        ]);
+
+        $response = $this->actingAs($user)
+            ->delete(route('construction.payment-orders.destroy', $order));
+
+        $response->assertRedirect($laborUrl);
+        $response->assertSessionHas('status', 'Pago vigente NOM-S26 enviado a los historiales correctamente.');
+        $this->assertDatabaseHas('construction_payment_orders', [
+            'id' => $order->id,
+            'construction_payroll_id' => $payrollId,
+            'status' => 'Descartada',
+            'discarded_by' => $user->id,
+        ]);
+        $order->refresh();
+        $this->assertNotNull($order->dismissed_at);
+        $this->assertNotNull($order->discarded_at);
+        $this->assertNull($order->payment_file_path);
+        $this->assertSame('Descartada', $order->displayStatus());
+        $this->assertSame('canceled', $order->statusClass());
+        $this->assertDatabaseHas('construction_payrolls', [
+            'id' => $payrollId,
+            'code' => 'NOM-S26',
+        ]);
+        $this->assertDatabaseHas('construction_audit_logs', [
+            'construction_project_id' => $order->construction_project_id,
+            'action' => 'Pago vigente enviado a historial',
+        ]);
+
+        $this->actingAs($user)
+            ->get($laborUrl)
+            ->assertOk()
+            ->assertDontSee('data-labor-code="NOM-S26"', false)
+            ->assertSee('data-payroll-row', false)
+            ->assertSee('NOM-S26');
+        $this->actingAs($user)
+            ->get(route('finance.construction-payment-orders.active'))
+            ->assertDontSee('data-payment-code="NOM-S26"', false);
+        $this->actingAs($user)
+            ->get(route('finance.construction-payment-orders.history'))
+            ->assertSee('data-payment-code="NOM-S26"', false)
+            ->assertSee('Descartada');
+        $this->actingAs($user)
+            ->get(route('construction.placeholder', [
+                'section' => 'pagos',
+                'project' => $order->construction_project_id,
+            ]))
+            ->assertSee('data-payment-code="NOM-S26"', false)
+            ->assertSee('Descartada');
     }
 
     public function test_finance_payment_moves_an_estimate_to_both_histories(): void

@@ -3,19 +3,11 @@
 @section('body')
     <x-app-shell :title="$label">
         @if ($showProjectCarousel)
-            @php
-                $activeProjects = $projects->where('status', 'En ejecucion')->values();
-
-                if ($activeProjects->isEmpty()) {
-                    $activeProjects = $projects->values();
-                }
-            @endphp
-
             <section class="panel construction-carousel-panel" data-construction-carousel>
                 <div class="construction-carousel-header">
                     <div class="construction-carousel-title">
-                        <span class="construction-carousel-count">{{ $activeProjects->count() }}</span>
-                        <h2>Obras activas</h2>
+                        <span class="construction-carousel-count">{{ $carouselProjects->count() }}</span>
+                        <h2>Obras activas y por iniciar</h2>
                     </div>
                     <a class="button ghost small" href="{{ route('construction.dashboard') }}">Atras</a>
                 </div>
@@ -40,8 +32,8 @@
                             </a>
                         @endif
 
-                        @forelse ($activeProjects as $project)
-                            <button class="construction-project-tile {{ $loop->first ? 'active' : '' }}" type="button" data-carousel-option data-project-select aria-pressed="{{ $loop->first ? 'true' : 'false' }}">
+                        @forelse ($carouselProjects as $project)
+                            <button class="construction-project-tile {{ $loop->first ? 'active' : '' }}" type="button" data-carousel-option data-project-select data-carousel-project-id="{{ $project->id }}" data-carousel-project-status="{{ $project->status }}" aria-pressed="{{ $loop->first ? 'true' : 'false' }}">
                                 <span class="construction-project-avatar">
                                     @if ($project->photo_path)
                                         <img src="{{ $project->photo_path }}" alt="">
@@ -69,7 +61,9 @@
         @endif
 
         @if ($showGeneratorPanel ?? false)
-            @include('construction.partials.generator-quantification')
+            @include('construction.partials.generator-quantification', [
+                'activeProjects' => $carouselProjects,
+            ])
         @elseif ($showMaterialsCatalogButton ?? false)
             @include('construction.partials.materials-explosion-catalog')
         @else

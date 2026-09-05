@@ -605,6 +605,7 @@ function makeCandidates() {
     rhInterview: item[10],
     technicalInterview: item[11],
     responsible: item[12],
+    interviewRound: (index % 7) + 1,
     requestedSalary: item[13],
     proposedOffer: item[14],
     negotiationStatus: item[15],
@@ -795,4 +796,3 @@ export const routeTitles = {
   vacations: "Vacaciones",
   audit: "Historial y auditoría"
 };
-

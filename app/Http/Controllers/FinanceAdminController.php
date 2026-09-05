@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 class FinanceAdminController extends Controller
@@ -29,6 +30,7 @@ class FinanceAdminController extends Controller
             'companies' => Company::orderBy('name')->get(),
             'supplyWarehouses' => $this->supplyWarehouseAuthorizationRows(),
             'navigationCatalog' => NavigationPermissionCatalog::categories(),
+            'existingUsernames' => User::whereNotNull('username')->pluck('username')->values(),
         ]);
     }
 
@@ -37,9 +39,13 @@ class FinanceAdminController extends Controller
         $this->ensureFinance();
 
         $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
+            'name' => ['nullable', 'string', 'max:255', 'required_without:first_name'],
+            'first_name' => ['nullable', 'string', 'max:80', 'required_without:name'],
+            'paternal_last_name' => ['nullable', 'string', 'max:80'],
+            'maternal_last_name' => ['nullable', 'string', 'max:80'],
+            'username' => ['nullable', 'string', 'max:80', 'regex:/^[a-z0-9]+$/', Rule::unique('users', 'username')],
             'email' => ['required', 'email', 'unique:users,email'],
-            'password' => ['required', 'string', 'min:6'],
+            'password' => ['nullable', 'string', 'min:6'],
             'companies' => ['array'],
             'companies.*' => ['string'],
             'supply_warehouses' => ['array'],
@@ -56,12 +62,18 @@ class FinanceAdminController extends Controller
         $role = $this->roleForMenuPermissions($menuPermissions);
         $buyerSubroles = $this->buyerSubrolesForMenuPermissions($menuPermissions);
         $companies = $this->companyAssignments($validated['companies'] ?? [], $validated['warehouses'] ?? [], $validated['supply_warehouses'] ?? []);
+        $personalName = $this->personalNamePayload($validated);
+        $username = filled($validated['username'] ?? null)
+            ? $validated['username']
+            : $this->availableUsername($this->suggestedUsername($personalName));
+        $password = $validated['password'] ?? $username.random_int(2024, 2026);
 
         $user = User::create([
-            'name' => $validated['name'],
+            ...$personalName,
+            'username' => $username,
             'email' => strtolower($validated['email']),
-            'password' => $validated['password'],
-            'plain_password' => $validated['password'],
+            'password' => $password,
+            'plain_password' => $password,
             'role' => $role,
             'buyer_subrole' => $role === 'buyer' ? $this->buyerSubrolesPayload($buyerSubroles) : null,
             'companies' => $companies,
@@ -80,7 +92,11 @@ class FinanceAdminController extends Controller
         abort_if(! in_array($user->role, ['buyer', 'inventory', 'administrative_assistant'], true), 403);
 
         $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
+            'name' => ['nullable', 'string', 'max:255', 'required_without:first_name'],
+            'first_name' => ['nullable', 'string', 'max:80', 'required_without:name'],
+            'paternal_last_name' => ['nullable', 'string', 'max:80'],
+            'maternal_last_name' => ['nullable', 'string', 'max:80'],
+            'username' => ['nullable', 'string', 'max:80', 'regex:/^[a-z0-9]+$/', Rule::unique('users', 'username')->ignore($user->id)],
             'email' => ['required', 'email', Rule::unique('users', 'email')->ignore($user->id)],
             'password' => ['nullable', 'string', 'min:6'],
             'companies' => ['array'],
@@ -98,9 +114,11 @@ class FinanceAdminController extends Controller
         $menuPermissions = $this->menuPermissionsPayload($request, $validated, $user->role, $user->buyerSubroles());
         $role = $this->roleForMenuPermissions($menuPermissions);
         $buyerSubroles = $this->buyerSubrolesForMenuPermissions($menuPermissions);
+        $personalName = $this->personalNamePayload($validated);
 
         $payload = [
-            'name' => $validated['name'],
+            ...$personalName,
+            'username' => $validated['username'] ?? $user->username,
             'email' => strtolower($validated['email']),
             'role' => $role,
             'buyer_subrole' => $role === 'buyer' ? $this->buyerSubrolesPayload($buyerSubroles) : null,
@@ -666,6 +684,50 @@ class FinanceAdminController extends Controller
             $fallbackRole,
             $fallbackBuyerSubroles
         );
+    }
+
+    private function personalNamePayload(array $validated): array
+    {
+        $firstName = trim((string) ($validated['first_name'] ?? $validated['name'] ?? ''));
+        $paternalLastName = trim((string) ($validated['paternal_last_name'] ?? ''));
+        $maternalLastName = trim((string) ($validated['maternal_last_name'] ?? ''));
+
+        return [
+            'name' => collect([$firstName, $paternalLastName, $maternalLastName])->filter()->implode(' '),
+            'first_name' => $firstName,
+            'paternal_last_name' => $paternalLastName ?: null,
+            'maternal_last_name' => $maternalLastName ?: null,
+        ];
+    }
+
+    private function suggestedUsername(array $personalName): string
+    {
+        $givenNames = preg_split('/\s+/', trim((string) $personalName['first_name']), -1, PREG_SPLIT_NO_EMPTY) ?: [];
+        $initials = collect($givenNames)
+            ->map(fn (string $name) => substr($this->normalizeUsername($name), 0, 1))
+            ->implode('');
+        $paternalLastName = $this->normalizeUsername((string) $personalName['paternal_last_name']);
+        $maternalInitial = substr($this->normalizeUsername((string) $personalName['maternal_last_name']), 0, 1);
+
+        return substr($initials.$paternalLastName.$maternalInitial, 0, 80) ?: 'usuario';
+    }
+
+    private function availableUsername(string $base): string
+    {
+        $candidate = $base;
+        $suffix = 2;
+
+        while (User::where('username', $candidate)->exists()) {
+            $suffixText = (string) $suffix++;
+            $candidate = substr($base, 0, 80 - strlen($suffixText)).$suffixText;
+        }
+
+        return $candidate;
+    }
+
+    private function normalizeUsername(string $value): string
+    {
+        return preg_replace('/[^a-z0-9]/', '', strtolower(Str::ascii($value))) ?: '';
     }
 
     private function audit($model, string $action, string $description): void

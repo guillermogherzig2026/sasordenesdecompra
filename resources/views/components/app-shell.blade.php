@@ -390,7 +390,7 @@
 
         <section class="view">
             @if (! $suppressGlobalMessages && session('status'))
-                <div class="alert">{{ session('status') }}</div>
+                <x-system-message-dialog :message="session('status')" />
             @endif
 
             @if (! $suppressGlobalMessages && $errors->any())

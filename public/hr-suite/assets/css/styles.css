@@ -1028,6 +1028,182 @@ body.hr-suite-embedded .content {
   box-shadow: none;
 }
 
+.interview-round-column {
+  min-width: 176px;
+}
+
+.interview-round {
+  display: grid;
+  gap: 3px;
+  min-width: 124px;
+}
+
+.interview-round > strong {
+  color: #172554;
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+.interview-round > span:not(.interview-round-progress) {
+  color: var(--muted);
+  display: -webkit-box;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.2;
+  max-width: 164px;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.interview-round-progress {
+  width: 126px;
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 3px;
+}
+
+.interview-round-progress b {
+  height: 4px;
+  border-radius: 2px;
+  background: #dce3ed;
+}
+
+.interview-round-progress b.is-complete {
+  background: #3157d5;
+}
+
+.interview-round-progress b.is-current {
+  box-shadow: 0 0 0 1px rgba(49, 87, 213, 0.24);
+}
+
+.next-interview-column {
+  min-width: 158px;
+}
+
+.next-interview-cell {
+  display: grid;
+  gap: 4px;
+}
+
+.next-interview-cell strong {
+  color: var(--text);
+  font-size: 12px;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.next-interview-cell span {
+  color: #3157d5;
+  font-size: 10px;
+  font-weight: 900;
+  line-height: 1.2;
+}
+
+.next-interview-cell.is-complete span {
+  color: var(--green);
+}
+
+.interview-rounds-modal {
+  width: min(100%, 760px);
+}
+
+.modal-subtitle {
+  color: var(--muted);
+  font-size: 12px;
+  margin: 3px 0 0;
+}
+
+.interview-rounds-list {
+  display: grid;
+  gap: 8px;
+}
+
+.interview-round-item {
+  align-items: center;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  min-height: 62px;
+  padding: 10px 12px;
+}
+
+.interview-round-item.is-editing {
+  align-items: start;
+  background: #f8fbff;
+  border-color: #9db5ef;
+}
+
+.interview-round-number {
+  align-items: center;
+  align-self: start;
+  background: #eaf0ff;
+  border-radius: 6px;
+  color: #3157d5;
+  display: inline-flex;
+  font-size: 13px;
+  font-weight: 900;
+  height: 34px;
+  justify-content: center;
+  width: 34px;
+}
+
+.interview-round-detail {
+  min-width: 0;
+}
+
+.interview-round-kicker {
+  color: #3157d5;
+  display: block;
+  font-size: 10px;
+  font-weight: 900;
+  margin-bottom: 3px;
+  text-transform: uppercase;
+}
+
+.interview-round-detail p {
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.35;
+  margin: 0;
+}
+
+.interview-round-edit-form,
+.interview-round-edit-form .form-field {
+  margin: 0;
+}
+
+.interview-round-edit-form textarea {
+  min-height: 72px;
+  resize: vertical;
+}
+
+.interview-round-edit-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 8px;
+}
+
+.interview-round-edit {
+  align-self: center;
+}
+
+@media (max-width: 640px) {
+  .interview-round-item {
+    grid-template-columns: 34px minmax(0, 1fr);
+  }
+
+  .interview-round-edit {
+    grid-column: 2;
+    justify-self: start;
+  }
+}
+
 .candidate-form-screen {
   align-content: start;
 }
@@ -2395,6 +2571,11 @@ tfoot td {
   color: #64748b;
   font-size: 10px;
   line-height: 1.15;
+}
+
+.contract-wizard-actions {
+  justify-content: flex-end;
+  width: 100%;
 }
 
 .contract-employee-row .employee-cell > span {

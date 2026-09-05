@@ -13,7 +13,7 @@
                     <h2>{{ $project->exists ? "Editar {$project->project_key}" : 'Nueva obra' }}</h2>
                     <p class="fine-print">Captura los datos principales del expediente de obra.</p>
                 </div>
-                <a class="button ghost" href="{{ route('construction.dashboard').'#panel-general-obras' }}">Volver</a>
+                <a class="button ghost" href="{{ route('construction.dashboard') }}">Volver</a>
             </div>
 
             <div class="grid-3">

@@ -41,10 +41,10 @@ class FinanceConstructionPaymentOrderController extends Controller
 
         return view('finance.construction-payment-orders.history', [
             'orders' => ConstructionPaymentOrder::query()
-                ->paid()
+                ->historical()
                 ->search($query)
-                ->with(['project', 'paidBy'])
-                ->orderByDesc('paid_on')
+                ->with(['project', 'paidBy', 'discardedBy'])
+                ->orderByDesc('updated_at')
                 ->orderBy('code')
                 ->get(),
             'query' => $query,
@@ -99,6 +99,42 @@ class FinanceConstructionPaymentOrderController extends Controller
         return redirect()
             ->route('finance.construction-payment-orders.history')
             ->with('status', "{$paymentOrder->code} pagado y enviado al historial.");
+    }
+
+    public function discard(Request $request, ConstructionPaymentOrder $paymentOrder): RedirectResponse
+    {
+        $this->ensureFinance();
+        abort_unless(
+            blank($paymentOrder->payment_file_path)
+                && blank($paymentOrder->dismissed_at)
+                && blank($paymentOrder->discarded_at)
+                && ! in_array($paymentOrder->status, ['Pagada', 'Pagado', 'Cancelada', 'Cancelado', 'Descartada'], true),
+            422,
+        );
+
+        $oldValues = $paymentOrder->toArray();
+        $paymentOrder->update([
+            'status' => 'Descartada',
+            'discarded_at' => now(),
+            'discarded_by' => Auth::id(),
+        ]);
+
+        ConstructionAuditLog::create([
+            'user_id' => Auth::id(),
+            'construction_project_id' => $paymentOrder->construction_project_id,
+            'occurred_at' => now(),
+            'module' => 'Administracion de obra',
+            'action' => 'Orden de pago descartada',
+            'description' => "Finanzas descarto la orden de pago {$paymentOrder->code}.",
+            'old_values' => $oldValues,
+            'new_values' => $paymentOrder->fresh()->toArray(),
+            'ip_address' => $request->ip(),
+            'user_agent' => $request->userAgent(),
+        ]);
+
+        return redirect()
+            ->route('finance.construction-payment-orders.history')
+            ->with('status', "{$paymentOrder->code} descartada y enviada al historial.");
     }
 
     public function invoice(ConstructionPaymentOrder $paymentOrder)

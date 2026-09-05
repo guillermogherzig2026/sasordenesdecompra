@@ -39,32 +39,11 @@ class ConstructionAdminController extends Controller
             ->with(['client', 'responsible'])
             ->orderBy('project_key')
             ->get();
-
-        $summary = [
-            'projects' => $projects->count(),
-            'active' => $projects->where('status', 'En ejecucion')->count(),
-            'contracted' => $projects->sum('contracted_value'),
-            'paid' => $projects->sum('paid_amount'),
-            'pending' => $projects->sum(fn (ConstructionProject $project): float => $project->balance_to_pay),
-            'physical' => round($projects->avg('physical_progress') ?? 0, 2),
-            'financial' => round($projects->avg('financial_progress') ?? 0, 2),
-        ];
-
-        $editableProjectIds = $this->canManage($request->user())
-            ? $projects->pluck('id')->all()
-            : DB::table('construction_project_user')
-                ->where('user_id', $request->user()->id)
-                ->where('can_edit', true)
-                ->whereIn('construction_project_id', $projects->pluck('id'))
-                ->pluck('construction_project_id')
-                ->map(fn ($projectId): int => (int) $projectId)
-                ->all();
+        $carouselProjects = $this->carouselProjects($projects);
 
         return view('construction.dashboard', [
             'projects' => $projects,
-            'summary' => $summary,
-            'editableProjectIds' => $editableProjectIds,
-            'projectStatuses' => ConstructionProject::STATUSES,
+            'carouselProjects' => $carouselProjects,
             'auditLogs' => ConstructionAuditLog::with(['user', 'project'])->latest('occurred_at')->limit(6)->get(),
         ]);
     }
@@ -152,14 +131,14 @@ class ConstructionAdminController extends Controller
         $this->recordAudit($request, $project, 'Obra creada', "Se creo la obra {$project->project_key}.");
 
         return redirect()->route('construction.dashboard')
-            ->with('status', 'Obra creada correctamente.');
+            ->with('construction_project_created', 'Obra creada correctamente.');
     }
 
     public function show(Request $request, ConstructionProject $project): RedirectResponse
     {
         $this->authorizeProject($request, $project);
 
-        return redirect(route('construction.dashboard').'#project-row-'.$project->id);
+        return redirect()->route('construction.dashboard');
     }
 
     public function edit(Request $request, ConstructionProject $project): View
@@ -194,7 +173,7 @@ class ConstructionAdminController extends Controller
 
         $this->recordAudit($request, $project, 'Obra actualizada', "Se actualizo la obra {$project->project_key}.", $oldValues, $project->only(array_keys($oldValues)));
 
-        return redirect(route('construction.dashboard').'#project-row-'.$project->id)
+        return redirect()->route('construction.dashboard')
             ->with('status', 'Obra actualizada correctamente.');
     }
 
@@ -232,8 +211,8 @@ class ConstructionAdminController extends Controller
         $project->delete();
 
         return redirect()
-            ->route('construction.projects.index')
-            ->with('status', 'Obra enviada a borrado logico.');
+            ->route('construction.dashboard')
+            ->with('status', 'Obra eliminada correctamente.');
     }
 
     public function audit(): View
@@ -490,27 +469,69 @@ class ConstructionAdminController extends Controller
         abort_unless($this->canEditProject($request->user(), $paymentOrder->project), 403);
 
         $request->validate([
-            'invoice_file' => ['required', 'file', 'mimes:pdf,jpg,jpeg,png,webp', 'max:10240'],
+            'invoice_file' => ['nullable', 'required_without_all:invoice_xml_file,fiscal_verification_file', 'file', 'mimes:pdf', 'max:10240'],
+            'invoice_xml_file' => ['nullable', 'required_without_all:invoice_file,fiscal_verification_file', 'file', 'mimes:xml', 'max:5120'],
+            'fiscal_verification_file' => ['nullable', 'required_without_all:invoice_file,invoice_xml_file', 'file', 'mimes:pdf', 'max:10240'],
         ]);
 
-        if ($paymentOrder->invoice_file_path && Storage::exists($paymentOrder->invoice_file_path)) {
-            Storage::delete($paymentOrder->invoice_file_path);
+        $documentTypes = [
+            'invoice_file' => [
+                'path' => 'invoice_file_path',
+                'name' => 'invoice_original_name',
+                'directory' => 'construction-payment-invoices',
+                'label' => 'Factura PDF',
+            ],
+            'invoice_xml_file' => [
+                'path' => 'invoice_xml_file_path',
+                'name' => 'invoice_xml_original_name',
+                'directory' => 'construction-payment-invoice-xml',
+                'label' => 'XML',
+            ],
+            'fiscal_verification_file' => [
+                'path' => 'fiscal_verification_file_path',
+                'name' => 'fiscal_verification_original_name',
+                'directory' => 'construction-payment-fiscal-verifications',
+                'label' => 'Verificacion fiscal PDF',
+            ],
+        ];
+        $updates = [];
+        $replacedPaths = [];
+        $uploadedLabels = [];
+
+        foreach ($documentTypes as $input => $documentType) {
+            $file = $request->file($input);
+
+            if (! $file) {
+                continue;
+            }
+
+            if (filled($paymentOrder->{$documentType['path']})) {
+                $replacedPaths[] = $paymentOrder->{$documentType['path']};
+            }
+
+            $updates[$documentType['path']] = $file->store($documentType['directory']);
+            $updates[$documentType['name']] = $file->getClientOriginalName();
+            $uploadedLabels[] = $documentType['label'];
         }
 
-        $file = $request->file('invoice_file');
-        $paymentOrder->update([
-            'invoice_file_path' => $file->store('construction-payment-invoices'),
-            'invoice_original_name' => $file->getClientOriginalName(),
-        ]);
+        $paymentOrder->update($updates);
+
+        foreach ($replacedPaths as $path) {
+            if (Storage::exists($path)) {
+                Storage::delete($path);
+            }
+        }
+
+        $uploadedDescription = implode(', ', $uploadedLabels);
 
         $this->recordAudit(
             $request,
             $paymentOrder->project,
-            'Factura de pago cargada',
-            "Se cargo la factura de {$paymentOrder->code}."
+            'Documentos fiscales cargados',
+            "Se cargo {$uploadedDescription} de {$paymentOrder->code}."
         );
 
-        return back()->with('status', "Factura de {$paymentOrder->code} cargada correctamente.");
+        return back()->with('status', "Se cargo {$uploadedDescription} de {$paymentOrder->code} correctamente.");
     }
 
     public function paymentInvoice(Request $request, ConstructionPaymentOrder $paymentOrder)
@@ -522,6 +543,30 @@ class ConstructionAdminController extends Controller
         return StoredFileResponse::inline(
             $paymentOrder->invoice_file_path,
             $paymentOrder->invoice_original_name ?: $paymentOrder->code.'-factura'
+        );
+    }
+
+    public function paymentInvoiceXml(Request $request, ConstructionPaymentOrder $paymentOrder)
+    {
+        $paymentOrder->loadMissing('project');
+        $this->authorizeProject($request, $paymentOrder->project);
+        abort_unless(filled($paymentOrder->invoice_xml_file_path), 404);
+
+        return StoredFileResponse::inline(
+            $paymentOrder->invoice_xml_file_path,
+            $paymentOrder->invoice_xml_original_name ?: $paymentOrder->code.'-factura.xml'
+        );
+    }
+
+    public function paymentFiscalVerification(Request $request, ConstructionPaymentOrder $paymentOrder)
+    {
+        $paymentOrder->loadMissing('project');
+        $this->authorizeProject($request, $paymentOrder->project);
+        abort_unless(filled($paymentOrder->fiscal_verification_file_path), 404);
+
+        return StoredFileResponse::inline(
+            $paymentOrder->fiscal_verification_file_path,
+            $paymentOrder->fiscal_verification_original_name ?: $paymentOrder->code.'-verificacion-fiscal.pdf'
         );
     }
 
@@ -541,13 +586,41 @@ class ConstructionAdminController extends Controller
     {
         $paymentOrder->loadMissing('project');
         abort_unless($this->canEditProject($request->user(), $paymentOrder->project), 403);
-        abort_unless($paymentOrder->construction_payroll_id === null, 403);
 
         $oldValues = $paymentOrder->toArray();
         $project = $paymentOrder->project;
         $code = $paymentOrder->code;
 
-        foreach ([$paymentOrder->invoice_file_path, $paymentOrder->payment_file_path] as $path) {
+        if ($paymentOrder->construction_payroll_id !== null) {
+            abort_if(filled($paymentOrder->payment_file_path), 422);
+
+            $dismissedAt = $paymentOrder->dismissed_at ?? now();
+            $paymentOrder->update([
+                'status' => 'Descartada',
+                'dismissed_at' => $dismissedAt,
+                'discarded_at' => $dismissedAt,
+                'discarded_by' => $request->user()->id,
+            ]);
+            $this->recordAudit(
+                $request,
+                $project,
+                'Pago vigente enviado a historial',
+                "Se elimino el pago vigente {$code} y se envio a los historiales.",
+                $oldValues,
+                $paymentOrder->fresh()->toArray(),
+            );
+
+            return redirect()
+                ->route('construction.placeholder', ['section' => 'mano-obra', 'project' => $project->id])
+                ->with('status', "Pago vigente {$code} enviado a los historiales correctamente.");
+        }
+
+        foreach ([
+            $paymentOrder->invoice_file_path,
+            $paymentOrder->invoice_xml_file_path,
+            $paymentOrder->fiscal_verification_file_path,
+            $paymentOrder->payment_file_path,
+        ] as $path) {
             if ($path && Storage::exists($path)) {
                 Storage::delete($path);
             }
@@ -673,30 +746,26 @@ class ConstructionAdminController extends Controller
                 ->orderBy('project_key')
                 ->get();
 
-            $activeProjects = $projects->where('status', 'En ejecucion')->values();
-
-            if ($activeProjects->isEmpty()) {
-                $activeProjects = $projects->values();
-            }
+            $carouselProjects = $this->carouselProjects($projects);
 
             $requestedProjectId = $request->integer('project');
-            $selectedProjectId = $activeProjects->contains('id', $requestedProjectId)
+            $selectedProjectId = $carouselProjects->contains('id', $requestedProjectId)
                 ? $requestedProjectId
-                : $activeProjects->first()?->id;
+                : $carouselProjects->first()?->id;
             $payrolls = ConstructionPayroll::query()
-                ->whereIn('construction_project_id', $activeProjects->pluck('id'))
+                ->whereIn('construction_project_id', $carouselProjects->pluck('id'))
                 ->with('paymentOrders')
                 ->orderBy('code')
                 ->get();
             $estimateOrders = ConstructionPaymentOrder::query()
-                ->whereIn('construction_project_id', $activeProjects->pluck('id'))
+                ->whereIn('construction_project_id', $carouselProjects->pluck('id'))
                 ->where('type', 'Estimacion')
                 ->with('project')
                 ->orderBy('code')
                 ->get();
             $pendingPaymentOrders = ConstructionPaymentOrder::query()
                 ->pending()
-                ->whereIn('construction_project_id', $activeProjects->pluck('id'))
+                ->whereIn('construction_project_id', $carouselProjects->pluck('id'))
                 ->with(['project', 'payroll'])
                 ->orderBy('payment_due_date')
                 ->orderBy('code')
@@ -704,6 +773,7 @@ class ConstructionAdminController extends Controller
 
             return view('construction.labor-tracking', [
                 'projects' => $projects,
+                'carouselProjects' => $carouselProjects,
                 'selectedProjectId' => $selectedProjectId,
                 'nextPayrollCode' => $this->nextPayrollCode(),
                 'catalogRows' => array_merge(
@@ -723,26 +793,23 @@ class ConstructionAdminController extends Controller
                 ->with(['client', 'responsible'])
                 ->orderBy('project_key')
                 ->get();
-            $activeProjects = $projects->where('status', 'En ejecucion')->values();
-
-            if ($activeProjects->isEmpty()) {
-                $activeProjects = $projects->values();
-            }
+            $carouselProjects = $this->carouselProjects($projects);
 
             $requestedProjectId = $request->integer('project');
-            $selectedProjectId = $activeProjects->contains('id', $requestedProjectId)
+            $selectedProjectId = $carouselProjects->contains('id', $requestedProjectId)
                 ? $requestedProjectId
-                : $activeProjects->first()?->id;
+                : $carouselProjects->first()?->id;
             $paymentOrders = ConstructionPaymentOrder::query()
-                ->paid()
+                ->historical()
                 ->where('construction_project_id', $selectedProjectId)
-                ->with(['project', 'paidBy'])
-                ->orderByDesc('paid_on')
+                ->with(['project', 'paidBy', 'discardedBy'])
+                ->orderByDesc('updated_at')
                 ->orderBy('code')
                 ->get();
 
             return view('construction.payment-history', [
                 'projects' => $projects,
+                'carouselProjects' => $carouselProjects,
                 'selectedProjectId' => $selectedProjectId,
                 'paymentOrders' => $paymentOrders,
             ]);
@@ -763,16 +830,18 @@ class ConstructionAdminController extends Controller
         ], true);
         $showGeneratorPanel = $section === 'generadores-obra';
         $showMaterialsCatalog = $section === 'materiales-insumos';
+        $projects = $showProjectCarousel
+            ? ConstructionProject::query()
+                ->visibleTo($request->user())
+                ->with(['client', 'responsible'])
+                ->orderBy('project_key')
+                ->get()
+            : collect();
 
         return view('construction.placeholder', [
             'label' => $labels[$section] ?? str($section)->replace('-', ' ')->title(),
-            'projects' => $showProjectCarousel
-                ? ConstructionProject::query()
-                    ->visibleTo($request->user())
-                    ->with(['client', 'responsible'])
-                    ->orderBy('project_key')
-                    ->get()
-                : collect(),
+            'projects' => $projects,
+            'carouselProjects' => $this->carouselProjects($projects),
             'showProjectCarousel' => $showProjectCarousel,
             'showMaterialsCatalogButton' => $showMaterialsCatalog,
             'materialsCatalog' => $showMaterialsCatalog ? $this->materialsExplosionCatalogData() : [],
@@ -788,11 +857,7 @@ class ConstructionAdminController extends Controller
             ->with(['client', 'responsible'])
             ->orderBy('project_key')
             ->get();
-        $activeProjects = $projects->where('status', 'En ejecucion')->values();
-
-        if ($activeProjects->isEmpty()) {
-            $activeProjects = $projects->values();
-        }
+        $carouselProjects = $this->carouselProjects($projects);
 
         $calendarCookieSuffix = (string) $request->user()->getAuthIdentifier();
         $projectCookieName = "construction_calendar_project_{$calendarCookieSuffix}";
@@ -800,8 +865,8 @@ class ConstructionAdminController extends Controller
         $requestedProjectId = $request->has('project')
             ? $request->integer('project')
             : (int) $request->cookie($projectCookieName);
-        $selectedProject = $activeProjects->firstWhere('id', $requestedProjectId)
-            ?? $activeProjects->first();
+        $selectedProject = $carouselProjects->firstWhere('id', $requestedProjectId)
+            ?? $carouselProjects->first();
         $monthValue = trim((string) ($request->query('month')
             ?? $request->cookie($monthCookieName)
             ?? now()->format('Y-m')));
@@ -854,7 +919,7 @@ class ConstructionAdminController extends Controller
 
         return view('construction.calendar', [
             'projects' => $projects,
-            'activeProjects' => $activeProjects,
+            'carouselProjects' => $carouselProjects,
             'selectedProject' => $selectedProject,
             'selectedProjectId' => $selectedProject?->id,
             'canEditCalendar' => $selectedProject
@@ -1452,6 +1517,22 @@ class ConstructionAdminController extends Controller
         ];
     }
 
+    private function carouselProjects(Collection $projects): Collection
+    {
+        $statusOrder = array_flip(ConstructionProject::CAROUSEL_STATUSES);
+
+        return $projects
+            ->whereInStrict('status', ConstructionProject::CAROUSEL_STATUSES)
+            ->sort(function (ConstructionProject $left, ConstructionProject $right) use ($statusOrder): int {
+                $statusComparison = $statusOrder[$left->status] <=> $statusOrder[$right->status];
+
+                return $statusComparison !== 0
+                    ? $statusComparison
+                    : strnatcasecmp($left->project_key, $right->project_key);
+            })
+            ->values();
+    }
+
     private function canManage(User $user): bool
     {
         return $user->role === 'superadmin';
@@ -1562,6 +1643,8 @@ class ConstructionAdminController extends Controller
             'id' => $order->construction_payroll_id,
             'payment_order_id' => $order->id,
             'project_id' => $order->construction_project_id,
+            'project_key' => $order->project?->project_key ?? 'Sin clave',
+            'project_name' => $order->project?->name ?? 'Sin obra',
             'type' => $order->type,
             'code' => $order->code,
             'description' => $order->description,
@@ -1576,17 +1659,26 @@ class ConstructionAdminController extends Controller
             'status' => $order->status,
             'status_class' => $order->statusClass(),
             'payment_date' => $order->paid_on?->format('d/m/Y') ?? '-',
+            'invoice_document_count' => $order->invoiceDocumentCount(),
+            'invoice_document_status' => $order->invoiceDocumentStatus(),
             'invoice_file_url' => filled($order->invoice_file_path)
                 ? route('construction.payment-orders.invoice', $order)
                 : null,
+            'invoice_file_name' => $order->invoice_original_name,
+            'invoice_xml_file_url' => filled($order->invoice_xml_file_path)
+                ? route('construction.payment-orders.invoice.xml', $order)
+                : null,
+            'invoice_xml_file_name' => $order->invoice_xml_original_name,
+            'fiscal_verification_file_url' => filled($order->fiscal_verification_file_path)
+                ? route('construction.payment-orders.invoice.fiscal-verification', $order)
+                : null,
+            'fiscal_verification_file_name' => $order->fiscal_verification_original_name,
             'payment_file_url' => filled($order->payment_file_path)
                 ? route('construction.payment-orders.payment', $order)
                 : null,
             'invoice_upload_url' => route('construction.payment-orders.invoice.store', $order),
             'payment_upload_url' => route('finance.construction-payment-orders.payment.store', $order),
-            'delete_url' => $order->construction_payroll_id
-                ? route('construction.payrolls.destroy', $order->construction_payroll_id)
-                : route('construction.payment-orders.destroy', $order),
+            'delete_url' => route('construction.payment-orders.destroy', $order),
         ])->values()->all();
     }
 

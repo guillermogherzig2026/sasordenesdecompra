@@ -193,6 +193,7 @@ class ConstructionPayrollScheduleService
         $payroll->paymentOrders()
             ->whereNotNull('scheduled_for')
             ->whereNull('payment_file_path')
+            ->whereNull('discarded_at')
             ->get()
             ->each(function (ConstructionPaymentOrder $order) use ($payroll): void {
                 $this->fillWeeklyOccurrence(
@@ -214,6 +215,7 @@ class ConstructionPayrollScheduleService
         $payroll->paymentOrders()
             ->whereNotNull('scheduled_for')
             ->whereNull('payment_file_path')
+            ->whereNull('discarded_at')
             ->get()
             ->each(function (ConstructionPaymentOrder $order) use ($payroll): void {
                 $this->fillBiweeklyOccurrence(
@@ -270,7 +272,7 @@ class ConstructionPayrollScheduleService
             ]);
         }
 
-        if (filled($order->payment_file_path)) {
+        if (filled($order->payment_file_path) || filled($order->discarded_at)) {
             return $order;
         }
 
@@ -326,7 +328,7 @@ class ConstructionPayrollScheduleService
             ]);
         }
 
-        if (filled($order->payment_file_path)) {
+        if (filled($order->payment_file_path) || filled($order->discarded_at)) {
             return $order;
         }
 
@@ -374,6 +376,10 @@ class ConstructionPayrollScheduleService
                 ->whereNull('payment_file_path')
                 ->first() ?? new ConstructionPaymentOrder;
             $order->scheduled_for = null;
+        }
+
+        if (filled($order->discarded_at)) {
+            return $order;
         }
 
         $wasPaid = filled($order->payment_file_path);

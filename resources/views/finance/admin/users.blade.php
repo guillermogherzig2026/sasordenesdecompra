@@ -69,7 +69,7 @@
                 ><span aria-hidden="true" data-collapsible-symbol>-</span></button>
             </div>
 
-            <form id="user-authorization-create-content" class="stack" method="POST" action="{{ route('finance.admin.users.store') }}" data-collapsible-content>
+            <form id="user-authorization-create-content" class="stack" method="POST" action="{{ route('finance.admin.users.store') }}" data-collapsible-content data-credential-generator>
                 @csrf
                 <section class="authorization-step authorization-user-step">
                     <div class="authorization-step-header">
@@ -82,9 +82,12 @@
                         </div>
                     </div>
                     <div class="authorization-user-fields">
-                        <label>Nombre<input name="name" value="{{ old('name') }}" required></label>
+                        <label>Nombre<input name="first_name" value="{{ old('first_name', old('name')) }}" autocomplete="given-name" required data-credential-first-name></label>
+                        <label>Apellido paterno<input name="paternal_last_name" value="{{ old('paternal_last_name') }}" autocomplete="family-name" data-credential-paternal-name></label>
+                        <label>Apellido materno<input name="maternal_last_name" value="{{ old('maternal_last_name') }}" data-credential-maternal-name></label>
+                        <label>Nombre de usuario<input name="username" value="{{ old('username') }}" autocomplete="username" autocapitalize="none" spellcheck="false" required data-credential-username></label>
                         <label>Correo<input name="email" type="email" value="{{ old('email') }}" required></label>
-                        <label>Contrasena inicial<input name="password" value="{{ old('password') }}" required></label>
+                        <label>Contrasena inicial<input name="password" value="{{ old('password') }}" autocomplete="new-password" required data-credential-password></label>
                     </div>
                 </section>
                 <div class="authorization-configuration-stack">
@@ -186,6 +189,7 @@
                     <thead>
                         <tr>
                             <th>Nombre</th>
+                            <th>Usuario</th>
                             <th>Correo</th>
                             <th>Rol</th>
                             <th>Subcategoria</th>
@@ -201,6 +205,7 @@
                             @php $assignments = $managedUser->normalizedCompanyAssignments(); @endphp
                             <tr>
                                 <td>{{ $managedUser->name }}</td>
+                                <td>{{ $managedUser->username ?: 'Sin usuario' }}</td>
                                 <td>{{ $managedUser->email }}</td>
                                 <td>{{ $roleLabels[$managedUser->role] ?? $managedUser->role }}</td>
                                 <td>
@@ -261,7 +266,7 @@
                                 </td>
                             </tr>
                             <tr class="editor-row" id="finance-editor-{{ $managedUser->id }}" hidden>
-                                <td colspan="9">
+                                <td colspan="10">
                                     <form class="stack" method="POST" action="{{ route('finance.admin.users.update', $managedUser) }}">
                                         @csrf
                                         @method('PUT')
@@ -276,7 +281,10 @@
                                                 </div>
                                             </div>
                                             <div class="authorization-user-fields">
-                                                <label>Nombre<input name="name" value="{{ $managedUser->name }}" required></label>
+                                                <label>Nombre<input name="first_name" value="{{ $managedUser->first_name ?: $managedUser->name }}" autocomplete="given-name" required></label>
+                                                <label>Apellido paterno<input name="paternal_last_name" value="{{ $managedUser->paternal_last_name }}" autocomplete="family-name"></label>
+                                                <label>Apellido materno<input name="maternal_last_name" value="{{ $managedUser->maternal_last_name }}"></label>
+                                                <label>Nombre de usuario<input name="username" value="{{ $managedUser->username }}" autocomplete="username" autocapitalize="none" spellcheck="false"></label>
                                                 <label>Correo<input name="email" type="email" value="{{ $managedUser->email }}" required></label>
                                                 <label>Nueva contrasena<input name="password" type="text" placeholder="Sin cambio"></label>
                                             </div>
@@ -366,7 +374,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="9">No hay usuarios autorizados.</td>
+                                <td colspan="10">No hay usuarios autorizados.</td>
                             </tr>
                         @endforelse
                     </tbody>
@@ -882,6 +890,72 @@
         </style>
 
         <script>
+            const existingUsernames = new Set(@json($existingUsernames ?? []));
+            const credentialForm = document.querySelector('[data-credential-generator]');
+
+            if (credentialForm) {
+                const firstNameInput = credentialForm.querySelector('[data-credential-first-name]');
+                const paternalNameInput = credentialForm.querySelector('[data-credential-paternal-name]');
+                const maternalNameInput = credentialForm.querySelector('[data-credential-maternal-name]');
+                const usernameInput = credentialForm.querySelector('[data-credential-username]');
+                const passwordInput = credentialForm.querySelector('[data-credential-password]');
+                const suggestedYear = 2024 + Math.floor(Math.random() * 3);
+                let generatedUsername = '';
+                let generatedPassword = '';
+
+                const normalizePart = (value) => value
+                    .normalize('NFD')
+                    .replace(/[\u0300-\u036f]/g, '')
+                    .toLowerCase()
+                    .replace(/[^a-z0-9]/g, '');
+
+                const availableUsername = (base) => {
+                    if (!base) return '';
+                    let candidate = base.slice(0, 80);
+                    let suffix = 2;
+
+                    while (existingUsernames.has(candidate)) {
+                        const suffixText = String(suffix++);
+                        candidate = `${base.slice(0, 80 - suffixText.length)}${suffixText}`;
+                    }
+
+                    return candidate;
+                };
+
+                const proposeCredentials = () => {
+                    const initials = firstNameInput.value
+                        .trim()
+                        .split(/\s+/)
+                        .filter(Boolean)
+                        .map((name) => normalizePart(name).charAt(0))
+                        .join('');
+                    const paternalName = normalizePart(paternalNameInput.value);
+                    const maternalInitial = normalizePart(maternalNameInput.value).charAt(0);
+                    const proposedUsername = availableUsername(`${initials}${paternalName}${maternalInitial}`);
+                    const canReplaceUsername = !usernameInput.value || usernameInput.value === generatedUsername;
+                    const canReplacePassword = !passwordInput.value || passwordInput.value === generatedPassword;
+
+                    if (canReplaceUsername) usernameInput.value = proposedUsername;
+                    generatedUsername = proposedUsername;
+
+                    const proposedPassword = proposedUsername ? `${proposedUsername}${suggestedYear}` : '';
+                    if (canReplacePassword) passwordInput.value = proposedPassword;
+                    generatedPassword = proposedPassword;
+                };
+
+                [firstNameInput, paternalNameInput, maternalNameInput].forEach((input) => {
+                    input.addEventListener('input', proposeCredentials);
+                });
+                usernameInput.addEventListener('input', () => {
+                    if (!passwordInput.value || passwordInput.value === generatedPassword) {
+                        generatedPassword = usernameInput.value ? `${normalizePart(usernameInput.value)}${suggestedYear}` : '';
+                        passwordInput.value = generatedPassword;
+                    }
+                });
+
+                proposeCredentials();
+            }
+
             const authorizationViewTabs = document.querySelector('[data-authorization-view-tabs]');
 
             if (authorizationViewTabs) {

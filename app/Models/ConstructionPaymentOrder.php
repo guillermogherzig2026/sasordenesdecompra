@@ -28,10 +28,17 @@ class ConstructionPaymentOrder extends Model
         'status',
         'invoice_file_path',
         'invoice_original_name',
+        'invoice_xml_file_path',
+        'invoice_xml_original_name',
+        'fiscal_verification_file_path',
+        'fiscal_verification_original_name',
         'payment_file_path',
         'payment_original_name',
         'paid_on',
         'paid_by',
+        'dismissed_at',
+        'discarded_at',
+        'discarded_by',
     ];
 
     protected function casts(): array
@@ -42,6 +49,8 @@ class ConstructionPaymentOrder extends Model
             'period_end' => 'date',
             'payment_due_date' => 'date',
             'paid_on' => 'date',
+            'dismissed_at' => 'datetime',
+            'discarded_at' => 'datetime',
             'progress' => 'decimal:2',
             'amount' => 'decimal:2',
         ];
@@ -62,21 +71,37 @@ class ConstructionPaymentOrder extends Model
         return $this->belongsTo(User::class, 'paid_by');
     }
 
+    public function discardedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'discarded_by');
+    }
+
     public function scopePending(Builder $query): Builder
     {
         return $query
             ->whereNull('payment_file_path')
+            ->whereNull('dismissed_at')
+            ->whereNull('discarded_at')
             ->where(function (Builder $availability): void {
                 $availability->whereNull('scheduled_for')
                     ->orWhereDate('scheduled_for', '<=', CarbonImmutable::now('America/Mexico_City')->toDateString());
             })
             ->where('status', '!=', 'Borrador')
-            ->whereNotIn('status', ['Pagada', 'Pagado', 'Cancelada', 'Cancelado']);
+            ->whereNotIn('status', ['Pagada', 'Pagado', 'Cancelada', 'Cancelado', 'Descartada']);
     }
 
     public function scopePaid(Builder $query): Builder
     {
         return $query->whereNotNull('payment_file_path');
+    }
+
+    public function scopeHistorical(Builder $query): Builder
+    {
+        return $query->where(function (Builder $history): void {
+            $history->whereNotNull('payment_file_path')
+                ->orWhereNotNull('discarded_at')
+                ->orWhereNotNull('dismissed_at');
+        });
     }
 
     public function scopeSearch(Builder $query, ?string $term): Builder
@@ -111,15 +136,40 @@ class ConstructionPaymentOrder extends Model
         return $this->period_reference ?: 'Pendiente';
     }
 
+    public function invoiceDocumentCount(): int
+    {
+        return (int) filled($this->invoice_file_path)
+            + (int) filled($this->invoice_xml_file_path)
+            + (int) filled($this->fiscal_verification_file_path);
+    }
+
+    public function invoiceDocumentStatus(): string
+    {
+        return match ($this->invoiceDocumentCount()) {
+            0 => 'empty',
+            3 => 'complete',
+            default => 'partial',
+        };
+    }
+
     public function statusClass(): string
     {
-        return match ($this->status) {
+        return match ($this->displayStatus()) {
             'Aprobada', 'Aprobado', 'Concluida' => 'approved',
             'Pagada', 'Pagado' => 'paid',
             'En revision', 'Pausada' => 'warning',
-            'Cancelada', 'Cancelado' => 'canceled',
+            'Cancelada', 'Cancelado', 'Descartada' => 'canceled',
             'En ejecucion' => 'primary',
             default => 'pending',
         };
+    }
+
+    public function displayStatus(): string
+    {
+        if (filled($this->dismissed_at) && blank($this->payment_file_path)) {
+            return 'Descartada';
+        }
+
+        return $this->status;
     }
 }

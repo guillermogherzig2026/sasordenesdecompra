@@ -17,6 +17,7 @@
                 'paymentOrders' => $orders,
                 'financeContext' => true,
                 'allowPaymentUpload' => true,
+                'allowDiscard' => true,
                 'emptyMessage' => 'No hay OP pendientes registradas.',
             ])
         </section>

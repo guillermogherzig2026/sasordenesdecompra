@@ -22,10 +22,13 @@
             </x-slot:actions>
         @endif
         @foreach ($months as $month)
-            <section class="panel service-month-panel" data-month-panel>
+            @php
+                $monthDetailId = 'service-month-detail-' . $month['month_key'];
+            @endphp
+            <section class="panel service-month-panel" data-month-panel data-month-key="{{ $month['month_key'] }}">
                 <div class="panel-header service-month-header service-month-header-compact">
                     <button class="month-toggle" type="button" data-month-toggle
-                        aria-expanded="{{ $loop->first ? 'true' : 'false' }}">
+                        aria-controls="{{ $monthDetailId }}" aria-expanded="{{ $loop->first ? 'true' : 'false' }}">
                         <span class="month-toggle-sign" aria-hidden="true">{{ $loop->first ? '-' : '+' }}</span>
                         <span class="month-toggle-copy">
                             <h2>{{ $month['label'] }} <span class="month-total-inline">Total:
@@ -56,7 +59,7 @@
                     </div>
                 </div>
 
-                <div class="service-month-detail" @if (!$loop->first) hidden @endif>
+                <div id="{{ $monthDetailId }}" class="service-month-detail" @if (! $loop->first) hidden @endif>
                     <div class="table-scroll service-month-scroll">
                         <table class="service-month-table" data-column-filter-table>
                             <thead>
@@ -204,6 +207,7 @@
                             </tbody>
                         </table>
                     </div>
+                </div>
             </section>
         @endforeach
     </x-app-shell>

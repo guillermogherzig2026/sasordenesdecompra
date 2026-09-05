@@ -95,12 +95,35 @@ class HumanResourcesModuleTest extends TestCase
         $this->assertStringContainsString('data-action="set-contract-person-type"', $applicationScript);
         $this->assertStringContainsString('data-action="draft-candidate"', $applicationScript);
         $this->assertStringContainsString('contractCandidateEmployees', $applicationScript);
+        $this->assertStringContainsString('function candidateIsInPostInterview(candidate)', $applicationScript);
+        $this->assertStringContainsString('function candidateIsEligibleForContract(candidate)', $applicationScript);
+        $this->assertStringContainsString('.filter(candidateIsEligibleForContract)', $applicationScript);
+        $this->assertStringContainsString('No hay candidatos con las 7 rondas concluidas en Post entrevista y negociación.', $applicationScript);
+        $this->assertStringContainsString('class="actions contract-wizard-actions"', $applicationScript);
+        $this->assertStringContainsString('${icon("arrow-left", "btn-icon")}Anterior', $applicationScript);
         $this->assertStringContainsString('function moveCandidateToEmployees(candidateId, employee, contract)', $applicationScript);
         $this->assertStringContainsString('state.data.employees.unshift(employee);', $applicationScript);
         $this->assertStringContainsString('state.data.candidates = (state.data.candidates || [])', $applicationScript);
         $this->assertStringContainsString('moveCandidateToEmployees(contract.sourceCandidateId || employee.sourceCandidateId, employee, contract);', $applicationScript);
         $this->assertStringContainsString('function normalizeConvertedCandidates(data)', $applicationScript);
         $this->assertStringContainsString('normalizeConvertedCandidates(data);', $applicationScript);
+        $this->assertStringContainsString('const interviewRounds = [', $applicationScript);
+        $this->assertStringContainsString('function normalizeCandidateInterviewRounds(data)', $applicationScript);
+        $this->assertStringContainsString('function normalizeInterviewRoundCatalog(data)', $applicationScript);
+        $this->assertStringContainsString('label: "Ronda"', $applicationScript);
+        $this->assertStringContainsString('interviewRoundCell(row)', $applicationScript);
+        $this->assertStringContainsString('label: "Próxima entrevista"', $applicationScript);
+        $this->assertStringContainsString('nextInterviewCell(row)', $applicationScript);
+        $this->assertStringContainsString('Ronda ${nextRound} de ${rounds.length}', $applicationScript);
+        $this->assertStringContainsString('data-action="open-interview-rounds"', $applicationScript);
+        $this->assertStringContainsString('showToolbar = true', $applicationScript);
+        $this->assertSame(3, substr_count($applicationScript, 'showToolbar: false'));
+        $this->assertStringContainsString('modal.type === "interview-rounds"', $applicationScript);
+        $this->assertStringContainsString('data-action="edit-interview-round"', $applicationScript);
+        $this->assertStringContainsString('id="interview-round-form"', $applicationScript);
+        $this->assertStringContainsString('Entrevista con Ing. Franco Guerrero', $applicationScript);
+        $this->assertStringContainsString('Estudio Socioeconómico', $applicationScript);
+        $this->assertStringNotContainsString('<h3>Contratos con empleados</h3>', $applicationScript);
 
         $styles = file_get_contents(public_path('hr-suite/assets/css/styles.css'));
         $this->assertStringContainsString('.candidate-inline-form', $styles);
@@ -108,6 +131,11 @@ class HumanResourcesModuleTest extends TestCase
         $this->assertStringContainsString('grid-template-columns: repeat(4, minmax(180px, 1fr));', $styles);
         $this->assertStringContainsString('.contract-person-carousel', $styles);
         $this->assertStringContainsString('.contract-person-option', $styles);
+        $this->assertStringContainsString('.contract-wizard-actions', $styles);
+        $this->assertStringContainsString('.interview-round-progress', $styles);
+        $this->assertStringContainsString('.next-interview-cell', $styles);
+        $this->assertStringContainsString('.interview-rounds-modal', $styles);
+        $this->assertStringContainsString('.interview-round-item', $styles);
     }
 
     public function test_candidate_form_uses_the_registered_company_catalog(): void
@@ -134,7 +162,7 @@ class HumanResourcesModuleTest extends TestCase
         $applicationScript = file_get_contents(public_path('hr-suite/assets/js/app.js'));
         $this->assertStringContainsString('suiteConfig.registeredCompanies', $applicationScript);
         $this->assertStringContainsString('registeredCandidateCompanies(candidate?.company)', $applicationScript);
-        $this->assertStringContainsString('options: candidateCompanyOptions', $applicationScript);
+        $this->assertStringContainsString('const companyOptions = registeredCandidateCompanies(candidate?.company);', $applicationScript);
     }
 
     public function test_submenu_keeps_the_general_sidebar_open_and_loads_the_selected_screen_on_the_right(): void
