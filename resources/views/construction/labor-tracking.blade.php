@@ -3,22 +3,16 @@
 @section('body')
     <x-app-shell title="Mano de obra">
         @php
-            $activeProjects = $projects->where('status', 'En ejecucion')->values();
+            $selectedProjectId = (int) ($selectedProjectId ?? $carouselProjects->first()?->id);
 
-            if ($activeProjects->isEmpty()) {
-                $activeProjects = $projects->values();
-            }
-
-            $selectedProjectId = (int) ($selectedProjectId ?? $activeProjects->first()?->id);
-
-            if (! $activeProjects->contains('id', $selectedProjectId)) {
-                $selectedProjectId = (int) $activeProjects->first()?->id;
+            if (! $carouselProjects->contains('id', $selectedProjectId)) {
+                $selectedProjectId = (int) $carouselProjects->first()?->id;
             }
 
             $money = fn ($value) => '$'.number_format((float) $value, 2);
             $payrollRows = collect($catalogRows)->where('type', 'Nomina')->values();
             $estimateRows = collect($catalogRows)->where('type', 'Estimacion')->values();
-            $selectedProjectName = $activeProjects->firstWhere('id', $selectedProjectId)?->name ?? 'Sin obra seleccionada';
+            $selectedProjectName = $carouselProjects->firstWhere('id', $selectedProjectId)?->name ?? 'Sin obra seleccionada';
             $payrollFormContext = old('payroll_form');
             $creatingPayroll = $payrollFormContext === 'create';
             $estimateFormContext = old('estimate_form');
@@ -35,8 +29,8 @@
         <section class="panel construction-carousel-panel" data-construction-carousel>
             <div class="construction-carousel-header">
                 <div class="construction-carousel-title">
-                    <span class="construction-carousel-count">{{ $activeProjects->count() }}</span>
-                    <h2>Obras activas</h2>
+                    <span class="construction-carousel-count">{{ $carouselProjects->count() }}</span>
+                    <h2>Obras activas y por iniciar</h2>
                 </div>
                 <a class="button ghost small" href="{{ route('construction.dashboard') }}">Atras</a>
             </div>
@@ -45,11 +39,29 @@
                 <button class="construction-carousel-nav" type="button" data-carousel-prev aria-label="Anterior">&lt;</button>
 
                 <div class="construction-carousel-track" data-construction-carousel-track>
-                    @forelse ($activeProjects as $project)
+                    @if ($carouselProjects->isNotEmpty())
+                        <button
+                            class="construction-project-tile construction-project-tile-all"
+                            type="button"
+                            data-labor-project
+                            data-labor-all-projects
+                            data-project-id="all"
+                            data-project-name="Todas las obras"
+                            aria-pressed="false"
+                            aria-label="Mostrar pagos de todas las obras"
+                        >
+                            <span class="construction-project-avatar">{{ $carouselProjects->count() }}</span>
+                            <span class="construction-project-key">Pagos vigentes</span>
+                            <strong class="construction-project-name">Todas</strong>
+                            <span class="construction-project-status"><span></span>Ver todos los pagos</span>
+                        </button>
+                    @endif
+
+                    @forelse ($carouselProjects as $project)
                         @php
                             $isSelectedProject = $project->id === $selectedProjectId;
                         @endphp
-                        <button class="construction-project-tile {{ $isSelectedProject ? 'active' : '' }}" type="button" data-labor-project data-project-id="{{ $project->id }}" data-project-name="{{ $project->name }}" aria-pressed="{{ $isSelectedProject ? 'true' : 'false' }}">
+                        <button class="construction-project-tile {{ $isSelectedProject ? 'active' : '' }}" type="button" data-labor-project data-project-id="{{ $project->id }}" data-project-name="{{ $project->name }}" data-carousel-project-id="{{ $project->id }}" data-carousel-project-status="{{ $project->status }}" aria-pressed="{{ $isSelectedProject ? 'true' : 'false' }}">
                             <span class="construction-project-avatar">
                                 @if ($project->photo_path)
                                     <img src="{{ $project->photo_path }}" alt="">
@@ -101,7 +113,7 @@
                         <p>N&oacute;minas de la obra seleccionada: <strong data-selected-project-name>{{ $selectedProjectName }}</strong></p>
                     </div>
                     <div class="labor-payroll-actions">
-                        <button class="button primary small" type="button" data-payroll-create data-supply-detail-open="new-payroll-dialog" @disabled($activeProjects->isEmpty())>
+                        <button class="button primary small" type="button" data-payroll-create data-supply-detail-open="new-payroll-dialog" @disabled($carouselProjects->isEmpty())>
                             Nueva nomina periodica
                         </button>
                         <button class="labor-catalog-collapse" type="button" data-labor-catalog-close="payroll" title="Ocultar catalogo" aria-label="Ocultar catalogo de nominas">&minus;</button>
@@ -199,7 +211,7 @@
                         <p>Estimaciones de la obra seleccionada: <strong data-selected-project-name>{{ $selectedProjectName }}</strong></p>
                     </div>
                     <div class="labor-payroll-actions">
-                        <button class="button primary small" type="button" data-estimate-create data-supply-detail-open="new-estimate-dialog" @disabled($activeProjects->isEmpty())>
+                        <button class="button primary small" type="button" data-estimate-create data-supply-detail-open="new-estimate-dialog" @disabled($carouselProjects->isEmpty())>
                             Nuevo paquete de estimaciones
                         </button>
                         <button class="labor-catalog-collapse" type="button" data-labor-catalog-close="estimates" title="Ocultar catalogo" aria-label="Ocultar catalogo de estimaciones">&minus;</button>
@@ -264,7 +276,7 @@
                     <button class="labor-tab" type="button" data-labor-filter="estimacion">Estimaciones quincenales</button>
                 </div>
                 <div class="labor-toolbar-note">
-                    <span class="fine-print">Pendientes de pago de la obra seleccionada</span>
+                    <span class="fine-print" data-labor-scope-note>Pendientes de pago de la obra seleccionada</span>
                     <a
                         class="button ghost"
                         data-labor-history-link
@@ -280,6 +292,7 @@
                         <tr>
                             <th>Tipo</th>
                             <th>Codigo</th>
+                            <th>Obra</th>
                             <th>Descripcion / alcance</th>
                             <th>Area / categoria</th>
                             <th>Responsable</th>
@@ -299,6 +312,10 @@
                             <tr data-labor-row="{{ strtolower($row['type']) }}" data-labor-project-id="{{ $row['project_id'] }}" data-labor-code="{{ $row['code'] }}" @if ((int) $row['project_id'] !== $selectedProjectId) hidden @endif>
                                 <td><span class="labor-type-badge {{ strtolower($row['type']) }}">{{ $row['type'] }}</span></td>
                                 <td>{{ $row['code'] }}</td>
+                                <td class="labor-project-cell">
+                                    <strong>{{ $row['project_key'] }}</strong>
+                                    <span title="{{ $row['project_name'] }}">{{ $row['project_name'] }}</span>
+                                </td>
                                 <td><strong>{{ $row['description'] }}</strong></td>
                                 <td><span class="labor-area-badge">{{ $row['area'] }}</span></td>
                                 <td>{{ $row['responsible'] }}</td>
@@ -314,13 +331,15 @@
                                 <td><span class="status {{ $row['status_class'] }}">{{ $row['status'] }}</span></td>
                                 <td>
                                     <div class="labor-file-actions">
-                                        <form method="POST" action="{{ $row['invoice_upload_url'] }}" enctype="multipart/form-data">
-                                            @csrf
-                                            <label class="button ghost small" title="Subir factura">
-                                                Subir
-                                                <input class="file-upload-input" type="file" name="invoice_file" accept=".pdf,.jpg,.jpeg,.png,.webp" data-auto-file-submit required>
-                                            </label>
-                                        </form>
+                                        <button
+                                            class="button ghost small invoice-upload-button invoice-upload-{{ $row['invoice_document_status'] }}"
+                                            type="button"
+                                            title="Subir documentos de factura ({{ $row['invoice_document_count'] }}/3 archivos)"
+                                            aria-label="Subir documentos de factura ({{ $row['invoice_document_count'] }}/3 archivos)"
+                                            data-invoice-document-status="{{ $row['invoice_document_status'] }}"
+                                            data-invoice-document-count="{{ $row['invoice_document_count'] }}"
+                                            data-supply-detail-open="invoice-documents-dialog-{{ $row['payment_order_id'] }}"
+                                        >Subir</button>
                                         @if (filled($row['invoice_file_url']))
                                             <a class="button ghost small labor-view-button" href="{{ $row['invoice_file_url'] }}" target="_blank" rel="noopener">Ver</a>
                                         @else
@@ -361,12 +380,110 @@
                             </tr>
                         @endforeach
                         <tr data-labor-empty hidden>
-                            <td class="empty-state" colspan="14">No hay pagos vigentes para esta obra.</td>
+                            <td class="empty-state" colspan="15">No hay pagos vigentes para esta obra.</td>
                         </tr>
                     </tbody>
                 </table>
             </div>
         </section>
+
+        @foreach ($laborRows as $row)
+            @php
+                $invoiceDialogId = 'invoice-documents-dialog-'.$row['payment_order_id'];
+            @endphp
+            <dialog
+                class="supply-detail-dialog invoice-documents-dialog"
+                id="{{ $invoiceDialogId }}"
+                data-supply-detail-dialog
+                aria-labelledby="{{ $invoiceDialogId }}-title"
+            >
+                <div class="supply-detail-card invoice-documents-card">
+                    <button class="supply-detail-close" type="button" data-supply-detail-close aria-label="Cerrar">&times;</button>
+
+                    <div class="invoice-documents-heading">
+                        <span class="invoice-documents-heading-icon" aria-hidden="true">DOC</span>
+                        <div>
+                            <h3 id="{{ $invoiceDialogId }}-title">Documentos de factura</h3>
+                            <p class="fine-print">{{ $row['code'] }} &middot; {{ $row['description'] }}</p>
+                        </div>
+                    </div>
+
+                    <div class="invoice-document-list">
+                        <section class="invoice-document-row">
+                            <span class="invoice-document-kind">PDF</span>
+                            <div class="invoice-document-copy">
+                                <strong>Factura en PDF</strong>
+                                <span>{{ $row['invoice_file_name'] ?: 'Archivo pendiente' }}</span>
+                                @if (old('invoice_dialog') === $invoiceDialogId)
+                                    @error('invoice_file')
+                                        <small class="form-error">{{ $message }}</small>
+                                    @enderror
+                                @endif
+                            </div>
+                            <div class="invoice-document-actions">
+                                <form method="POST" action="{{ $row['invoice_upload_url'] }}" enctype="multipart/form-data">
+                                    @csrf
+                                    <input type="hidden" name="invoice_dialog" value="{{ $invoiceDialogId }}">
+                                    <button class="button primary small" type="button" data-file-picker-target="invoice-pdf-{{ $row['payment_order_id'] }}">Subir factura PDF</button>
+                                    <input class="file-upload-input" id="invoice-pdf-{{ $row['payment_order_id'] }}" type="file" name="invoice_file" accept=".pdf,application/pdf" data-auto-file-submit required>
+                                </form>
+                                @if (filled($row['invoice_file_url']))
+                                    <a class="button ghost small" href="{{ $row['invoice_file_url'] }}" target="_blank" rel="noopener">Ver</a>
+                                @endif
+                            </div>
+                        </section>
+
+                        <section class="invoice-document-row">
+                            <span class="invoice-document-kind xml">XML</span>
+                            <div class="invoice-document-copy">
+                                <strong>XML de la factura</strong>
+                                <span>{{ $row['invoice_xml_file_name'] ?: 'Archivo pendiente' }}</span>
+                                @if (old('invoice_dialog') === $invoiceDialogId)
+                                    @error('invoice_xml_file')
+                                        <small class="form-error">{{ $message }}</small>
+                                    @enderror
+                                @endif
+                            </div>
+                            <div class="invoice-document-actions">
+                                <form method="POST" action="{{ $row['invoice_upload_url'] }}" enctype="multipart/form-data">
+                                    @csrf
+                                    <input type="hidden" name="invoice_dialog" value="{{ $invoiceDialogId }}">
+                                    <button class="button primary small" type="button" data-file-picker-target="invoice-xml-{{ $row['payment_order_id'] }}">Subir XML</button>
+                                    <input class="file-upload-input" id="invoice-xml-{{ $row['payment_order_id'] }}" type="file" name="invoice_xml_file" accept=".xml,application/xml,text/xml" data-auto-file-submit required>
+                                </form>
+                                @if (filled($row['invoice_xml_file_url']))
+                                    <a class="button ghost small" href="{{ $row['invoice_xml_file_url'] }}" target="_blank" rel="noopener">Ver</a>
+                                @endif
+                            </div>
+                        </section>
+
+                        <section class="invoice-document-row">
+                            <span class="invoice-document-kind fiscal">PDF</span>
+                            <div class="invoice-document-copy">
+                                <strong>Verificaci&oacute;n fiscal en PDF</strong>
+                                <span>{{ $row['fiscal_verification_file_name'] ?: 'Archivo pendiente' }}</span>
+                                @if (old('invoice_dialog') === $invoiceDialogId)
+                                    @error('fiscal_verification_file')
+                                        <small class="form-error">{{ $message }}</small>
+                                    @enderror
+                                @endif
+                            </div>
+                            <div class="invoice-document-actions">
+                                <form method="POST" action="{{ $row['invoice_upload_url'] }}" enctype="multipart/form-data">
+                                    @csrf
+                                    <input type="hidden" name="invoice_dialog" value="{{ $invoiceDialogId }}">
+                                    <button class="button primary small" type="button" data-file-picker-target="fiscal-verification-{{ $row['payment_order_id'] }}">Subir verificaci&oacute;n fiscal PDF</button>
+                                    <input class="file-upload-input" id="fiscal-verification-{{ $row['payment_order_id'] }}" type="file" name="fiscal_verification_file" accept=".pdf,application/pdf" data-auto-file-submit required>
+                                </form>
+                                @if (filled($row['fiscal_verification_file_url']))
+                                    <a class="button ghost small" href="{{ $row['fiscal_verification_file_url'] }}" target="_blank" rel="noopener">Ver</a>
+                                @endif
+                            </div>
+                        </section>
+                    </div>
+                </div>
+            </dialog>
+        @endforeach
 
         <dialog class="confirm-dialog" data-labor-delete-dialog aria-labelledby="labor-delete-title">
             <div class="confirm-card">
@@ -414,6 +531,7 @@
                     @csrf
                     <input type="hidden" name="payroll_form" value="create">
                     @include('construction.partials.payroll-form-fields', [
+                        'activeProjects' => $carouselProjects,
                         'values' => $createPayrollValues,
                         'isCreateForm' => true,
                     ])
@@ -454,6 +572,7 @@
                     @csrf
                     <input type="hidden" name="estimate_form" value="create">
                     @include('construction.partials.estimate-form-fields', [
+                        'activeProjects' => $carouselProjects,
                         'values' => $createEstimateValues,
                     ])
 
@@ -493,16 +612,18 @@
                 const laborDeleteDialog = document.querySelector('[data-labor-delete-dialog]');
                 const laborDeleteForm = document.querySelector('[data-labor-delete-form]');
                 const laborHistoryLink = document.querySelector('[data-labor-history-link]');
+                const laborScopeNote = document.querySelector('[data-labor-scope-note]');
                 let pendingDeleteRow = null;
                 let pendingDeleteUrl = '';
                 let selectedProjectId = @json((string) $selectedProjectId);
                 let laborFilter = 'all';
 
                 const applyProjectFilters = () => {
+                    const showAllProjects = selectedProjectId === 'all';
                     let visiblePayrolls = 0;
 
                     payrollRows.forEach((row) => {
-                        const visible = row.dataset.payrollProject === selectedProjectId;
+                        const visible = showAllProjects || row.dataset.payrollProject === selectedProjectId;
                         row.hidden = !visible;
                         visiblePayrolls += visible ? 1 : 0;
                     });
@@ -514,7 +635,7 @@
                     let visibleEstimates = 0;
 
                     estimateRows.forEach((row) => {
-                        const visible = row.dataset.estimateProject === selectedProjectId;
+                        const visible = showAllProjects || row.dataset.estimateProject === selectedProjectId;
                         row.hidden = !visible;
                         visibleEstimates += visible ? 1 : 0;
                     });
@@ -526,7 +647,7 @@
                     let visibleLaborRows = 0;
 
                     laborRows.forEach((row) => {
-                        const matchesProject = row.dataset.laborProjectId === selectedProjectId;
+                        const matchesProject = showAllProjects || row.dataset.laborProjectId === selectedProjectId;
                         const matchesType = laborFilter === 'all' || row.dataset.laborRow === laborFilter;
                         const visible = matchesProject && matchesType;
                         row.hidden = !visible;
@@ -552,18 +673,24 @@
                             projectName.textContent = button.dataset.projectName || 'Sin obra seleccionada';
                         });
 
-                        if (createProjectSelect) {
+                        if (createProjectSelect && selectedProjectId !== 'all') {
                             createProjectSelect.value = selectedProjectId;
                         }
 
-                        if (estimateProjectSelect) {
+                        if (estimateProjectSelect && selectedProjectId !== 'all') {
                             estimateProjectSelect.value = selectedProjectId;
                         }
 
-                        if (laborHistoryLink) {
+                        if (laborHistoryLink && selectedProjectId !== 'all') {
                             const historyUrl = new URL(laborHistoryLink.dataset.historyBase, window.location.origin);
                             historyUrl.searchParams.set('project', selectedProjectId);
                             laborHistoryLink.href = historyUrl.toString();
+                        }
+
+                        if (laborScopeNote) {
+                            laborScopeNote.textContent = selectedProjectId === 'all'
+                                ? 'Pendientes de pago de todas las obras'
+                                : 'Pendientes de pago de la obra seleccionada';
                         }
 
                         applyProjectFilters();
@@ -616,15 +743,21 @@
                 });
 
                 document.querySelector('[data-payroll-create]')?.addEventListener('click', () => {
-                    if (createProjectSelect) {
+                    if (createProjectSelect && selectedProjectId !== 'all') {
                         createProjectSelect.value = selectedProjectId;
                     }
                 });
 
                 document.querySelector('[data-estimate-create]')?.addEventListener('click', () => {
-                    if (estimateProjectSelect) {
+                    if (estimateProjectSelect && selectedProjectId !== 'all') {
                         estimateProjectSelect.value = selectedProjectId;
                     }
+                });
+
+                document.querySelectorAll('[data-file-picker-target]').forEach((button) => {
+                    button.addEventListener('click', () => {
+                        document.getElementById(button.dataset.filePickerTarget)?.click();
+                    });
                 });
 
                 document.querySelectorAll('[data-auto-file-submit]').forEach((input) => {
@@ -685,6 +818,12 @@
                 const invalidPayrollDialogId = @json($invalidPayrollDialogId);
                 if (invalidPayrollDialogId) {
                     const invalidDialog = document.getElementById(invalidPayrollDialogId);
+                    window.requestAnimationFrame(() => invalidDialog?.showModal());
+                }
+
+                const invalidInvoiceDialogId = @json(old('invoice_dialog'));
+                if (invalidInvoiceDialogId) {
+                    const invalidDialog = document.getElementById(invalidInvoiceDialogId);
                     window.requestAnimationFrame(() => invalidDialog?.showModal());
                 }
             })();

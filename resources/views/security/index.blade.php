@@ -32,6 +32,7 @@
                     ? $securityCompanies->filter(fn ($company) => $company->is($selectedSecurityCompany))
                     : $securityCompanies;
                 $dashboardBranchCount = $dashboardCompanies->sum('branches_count');
+                $dashboardCameraCount = $dashboardCompanies->sum('cameras_count');
                 $dashboardScopeLabel = $selectedSecurityCompany?->name ?? 'Todas las empresas';
                 $comparisonLabels = [
                     'previous_day' => 'Ayer',
@@ -132,8 +133,8 @@
                     </article>
                     <article class="security-company-metric-card">
                         <span>Cámaras totales</span>
-                        <div><strong>0</strong><i class="is-violet" aria-hidden="true">C</i></div>
-                        <small>Sin cámaras registradas</small>
+                        <div><strong data-security-dashboard-camera-count>{{ $dashboardCameraCount }}</strong><i class="is-violet" aria-hidden="true">C</i></div>
+                        <small>{{ $dashboardCameraCount > 0 ? 'Datos del catálogo' : 'Sin cámaras registradas' }}</small>
                     </article>
                     <article class="security-company-metric-card">
                         <span>Personas hoy</span>
@@ -254,7 +255,7 @@
                                     <tr>
                                         <td><strong>{{ $securityCompany->name }}</strong></td>
                                         <td>{{ $securityCompany->branches_count }}</td>
-                                        <td>0</td>
+                                        <td data-security-company-camera-count="{{ $securityCompany->cameras_count }}">{{ $securityCompany->cameras_count }}</td>
                                         <td><span class="security-company-data-empty">Sin datos</span></td>
                                         <td><span class="security-company-data-empty">Sin datos</span></td>
                                         <td><span class="security-company-data-empty">Sin datos</span></td>
@@ -412,7 +413,7 @@
                                 @endif
                                 @foreach ($securityBranches as $securityBranch)
                                     <option value="{{ $securityBranch->id }}" @selected($selectedCameraBranch?->is($securityBranch))>
-                                        {{ $securityBranch->name }}{{ $securityBranch->code ? ' · '.$securityBranch->code : '' }}
+                                        {{ $securityBranch->name }}{{ $securityBranch->code ? ' · '.$securityBranch->code : '' }} · {{ (int) $securityBranch->cameras_count }} {{ (int) $securityBranch->cameras_count === 1 ? 'cámara' : 'cámaras' }}
                                     </option>
                                 @endforeach
                             </select>
@@ -458,11 +459,11 @@
                                 <div class="security-camera-preview-grid" data-security-camera-preview-grid>
                                     @foreach ($cameraPreviewTiles as $cameraPreview)
                                         <article class="security-camera-tile">
-                                            <div class="security-camera-screen is-{{ $cameraPreview['scene'] }} is-configured">
+                                            <div class="security-camera-screen is-{{ $cameraPreview['scene'] }} is-offline">
                                                 <div class="security-camera-screen-top">
                                                     <span class="security-camera-live-state">
                                                         <i aria-hidden="true"></i>
-                                                        CONFIGURADA
+                                                        DESCONECTADA
                                                     </span>
                                                     <span>{{ $cameraPreview['code'] }}</span>
                                                 </div>
@@ -474,6 +475,11 @@
                                                     <span class="is-four"></span>
                                                 </div>
 
+                                                <div class="security-camera-no-signal">
+                                                    <span aria-hidden="true">!</span>
+                                                    <strong>Sin conexión</strong>
+                                                </div>
+
                                                 <time datetime="{{ now()->toIso8601String() }}">{{ now()->format('d/m/Y H:i:s') }}</time>
                                             </div>
 
@@ -482,7 +488,7 @@
                                                     <strong>{{ $cameraPreview['name'] }}</strong>
                                                     <small>{{ $cameraPreview['zone'] }}</small>
                                                 </div>
-                                                <span>URL guardada</span>
+                                                <span>Sin conexión</span>
                                             </footer>
                                         </article>
                                     @endforeach
@@ -683,7 +689,7 @@
                                     </div>
                                     <button class="button ghost" type="button" data-security-camera-url-add>
                                         <span aria-hidden="true">+</span>
-                                        Agregar URL
+                                        Agregar cámara
                                     </button>
                                 </header>
 
@@ -763,10 +769,15 @@
                 </dialog>
 
                 @if (session('security_branch_updated'))
-                    <dialog class="security-branch-success-dialog" id="security-branch-success-dialog" data-auto-open>
+                    <dialog
+                        class="security-branch-success-dialog"
+                        id="security-branch-success-dialog"
+                        aria-labelledby="security-branch-success-title"
+                        data-auto-open
+                    >
                         <div class="security-branch-success-content">
                             <span class="security-branch-success-icon" aria-hidden="true">✓</span>
-                            <h2>Cambios guardados con éxito</h2>
+                            <h2 id="security-branch-success-title">Cambios guardados con exito</h2>
                             <button
                                 class="security-dialog-close"
                                 type="button"
@@ -799,6 +810,7 @@
                                                 <th>Ubicación</th>
                                                 <th>Contacto</th>
                                                 <th>Estatus</th>
+                                                <th>Cámaras activas</th>
                                                 <th>Acciones</th>
                                             </tr>
                                         </thead>
@@ -847,6 +859,17 @@
                                                         </span>
                                                     </td>
                                                     <td>
+                                                        <span
+                                                            class="security-branch-active-cameras"
+                                                            data-security-active-cameras="0/{{ $securityBranch->cameras_count }}"
+                                                            aria-label="0 de {{ $securityBranch->cameras_count }} cámaras activas"
+                                                        >
+                                                            <i aria-hidden="true"></i>
+                                                            <strong>0</strong>
+                                                            <small>de {{ $securityBranch->cameras_count }}</small>
+                                                        </span>
+                                                    </td>
+                                                    <td>
                                                         <div class="security-branch-row-actions">
                                                             <a class="button ghost small" href="{{ route('security.index', ['section' => 'branches', 'company_id' => $selectedSectionCompany?->id, 'branch_id' => $securityBranch->id]) }}">
                                                                 Ver cámaras
@@ -881,6 +904,12 @@
                 </dialog>
             </section>
         @elseif ($securitySectionKey === 'analytics')
+            @php
+                $analyticsCameraCount = $selectedAnalyticsBranch
+                    ? (int) $selectedAnalyticsBranch->cameras_count
+                    : (int) ($selectedAnalyticsCompany?->branches->sum('cameras_count') ?? 0);
+            @endphp
+
             <section class="panel security-analytics-overview" data-security-analytics-filter data-analytics-today="{{ now()->toDateString() }}">
                 <header class="security-analytics-overview-heading">
                     <div>
@@ -1009,8 +1038,8 @@
                         </div>
                     </header>
                     <div class="security-analytics-distribution">
-                        <div class="security-analytics-donut" role="img" aria-label="Distribución sin datos">
-                            <span><strong>0</strong>Total</span>
+                        <div class="security-analytics-donut" role="img" aria-label="{{ $analyticsCameraCount }} cámaras registradas">
+                            <span><strong data-security-analytics-camera-count>{{ $analyticsCameraCount }}</strong>Total</span>
                         </div>
                         <ul class="security-analytics-distribution-list">
                             <li><span class="security-distribution-dot is-blue"></span>Entradas <strong>0%</strong></li>
@@ -1307,7 +1336,7 @@
             .security-camera-screen.is-warehouse .is-three { right: 4%; }
             .security-camera-screen.is-warehouse .is-four { width: 72%; height: 2px; right: 14%; bottom: 2%; border: 0; background: #c1a55e; }
             .security-camera-screen.is-offline .security-camera-scene { opacity: .28; }
-            .security-camera-no-signal { position: absolute; z-index: 6; inset: 0; display: grid; place-content: center; justify-items: center; gap: 6px; background: rgba(17, 28, 33, .72); }
+            .security-camera-no-signal { position: absolute; z-index: 4; inset: 0; display: grid; place-content: center; justify-items: center; gap: 6px; background: rgba(17, 28, 33, .72); }
             .security-camera-no-signal span { width: 26px; height: 26px; display: grid; place-items: center; border: 1px solid rgba(255, 255, 255, .45); border-radius: 999px; font-size: .82rem; font-weight: 900; }
             .security-camera-no-signal strong { font-size: .72rem; }
             .security-camera-tile footer { min-width: 0; min-height: 58px; padding: 10px 11px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
@@ -1390,17 +1419,21 @@
             .security-camera-url-remove { width: 38px; height: 40px; min-height: 40px; padding: 0; border: 1px solid #e8caca; border-radius: 7px; background: #fff; color: #b72e2e; display: grid; place-items: center; font-size: 1.18rem; line-height: 1; cursor: pointer; }
             .security-camera-url-remove:hover { border-color: #d84c4c; background: #fff1f1; }
             .security-branch-form-actions { padding: 14px 24px; border-top: 1px solid var(--line); background: #fff; display: flex; justify-content: flex-end; gap: 10px; }
-            .security-branch-catalog-dialog { width: min(980px, calc(100vw - 32px)); max-height: calc(100vh - 32px); padding: 0; border: 0; border-radius: 8px; color: var(--text); box-shadow: 0 24px 70px rgba(24, 34, 53, .28); overflow: hidden; }
+            .security-branch-catalog-dialog { width: min(1120px, calc(100vw - 32px)); max-height: calc(100vh - 32px); padding: 0; border: 0; border-radius: 8px; color: var(--text); box-shadow: 0 24px 70px rgba(24, 34, 53, .28); overflow: hidden; }
             .security-branch-catalog-dialog::backdrop { background: rgba(16, 43, 58, .58); }
             .security-branch-catalog-shell { max-height: calc(100vh - 32px); display: grid; grid-template-rows: auto minmax(0, 1fr) auto; background: #fff; }
             .security-branch-catalog-content { min-height: 180px; padding: 18px 22px; overflow: auto; }
             .security-branch-catalog-table-scroll { max-height: min(62vh, 560px); border: 1px solid var(--line); border-radius: 8px; }
-            .security-branch-catalog-table { min-width: 820px; }
+            .security-branch-catalog-table { min-width: 960px; }
             .security-branch-catalog-table th { position: sticky; top: 0; z-index: 1; background: #f8fbff; }
             .security-branch-catalog-table td { vertical-align: middle; }
             .security-branch-catalog-table td:first-child strong,
             .security-branch-catalog-table td:first-child small { display: block; }
             .security-branch-catalog-table td:first-child small { max-width: 230px; margin-top: 3px; overflow: hidden; color: var(--muted); text-overflow: ellipsis; white-space: nowrap; }
+            .security-branch-active-cameras { display: inline-flex; align-items: baseline; gap: 4px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+            .security-branch-active-cameras i { width: 7px; height: 7px; align-self: center; border-radius: 999px; background: #e04f4f; box-shadow: 0 0 0 3px rgba(224, 79, 79, .12); }
+            .security-branch-active-cameras strong { font-size: .82rem; }
+            .security-branch-active-cameras small { color: var(--muted); font-size: .7rem; font-weight: 750; }
             .security-branch-row-actions { display: flex; align-items: center; gap: 7px; white-space: nowrap; }
             .security-analytics-overview { padding: 18px; gap: 16px; overflow: hidden; }
             .security-analytics-overview-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; }
@@ -1677,6 +1710,8 @@
                     const successDialog = document.getElementById('security-branch-success-dialog');
                     if (successDialog) {
                         const openSuccessDialog = () => {
+                            closeDialog();
+
                             if (typeof successDialog.showModal === 'function') {
                                 if (!successDialog.open) successDialog.showModal();
                             } else {

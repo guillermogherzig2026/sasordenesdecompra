@@ -59,7 +59,7 @@
                                 <td><span class="status {{ $project->statusColor() }}">{{ $project->status }}</span></td>
                                 <td>{{ number_format((float) $project->physical_progress, 2) }}%</td>
                                 <td>{{ $money($project->contracted_value) }}</td>
-                                <td><a class="button ghost small" href="{{ route('construction.dashboard').'#project-row-'.$project->id }}">Panel general</a></td>
+                                <td><a class="button ghost small" href="{{ route('construction.dashboard') }}">Panel general</a></td>
                             </tr>
                         @empty
                             <tr><td colspan="9">No hay obras con los filtros seleccionados.</td></tr>

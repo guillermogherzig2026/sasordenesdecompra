@@ -6,7 +6,7 @@
             <div class="panel-header">
                 <div>
                     <h2>OP Historial</h2>
-                    <p class="fine-print">Historial de ordenes de pago de obra autorizadas, pagadas, rechazadas o canceladas.</p>
+                    <p class="fine-print">Historial de ordenes de pago de obra pagadas o descartadas.</p>
                 </div>
                 <form class="toolbar" method="GET" action="{{ route('finance.construction-payment-orders.history') }}">
                     <input name="q" value="{{ $query }}" placeholder="Buscar OP...">

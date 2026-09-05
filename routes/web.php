@@ -33,6 +33,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 Route::get('/', function () {
@@ -44,16 +45,20 @@ Route::get('/login', function () {
 })->name('login');
 
 Route::post('/login', function (Request $request) {
-    $credentials = $request->validate([
-        'email' => ['required', 'email'],
+    $validated = $request->validate([
+        'login' => ['nullable', 'string', 'max:255', 'required_without:email'],
+        'email' => ['nullable', 'email', 'required_without:login'],
         'password' => ['required', 'string'],
     ]);
 
     $remember = $request->boolean('remember');
+    $loginKey = filled($validated['login'] ?? null) ? 'login' : 'email';
+    $login = Str::lower(trim((string) ($validated[$loginKey] ?? '')));
+    $loginField = filter_var($login, FILTER_VALIDATE_EMAIL) ? 'email' : 'username';
 
-    if (! Auth::attempt([...$credentials, 'active' => true], $remember)) {
+    if (! Auth::attempt([$loginField => $login, 'password' => $validated['password'], 'active' => true], $remember)) {
         throw ValidationException::withMessages([
-            'email' => 'Las credenciales no coinciden con un usuario activo.',
+            $loginKey => 'Las credenciales no coinciden con un usuario activo.',
         ]);
     }
 
@@ -236,6 +241,8 @@ Route::middleware(['auth', EnforceNavigationPermission::class])->prefix('adminis
     Route::delete('/calendario/alcances/{scheduleItem}', [ConstructionAdminController::class, 'destroyScheduleItem'])->name('schedule-items.destroy');
     Route::post('/pagos-vigentes/{paymentOrder}/factura', [ConstructionAdminController::class, 'storePaymentInvoice'])->name('payment-orders.invoice.store');
     Route::get('/pagos-vigentes/{paymentOrder}/factura', [ConstructionAdminController::class, 'paymentInvoice'])->name('payment-orders.invoice');
+    Route::get('/pagos-vigentes/{paymentOrder}/factura/xml', [ConstructionAdminController::class, 'paymentInvoiceXml'])->name('payment-orders.invoice.xml');
+    Route::get('/pagos-vigentes/{paymentOrder}/factura/verificacion-fiscal', [ConstructionAdminController::class, 'paymentFiscalVerification'])->name('payment-orders.invoice.fiscal-verification');
     Route::get('/pagos-vigentes/{paymentOrder}/pago', [ConstructionAdminController::class, 'paymentReceipt'])->name('payment-orders.payment');
     Route::delete('/pagos-vigentes/{paymentOrder}', [ConstructionAdminController::class, 'destroyPaymentOrder'])->name('payment-orders.destroy');
     Route::get('/proveedores', [BuyerProviderController::class, 'index'])->name('providers.index');
@@ -294,6 +301,7 @@ Route::middleware(['auth', EnforceNavigationPermission::class])->prefix('finanza
     Route::get('/op-pendientes', [FinanceConstructionPaymentOrderController::class, 'active'])->name('construction-payment-orders.active');
     Route::get('/op-historial', [FinanceConstructionPaymentOrderController::class, 'history'])->name('construction-payment-orders.history');
     Route::post('/op-pendientes/{paymentOrder}/pago', [FinanceConstructionPaymentOrderController::class, 'storePayment'])->name('construction-payment-orders.payment.store');
+    Route::patch('/op-pendientes/{paymentOrder}/descartar', [FinanceConstructionPaymentOrderController::class, 'discard'])->name('construction-payment-orders.discard');
     Route::get('/op/{paymentOrder}/factura', [FinanceConstructionPaymentOrderController::class, 'invoice'])->name('construction-payment-orders.invoice');
     Route::get('/op/{paymentOrder}/pago', [FinanceConstructionPaymentOrderController::class, 'payment'])->name('construction-payment-orders.payment');
 

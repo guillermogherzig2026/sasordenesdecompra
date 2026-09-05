@@ -22,7 +22,7 @@ class ConstructionProjectAreaFieldsTest extends TestCase
 
         $createForm->assertOk();
         $createForm->assertSee('<input name="project_key" value="OBR-004" required readonly aria-readonly="true">', false);
-        $createForm->assertSee('href="'.route('construction.dashboard').'#panel-general-obras"', false);
+        $createForm->assertSee('href="'.route('construction.dashboard').'"', false);
         $createForm->assertSee('<option value="Hibrida"', false);
         $createForm->assertDontSee('name="physical_progress"', false);
         $createForm->assertDontSee('name="financial_progress"', false);
@@ -45,6 +45,8 @@ class ConstructionProjectAreaFieldsTest extends TestCase
         $project = ConstructionProject::where('name', 'Nueva obra consecutiva')->firstOrFail();
 
         $response->assertRedirect(route('construction.dashboard'));
+        $response->assertSessionHas('construction_project_created', 'Obra creada correctamente.');
+        $response->assertSessionMissing('status');
         $this->assertSame('OBR-004', $project->project_key);
         $this->assertSame('Hibrida', $project->modality);
         $this->assertSame('0.00', $project->physical_progress);
@@ -52,6 +54,14 @@ class ConstructionProjectAreaFieldsTest extends TestCase
         $this->assertSame('0.00', $project->estimated_amount);
         $this->assertSame('0.00', $project->paid_amount);
         $this->assertSame('0.00', $project->retention_amount);
+
+        $confirmation = $this->actingAs($user)->get(route('construction.dashboard'));
+
+        $confirmation->assertOk();
+        $confirmation->assertSee('data-construction-created-dialog', false);
+        $confirmation->assertSee('data-construction-created-close', false);
+        $confirmation->assertSee('Obra creada correctamente.');
+        $confirmation->assertDontSee('<div class="alert">Obra creada correctamente.</div>', false);
 
         $project->delete();
 
@@ -103,7 +113,7 @@ class ConstructionProjectAreaFieldsTest extends TestCase
             'notes' => $project->notes,
         ]);
 
-        $response->assertRedirect(route('construction.dashboard').'#project-row-'.$project->id);
+        $response->assertRedirect(route('construction.dashboard'));
         $this->assertDatabaseHas('construction_projects', [
             'id' => $project->id,
             'constructed_area' => 1248.50,
@@ -115,29 +125,32 @@ class ConstructionProjectAreaFieldsTest extends TestCase
         $dashboard = $this->actingAs($user)->get(route('construction.dashboard'));
 
         $dashboard->assertOk();
-        $dashboard->assertSee('Metros cuadrados construidos');
-        $dashboard->assertSee('Metros cuadrados vendibles o rentables');
-        $dashboard->assertSee('Metros cuadrados de estacionamientos');
+        $dashboard->assertDontSee('id="panel-general-obras"', false);
+        $dashboard->assertDontSee('data-project-filter-nav', false);
+        $dashboard->assertDontSee('data-overview-project-id', false);
+        $dashboard->assertDontSee('data-project-delete-open', false);
+        $dashboard->assertSee('data-project-information', false);
+        $dashboard->assertSee('data-project-information-card="'.$project->id.'"', false);
         $dashboard->assertSee('1,248.50 m2');
         $dashboard->assertSee('980.25 m2');
         $dashboard->assertSee('268.75 m2');
-        $dashboard->assertDontSee('Ver obras');
-        $dashboard->assertSee('href="#project-row-'.$project->id.'"', false);
-        $dashboard->assertSee('Acciones');
-        $dashboard->assertSee(route('construction.projects.edit', $project), false);
 
         $editForm = $this->actingAs($user)->get(route('construction.projects.edit', $project));
 
         $editForm->assertOk();
         $editForm->assertSee('Editar OBR-001');
-        $editForm->assertSee('href="'.route('construction.dashboard').'#panel-general-obras"', false);
+        $editForm->assertSee('href="'.route('construction.dashboard').'"', false);
+        $editForm->assertSee('name="constructed_area" value="1248.50"', false);
+        $editForm->assertSee('name="sellable_rentable_area" value="980.25"', false);
+        $editForm->assertSee('name="parking_area" value="268.75"', false);
+        $editForm->assertSee('name="levels_count" value="5"', false);
 
         $legacyDetails = $this->actingAs($user)->get(route('construction.projects.show', $project));
 
-        $legacyDetails->assertRedirect(route('construction.dashboard').'#project-row-'.$project->id);
+        $legacyDetails->assertRedirect(route('construction.dashboard'));
     }
 
-    public function test_project_status_controls_the_active_projects_carousel(): void
+    public function test_project_status_controls_the_available_projects_carousel(): void
     {
         $user = User::factory()->create([
             'role' => 'superadmin',
@@ -148,8 +161,14 @@ class ConstructionProjectAreaFieldsTest extends TestCase
         $dashboardBefore = $this->actingAs($user)->get(route('construction.dashboard'));
 
         $dashboardBefore->assertOk();
-        $dashboardBefore->assertDontSee('data-carousel-project-id="'.$project->id.'"', false);
-        $dashboardBefore->assertSee(route('construction.projects.status.update', $project), false);
+        $dashboardBefore->assertSee('Obras activas y por iniciar');
+        $dashboardBefore->assertSeeInOrder([
+            'data-dashboard-all',
+            'data-dashboard-project',
+            'data-dashboard-create',
+        ], false);
+        $dashboardBefore->assertSee('data-carousel-project-id="'.$project->id.'"', false);
+        $dashboardBefore->assertDontSee(route('construction.projects.status.update', $project), false);
 
         $activate = $this->actingAs($user)->patch(route('construction.projects.status.update', $project), [
             'status' => 'En ejecucion',
@@ -168,6 +187,10 @@ class ConstructionProjectAreaFieldsTest extends TestCase
         ]);
 
         $dashboardActive = $this->actingAs($user)->get(route('construction.dashboard'));
+        $dashboardActive->assertSee('data-system-message-dialog', false);
+        $dashboardActive->assertSee('data-system-message-close', false);
+        $dashboardActive->assertSee("Estatus de {$project->project_key} actualizado a En ejecucion.");
+        $dashboardActive->assertDontSee('<div class="alert">', false);
         $dashboardActive->assertSee('data-carousel-project-id="'.$project->id.'"', false);
 
         $this->actingAs($user)->patch(route('construction.projects.status.update', $project), [
@@ -180,9 +203,64 @@ class ConstructionProjectAreaFieldsTest extends TestCase
         ]);
         $dashboardCompleted = $this->actingAs($user)->get(route('construction.dashboard'));
         $dashboardCompleted->assertDontSee('data-carousel-project-id="'.$project->id.'"', false);
+        $dashboardCompleted->assertSee('data-project-information-card="'.$project->id.'"', false);
     }
 
-    public function test_dashboard_only_shows_edit_actions_for_projects_with_edit_permission(): void
+    public function test_construction_carousels_include_running_and_not_started_projects_only(): void
+    {
+        $user = User::factory()->create([
+            'role' => 'superadmin',
+            'active' => true,
+        ]);
+        $runningProject = ConstructionProject::where('status', 'En ejecucion')->firstOrFail();
+        $notStartedProject = ConstructionProject::where('status', 'Por iniciar')->firstOrFail();
+        $completedProject = ConstructionProject::where('status', 'Concluida')->firstOrFail();
+        $carouselUrls = [
+            route('construction.dashboard'),
+            route('construction.placeholder', 'generadores-obra'),
+            route('construction.placeholder', 'materiales-insumos'),
+            route('construction.placeholder', 'mano-obra'),
+            route('construction.placeholder', 'calendario'),
+            route('construction.placeholder', 'pagos'),
+            route('construction.placeholder', 'ordenes-suministro'),
+            route('construction.placeholder', 'almacenes'),
+        ];
+
+        foreach ($carouselUrls as $url) {
+            $response = $this->actingAs($user)->get($url);
+
+            $response->assertOk();
+            $response->assertSee('Obras activas y por iniciar');
+            $response->assertSee('data-carousel-project-id="'.$runningProject->id.'"', false);
+            $response->assertSee('data-carousel-project-id="'.$notStartedProject->id.'"', false);
+            $response->assertDontSee('data-carousel-project-id="'.$completedProject->id.'"', false);
+        }
+    }
+
+    public function test_dashboard_does_not_render_the_removed_project_overview_section(): void
+    {
+        $user = User::factory()->create([
+            'role' => 'superadmin',
+            'active' => true,
+        ]);
+
+        $dashboard = $this->actingAs($user)->get(route('construction.dashboard', [
+            'project_status' => 'completed',
+        ]));
+
+        $dashboard->assertOk();
+        $dashboard->assertSee('Obras activas y por iniciar');
+        $dashboard->assertSee('Bitacora reciente');
+        $dashboard->assertSee('data-dashboard-create', false);
+        $dashboard->assertSee('data-project-information', false);
+        $dashboard->assertSee('data-project-information-card', false);
+        $dashboard->assertDontSee('id="panel-general-obras"', false);
+        $dashboard->assertDontSee('data-project-filter-nav', false);
+        $dashboard->assertDontSee('data-overview-project-id', false);
+        $dashboard->assertDontSee('data-project-delete-dialog', false);
+    }
+
+    public function test_dashboard_no_longer_shows_project_management_actions(): void
     {
         $user = User::factory()->create([
             'role' => 'buyer',
@@ -196,9 +274,10 @@ class ConstructionProjectAreaFieldsTest extends TestCase
         $readOnlyDashboard = $this->actingAs($user)->get(route('construction.dashboard'));
 
         $readOnlyDashboard->assertOk();
-        $readOnlyDashboard->assertSee('Solo lectura');
         $readOnlyDashboard->assertDontSee(route('construction.projects.edit', $project), false);
         $readOnlyDashboard->assertDontSee(route('construction.projects.status.update', $project), false);
+        $readOnlyDashboard->assertDontSee('data-project-delete-open', false);
+        $this->actingAs($user)->get(route('construction.projects.edit', $project))->assertForbidden();
         $this->actingAs($user)->patch(route('construction.projects.status.update', $project), [
             'status' => 'Concluida',
         ])->assertForbidden();
@@ -208,7 +287,28 @@ class ConstructionProjectAreaFieldsTest extends TestCase
         $editableDashboard = $this->actingAs($user)->get(route('construction.dashboard'));
 
         $editableDashboard->assertOk();
-        $editableDashboard->assertSee(route('construction.projects.edit', $project), false);
-        $editableDashboard->assertSee(route('construction.projects.status.update', $project), false);
+        $editableDashboard->assertDontSee(route('construction.projects.edit', $project), false);
+        $editableDashboard->assertDontSee(route('construction.projects.status.update', $project), false);
+        $editableDashboard->assertDontSee('data-project-delete-open', false);
+        $editableDashboard->assertDontSee('data-project-delete-dialog', false);
+        $this->actingAs($user)->get(route('construction.projects.edit', $project))->assertOk();
+        $this->actingAs($user)->delete(route('construction.projects.destroy', $project))->assertForbidden();
+    }
+
+    public function test_superadmin_can_soft_delete_a_project_from_the_dashboard(): void
+    {
+        $user = User::factory()->create([
+            'role' => 'superadmin',
+            'active' => true,
+        ]);
+        $project = ConstructionProject::where('project_key', 'OBR-003')->firstOrFail();
+
+        $response = $this->actingAs($user)->delete(route('construction.projects.destroy', $project));
+
+        $response->assertRedirect(route('construction.dashboard'));
+        $response->assertSessionHas('status', 'Obra eliminada correctamente.');
+        $this->assertSoftDeleted('construction_projects', [
+            'id' => $project->id,
+        ]);
     }
 }

@@ -14,6 +14,7 @@ class ConstructionProject extends Model
     use SoftDeletes;
 
     public const STATUSES = ['Por iniciar', 'En ejecucion', 'Concluida'];
+    public const CAROUSEL_STATUSES = ['En ejecucion', 'Por iniciar'];
 
     protected $fillable = [
         'company_id',

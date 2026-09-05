@@ -3,7 +3,7 @@
 @section('body')
     <main class="view" style="max-width:1100px;margin:0 auto;width:100%">
         @if (session('status'))
-            <div class="alert">{{ session('status') }}</div>
+            <x-system-message-dialog :message="session('status')" dialog-id="supply-order-system-message" />
         @endif
 
         @if ($errors->any())

@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 
 class SecurityCompany extends Model
 {
@@ -28,6 +29,11 @@ class SecurityCompany extends Model
     public function branches(): HasMany
     {
         return $this->hasMany(SecurityBranch::class);
+    }
+
+    public function cameras(): HasManyThrough
+    {
+        return $this->hasManyThrough(SecurityCamera::class, SecurityBranch::class);
     }
 
     public function initials(): string

@@ -89,6 +89,16 @@ const employeeTabs = [
   "Notas"
 ];
 
+const interviewRounds = [
+  "Entrevista con Recursos Humanos",
+  "Entrevista con Ing. Franco Guerrero (este orden puede variar, podemos mandar primero al polígrafo en ocasiones)",
+  "Enviar a estudio del polígrafo",
+  "Entrevista Lic. Martha Silis",
+  "Entrevista Lic. Araceli Aguirre",
+  "Estudio Socioeconómico",
+  "Entrevista Ing. Guerrero"
+];
+
 const portalTabs = ["Inicio", "Mis datos", "Mis contratos", "Mis recibos", "Mis vacaciones", "Mis incidencias", "Mis documentos", "Solicitudes"];
 const tableState = {};
 let state = loadState();
@@ -110,6 +120,8 @@ function loadState() {
   normalizeContractCandidateEmployees(fallback.data);
   normalizeNewHireContracts(fallback.data);
   normalizeConvertedCandidates(fallback.data);
+  normalizeInterviewRoundCatalog(fallback.data);
+  normalizeCandidateInterviewRounds(fallback.data);
   normalizeContractApprovals(fallback.data.contracts);
   normalizeDepartmentCatalog(fallback.data);
   normalizePayrollHistory(fallback.data);
@@ -126,6 +138,8 @@ function loadState() {
     normalizeContractCandidateEmployees(data);
     normalizeNewHireContracts(data);
     normalizeConvertedCandidates(data);
+    normalizeInterviewRoundCatalog(data);
+    normalizeCandidateInterviewRounds(data);
     normalizeContractApprovals(data.contracts);
     normalizeDepartmentCatalog(data);
     normalizeTemplates(data);
@@ -164,6 +178,32 @@ function normalizeConvertedCandidates(data) {
       });
     }
     return false;
+  });
+}
+
+function normalizeInterviewRoundCatalog(data) {
+  data.settings = data.settings || {};
+  const savedRounds = Array.isArray(data.settings.interviewRounds) ? data.settings.interviewRounds : [];
+  data.settings.interviewRounds = interviewRounds.map((fallback, index) => {
+    const description = String(savedRounds[index] || "").trim();
+    return description || fallback;
+  });
+}
+
+function normalizeCandidateInterviewRounds(data) {
+  if (!Array.isArray(data.candidates)) return;
+
+  data.candidates.forEach((candidate, index) => {
+    if (["Oferta", "Contratado"].includes(candidate.status)) {
+      candidate.interviewRound = interviewRounds.length;
+      return;
+    }
+
+    const round = Number(candidate.interviewRound);
+    if (Number.isInteger(round) && round >= 1 && round <= interviewRounds.length) return;
+
+    const candidateId = Math.max(1, Number(candidate.id) || index + 1);
+    candidate.interviewRound = ((candidateId - 1) % interviewRounds.length) + 1;
   });
 }
 
@@ -769,6 +809,54 @@ function statusClass(status) {
 
 function badge(value) {
   return `<span class="status ${statusClass(value)}">${safe(value)}</span>`;
+}
+
+function candidateInterviewRound(candidate) {
+  const round = Number(candidate?.interviewRound);
+  return Number.isInteger(round) && round >= 1 && round <= interviewRounds.length ? round : 1;
+}
+
+function currentInterviewRounds() {
+  return state.data.settings?.interviewRounds || interviewRounds;
+}
+
+function interviewRoundCell(candidate) {
+  const rounds = currentInterviewRounds();
+  const round = candidateInterviewRound(candidate);
+  const label = rounds[round - 1];
+  const progress = rounds
+    .map((_, index) => `<b class="${index < round ? "is-complete" : ""}${index === round - 1 ? " is-current" : ""}"></b>`)
+    .join("");
+
+  return `
+    <div class="interview-round" aria-label="Ronda ${round} de ${rounds.length}: ${safe(label)}">
+      <strong>${round} de ${rounds.length}</strong>
+      <span>${safe(label)}</span>
+      <span class="interview-round-progress" aria-hidden="true">${progress}</span>
+    </div>
+  `;
+}
+
+function nextInterviewCell(candidate) {
+  const rounds = currentInterviewRounds();
+  const currentRound = candidateInterviewRound(candidate);
+  if (currentRound >= rounds.length) {
+    return `
+      <div class="next-interview-cell is-complete">
+        <strong>Proceso concluido</strong>
+        <span>Ronda ${rounds.length} de ${rounds.length}</span>
+      </div>
+    `;
+  }
+
+  const nextRound = currentRound + 1;
+  const schedule = candidate.technicalInterview || "Por programar";
+  return `
+    <div class="next-interview-cell">
+      <strong>${safe(schedule)}</strong>
+      <span>Ronda ${nextRound} de ${rounds.length}</span>
+    </div>
+  `;
 }
 
 function tag(value, tone = "blue") {
@@ -1397,13 +1485,13 @@ function quickAction(label, route, iconName, action = "") {
   `;
 }
 
-function renderTable({ id, rows, columns, filters = [], searchPlaceholder = "Buscar", pageSize = 8, emptyMessage = "Sin registros", footerHtml = "", toolbarExtra = "", searchPosition = "start", paginate = true, scrollY = "" }) {
+function renderTable({ id, rows, columns, filters = [], searchPlaceholder = "Buscar", pageSize = 8, emptyMessage = "Sin registros", footerHtml = "", toolbarExtra = "", searchPosition = "start", paginate = true, scrollY = "", showToolbar = true }) {
   const current = tableState[id] || { search: "", page: 1, sortKey: "", sortDir: "asc", filters: {} };
   current.columnFilters = current.columnFilters || {};
   tableState[id] = current;
 
   let filtered = [...rows];
-  if (current.search) {
+  if (showToolbar && current.search) {
     const needle = current.search.toLowerCase();
     filtered = filtered.filter((row) => {
       const haystack = row._search || Object.values(row).join(" ");
@@ -1411,7 +1499,7 @@ function renderTable({ id, rows, columns, filters = [], searchPlaceholder = "Bus
     });
   }
 
-  filters.forEach((filter) => {
+  (showToolbar ? filters : []).forEach((filter) => {
     const selected = current.filters[filter.key] || "";
     if (selected) {
       filtered = filtered.filter((row) => String(filter.getValue(row)) === String(selected));
@@ -1460,12 +1548,14 @@ function renderTable({ id, rows, columns, filters = [], searchPlaceholder = "Bus
 
   return `
     <div class="table-card">
-      <div class="table-toolbar">
-        ${searchPosition === "start" ? searchHtml : ""}
-        ${toolbarExtra}
-        ${filterHtml}
-        ${searchPosition === "end" ? searchHtml : ""}
-      </div>
+      ${showToolbar ? `
+        <div class="table-toolbar">
+          ${searchPosition === "start" ? searchHtml : ""}
+          ${toolbarExtra}
+          ${filterHtml}
+          ${searchPosition === "end" ? searchHtml : ""}
+        </div>
+      ` : ""}
       <div class="table-wrap ${scrollY ? "table-wrap-vertical" : ""} ${hasStickyScroll ? "has-sticky-x-scroll" : ""}"${scrollStyle}>
         <table>
           <thead>
@@ -1679,6 +1769,15 @@ function renderCandidateForm() {
   `;
 }
 
+function candidateIsInPostInterview(candidate) {
+  return candidate.interviewResult === "Aprobado" || candidate.negotiationStatus !== "Pendiente";
+}
+
+function candidateIsEligibleForContract(candidate) {
+  return candidateIsInPostInterview(candidate)
+    && candidateInterviewRound(candidate) >= currentInterviewRounds().length;
+}
+
 function renderCandidates() {
   if (state.ui.candidateFormOpen) return renderCandidateForm();
 
@@ -1686,12 +1785,8 @@ function renderCandidates() {
     ...candidate,
     _search: `${candidate.name} ${candidate.company} ${candidate.position} ${candidate.email} ${candidate.source} ${candidate.status} ${candidate.negotiationStatus}`
   }));
-  const candidateCompanyOptions = [...new Set([
-    ...registeredCandidateCompanies(),
-    ...candidates.map((candidate) => candidate.company)
-  ].filter(Boolean))];
   const selected = candidates.filter((candidate) => candidate.selected);
-  const negotiation = candidates.filter((candidate) => candidate.interviewResult === "Aprobado" || candidate.negotiationStatus !== "Pendiente");
+  const negotiation = candidates.filter(candidateIsInPostInterview);
   return `
     <div class="screen-stack">
       <div class="screen-stack">
@@ -1708,12 +1803,7 @@ function renderCandidates() {
               id: "candidate-registry",
               rows: candidates,
               pageSize: 5,
-              searchPlaceholder: "Buscar candidatos, puesto o correo",
-              filters: [
-                { key: "company", label: "Empresa", options: candidateCompanyOptions, getValue: (row) => row.company },
-                { key: "status", label: "Estatus", options: [...new Set(candidates.map((row) => row.status))], getValue: (row) => row.status },
-                { key: "source", label: "Fuente", options: [...new Set(candidates.map((row) => row.source))], getValue: (row) => row.source }
-              ],
+              showToolbar: false,
               columns: [
                 { key: "name", label: "Nombre", render: (row) => `<div class="employee-cell">${avatar(row)}<div><strong>${safe(row.name)}</strong><div class="small muted">${safe(row.email)}</div></div></div>` },
                 { key: "company", label: "Empresa" },
@@ -1740,18 +1830,15 @@ function renderCandidates() {
               <span class="stage-number">2</span>
               <div>
                 <h3>Candidatos seleccionados para entrevistas</h3>
-                <p>Programación de entrevista RH, técnica y responsable.</p>
+                <p>Seguimiento del procedimiento actual de ${currentInterviewRounds().length} rondas.</p>
               </div>
+              <button class="btn secondary stage-heading-action" type="button" data-action="open-interview-rounds">${icon("calendar-days", "btn-icon")}Rondas de entrevista</button>
             </div>
             ${renderTable({
               id: "candidate-interviews",
               rows: selected,
               pageSize: 5,
-              searchPlaceholder: "Buscar entrevistas",
-              filters: [
-                { key: "company", label: "Empresa", options: candidateCompanyOptions, getValue: (row) => row.company },
-                { key: "responsible", label: "Responsable", options: [...new Set(candidates.map((row) => row.responsible))], getValue: (row) => row.responsible }
-              ],
+              showToolbar: false,
               columns: [
                 { key: "selected", label: "Seleccionar", render: (row) => `<input type="checkbox" ${row.selected ? "checked" : ""} data-action="toggle-candidate-selected" data-id="${row.id}" aria-label="Seleccionar candidato" />`, sortable: false, filterValue: (row) => row.selected ? "Seleccionado" : "No seleccionado" },
                 { key: "name", label: "Nombre", render: (row) => safe(row.name) },
@@ -1759,7 +1846,8 @@ function renderCandidates() {
                 { key: "position", label: "Puesto" },
                 { key: "registeredAt", label: "Fecha de selección", render: (row) => date(row.registeredAt) },
                 { key: "rhInterview", label: "Entrevista RH", render: (row) => safe(row.rhInterview) },
-                { key: "technicalInterview", label: "Entrevista técnica", render: (row) => safe(row.technicalInterview) },
+                { key: "technicalInterview", label: "Próxima entrevista", className: "next-interview-column", tdClassName: "next-interview-column", render: (row) => nextInterviewCell(row), sortValue: (row) => row.technicalInterview },
+                { key: "interviewRound", label: "Ronda", className: "interview-round-column", tdClassName: "interview-round-column", render: (row) => interviewRoundCell(row), sortValue: (row) => candidateInterviewRound(row) },
                 { key: "responsible", label: "Responsable" },
                 { key: "status", label: "Estatus", render: (row) => badge(row.interviewResult === "Aprobado" ? "Programada" : row.interviewResult) }
               ],
@@ -1779,11 +1867,7 @@ function renderCandidates() {
               id: "candidate-negotiation",
               rows: negotiation,
               pageSize: 5,
-              searchPlaceholder: "Buscar negociación",
-              filters: [
-                { key: "company", label: "Empresa", options: candidateCompanyOptions, getValue: (row) => row.company },
-                { key: "negotiationStatus", label: "Status negociación", options: [...new Set(candidates.map((row) => row.negotiationStatus))], getValue: (row) => row.negotiationStatus }
-              ],
+              showToolbar: false,
               columns: [
                 { key: "name", label: "Nombre" },
                 { key: "company", label: "Empresa" },
@@ -1799,39 +1883,6 @@ function renderCandidates() {
             })}
           </section>
 
-          <section class="candidate-stage-card">
-            <div class="stage-heading">
-              <span class="stage-number">4</span>
-              <div>
-                <h3>Contratos con empleados</h3>
-                <p>Contratos generados desde candidatos aprobados y vencimientos operativos.</p>
-              </div>
-            </div>
-            <div class="inline-alert">${icon("alert", "mini-icon")} Alerta de vencimiento de contratos: ${state.data.contracts.filter((contract) => contract.status === "Próximo a vencer").length} contratos vencen en los próximos 30 días.</div>
-            ${renderTable({
-              id: "candidate-contracts",
-              rows: state.data.contracts.slice(0, 12).map((contract) => ({ ...contract, displayStatus: displayContractStatus(contract), _search: `${contract.employee} ${contract.company} ${contract.position} ${displayContractStatus(contract)}` })),
-              pageSize: 5,
-              searchPlaceholder: "Buscar contratos",
-              filters: [
-                { key: "company", label: "Empresa", options: state.data.companies, getValue: (row) => row.company },
-                { key: "status", label: "Estatus", options: [...new Set(["Nuevo ingreso", ...state.data.contracts.map((row) => displayContractStatus(row))])], getValue: (row) => row.displayStatus }
-              ],
-              columns: [
-                { key: "employee", label: "Empleado" },
-                { key: "company", label: "Empresa" },
-                { key: "position", label: "Puesto" },
-                { key: "startDate", label: "Fecha de ingreso", render: (row) => date(row.startDate) },
-                { key: "type", label: "Tipo de contrato" },
-                { key: "trialPeriod", label: "Vigencia" },
-                { key: "endDate", label: "Fecha de vencimiento", render: (row) => row.endDate ? date(row.endDate) : "No aplica" },
-                { key: "contract", label: "Contrato", render: (row) => `<button class="btn ghost compact" data-action="download-contract" data-id="${row.id}">${icon("download", "btn-icon")}PDF</button>`, sortable: false, filterValue: (row) => row.folio },
-                { key: "employeeSignature", label: "Firma", render: (row) => badge(row.employeeSignature) },
-                { key: "salary", label: "Sueldo mensual", render: (row) => money(row.salary), sortValue: (row) => row.salary },
-                { key: "status", label: "Estatus", render: (row) => badge(row.displayStatus) }
-              ]
-            })}
-          </section>
         </div>
 
         ${false ? `<aside class="candidate-side-panel">
@@ -2774,8 +2825,8 @@ function renderContractWizard() {
       <div class="form-card">
         ${renderContractStepContent(step)}
         <div class="form-section">
-          <div class="actions">
-            <button class="btn secondary" data-action="prev-contract-step" ${step === 1 ? "disabled" : ""}>${icon("arrow-right", "btn-icon")}Anterior</button>
+          <div class="actions contract-wizard-actions">
+            <button class="btn secondary" data-action="prev-contract-step" ${step === 1 ? "disabled" : ""}>${icon("arrow-left", "btn-icon")}Anterior</button>
             ${step < contractSteps.length ? `<button class="btn" data-action="next-contract-step">${icon("arrow-right", "btn-icon")}Siguiente</button>` : `<button class="btn success" data-action="save-contract-active">${icon("check", "btn-icon")}Guardar contrato</button>`}
             <button class="btn secondary" data-action="save-contract-process">${icon("file", "btn-icon")}Guardar proceso</button>
           </div>
@@ -2801,6 +2852,7 @@ function renderContractStepContent(step) {
       .filter((item) => item.status === "Activo")
       .sort((a, b) => String(b.hireDate || "").localeCompare(String(a.hireDate || "")) || Number(b.id) - Number(a.id));
     const candidateOptions = [...(state.data.candidates || [])]
+      .filter(candidateIsEligibleForContract)
       .sort((a, b) => String(b.registeredAt || b.lastUpdate || "").localeCompare(String(a.registeredAt || a.lastUpdate || "")) || Number(b.id) - Number(a.id));
     const isNewHireEmployee = (item) => displayEmployeeContractStatus(item) === "Nuevo ingreso";
     const newHireEmployeeOptions = allEmployeeOptions.filter(isNewHireEmployee);
@@ -2880,7 +2932,7 @@ function renderContractStepContent(step) {
             </tbody>
           </table>
         </div>
-        <div class="empty-state" data-contract-person-empty ${personOptions.length ? "hidden" : ""}>${personType === "candidate" ? "No se encontraron candidatos." : newHireOnly ? "No hay empleados marcados como Nuevo Ingreso." : "No se encontraron empleados."}</div>
+        <div class="empty-state" data-contract-person-empty ${personOptions.length ? "hidden" : ""}>${personType === "candidate" ? "No hay candidatos con las 7 rondas concluidas en Post entrevista y negociación." : newHireOnly ? "No hay empleados marcados como Nuevo Ingreso." : "No se encontraron empleados."}</div>
         <div class="actions"><button class="btn secondary" data-route="${personType === "candidate" ? "candidates" : "employee-new"}">${icon("plus", "btn-icon")}Registrar ${personType === "candidate" ? "candidato" : "empleado"}</button></div>
       </div>
     `;
@@ -5313,6 +5365,54 @@ function renderModal() {
       </div>
     `;
   }
+  if (modal.type === "interview-rounds") {
+    const rounds = currentInterviewRounds();
+    const editingIndex = Number.isInteger(modal.editingIndex) ? modal.editingIndex : -1;
+    return `
+      <div class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="interview-rounds-title">
+        <div class="modal interview-rounds-modal">
+          <header>
+            <div>
+              <h3 id="interview-rounds-title">Rondas de entrevista</h3>
+              <p class="modal-subtitle">Procedimiento actual · ${rounds.length} rondas</p>
+            </div>
+            <button class="icon-btn" type="button" data-action="close-modal" aria-label="Cerrar">${icon("x", "btn-icon")}</button>
+          </header>
+          <div class="modal-body">
+            <div class="interview-rounds-list">
+              ${rounds.map((description, index) => `
+                <article class="interview-round-item ${editingIndex === index ? "is-editing" : ""}">
+                  <span class="interview-round-number">${index + 1}</span>
+                  <div class="interview-round-detail">
+                    ${editingIndex === index ? `
+                      <form id="interview-round-form" class="interview-round-edit-form">
+                        <input type="hidden" name="index" value="${index}" />
+                        <label class="form-field">
+                          <span>Descripción de la ronda</span>
+                          <textarea class="input" name="description" rows="3" maxlength="240" required data-interview-round-input>${safe(description)}</textarea>
+                        </label>
+                        <div class="interview-round-edit-actions">
+                          <button class="btn secondary compact" type="button" data-action="cancel-interview-round-edit">Cancelar</button>
+                          <button class="btn compact" type="submit">${icon("check", "btn-icon")}Guardar</button>
+                        </div>
+                      </form>
+                    ` : `
+                      <span class="interview-round-kicker">Ronda ${index + 1}</span>
+                      <p>${safe(description)}</p>
+                    `}
+                  </div>
+                  ${editingIndex === index ? "" : `<button class="btn secondary compact interview-round-edit" type="button" data-action="edit-interview-round" data-index="${index}">${icon("edit", "btn-icon")}Editar</button>`}
+                </article>
+              `).join("")}
+            </div>
+          </div>
+          <footer>
+            <button class="btn secondary" type="button" data-action="close-modal">Cerrar</button>
+          </footer>
+        </div>
+      </div>
+    `;
+  }
   if (modal.type === "deduction") {
     const deduction = state.data.deductions.find((item) => item.id === modal.id);
     return `
@@ -5511,6 +5611,26 @@ function renderModal() {
 
 function openConfirm(title, body, confirmAction, payload = {}, tone = "") {
   state.ui.modal = { type: "confirm", title, body, confirmAction, payload, tone };
+  render();
+}
+
+function saveInterviewRound(form) {
+  const index = Number(form.get("index"));
+  const description = String(form.get("description") || "").trim();
+  const rounds = currentInterviewRounds();
+  if (!Number.isInteger(index) || index < 0 || index >= rounds.length) return;
+  if (!description) {
+    toast("Escribe la descripción de la ronda.", "error");
+    return;
+  }
+
+  const previousDescription = rounds[index];
+  state.data.settings.interviewRounds = [...rounds];
+  state.data.settings.interviewRounds[index] = description;
+  state.ui.modal = { type: "interview-rounds", editingIndex: null };
+  addAudit("Actualizó ronda de entrevista", "Candidatos", `Ronda ${index + 1}`, previousDescription, description);
+  toast(`Ronda ${index + 1} actualizada.`, "success");
+  saveState();
   render();
 }
 
@@ -5734,6 +5854,11 @@ document.addEventListener("submit", (event) => {
     updateDeduction(new FormData(event.target));
   }
 
+  if (event.target.id === "interview-round-form") {
+    event.preventDefault();
+    saveInterviewRound(new FormData(event.target));
+  }
+
   if (event.target.id === "termination-form") {
     event.preventDefault();
     const form = new FormData(event.target);
@@ -5882,6 +6007,22 @@ function handleAction(action, target) {
       break;
     case "prepare-contract-from-model":
       prepareContractFromModel(Number(data.id));
+      break;
+    case "open-interview-rounds":
+      state.ui.modal = { type: "interview-rounds", editingIndex: null };
+      render();
+      break;
+    case "edit-interview-round": {
+      const index = Number(data.index);
+      if (!Number.isInteger(index) || index < 0 || index >= currentInterviewRounds().length) break;
+      state.ui.modal = { type: "interview-rounds", editingIndex: index };
+      render();
+      requestAnimationFrame(() => document.querySelector("[data-interview-round-input]")?.focus());
+      break;
+    }
+    case "cancel-interview-round-edit":
+      state.ui.modal = { type: "interview-rounds", editingIndex: null };
+      render();
       break;
     case "open-candidate-form":
       state.ui.candidateFormOpen = true;
@@ -7500,6 +7641,7 @@ function createCandidate(form) {
     rhInterview: `${today()} 10:00`,
     technicalInterview: `${today()} 12:00`,
     responsible: "Recursos Humanos",
+    interviewRound: 1,
     requestedSalary: Number(form.get("requestedSalary") || 0),
     proposedOffer: Number(form.get("proposedOffer") || 0),
     negotiationStatus: "En negociación",
@@ -7530,6 +7672,7 @@ function updateCandidate(id, form) {
   if (!email.includes("@")) return toast("Captura un correo válido.", "error");
 
   const previousStatus = candidate.status;
+  const wasSelected = candidate.selected;
   Object.assign(candidate, {
     name,
     company: form.get("company"),
@@ -7545,6 +7688,8 @@ function updateCandidate(id, form) {
     initials: name.split(" ").slice(0, 2).map((part) => part[0]).join("").toUpperCase()
   });
   candidate.selected = ["Preselección", "En entrevista", "Oferta", "Contratado"].includes(candidate.status);
+  if (candidate.selected && !wasSelected) candidate.interviewRound = 1;
+  if (["Oferta", "Contratado"].includes(candidate.status)) candidate.interviewRound = interviewRounds.length;
   state.ui.candidateFormOpen = false;
   state.ui.candidateEditingId = null;
   addAudit("Actualizó candidato", "Candidatos", candidate.name, previousStatus, candidate.status);
@@ -7610,6 +7755,8 @@ function advanceCandidate(id) {
   const index = flow.indexOf(candidate.status);
   candidate.status = flow[Math.min(flow.length - 1, Math.max(0, index) + 1)];
   candidate.selected = ["Preselección", "En entrevista", "Oferta", "Contratado"].includes(candidate.status);
+  if (candidate.status === "En entrevista") candidate.interviewRound = 1;
+  if (["Oferta", "Contratado"].includes(candidate.status)) candidate.interviewRound = interviewRounds.length;
   candidate.lastUpdate = today();
   addAudit("Avanzó candidato", "Candidatos", candidate.name, flow[index] || "Sin etapa", candidate.status);
   toast(`${candidate.name} avanzó a ${candidate.status}.`, "success");
@@ -7623,6 +7770,7 @@ function scheduleCandidate(id) {
   candidate.selected = true;
   candidate.status = "En entrevista";
   candidate.interviewResult = "Programada";
+  candidate.interviewRound = 1;
   candidate.rhInterview = `${today()} 10:00`;
   candidate.technicalInterview = `${today()} 12:00`;
   candidate.lastUpdate = today();
@@ -7636,6 +7784,7 @@ function toggleCandidateSelected(id) {
   if (!candidate) return;
   candidate.selected = !candidate.selected;
   candidate.status = candidate.selected ? "Preselección" : "En revisión";
+  if (candidate.selected) candidate.interviewRound = 1;
   candidate.lastUpdate = today();
   saveState();
   render();
@@ -7647,6 +7796,7 @@ function sendCandidateOffer(id) {
   candidate.status = "Oferta";
   candidate.negotiationStatus = "Pendiente firma";
   candidate.interviewResult = "Aprobado";
+  candidate.interviewRound = interviewRounds.length;
   candidate.lastUpdate = today();
   addAudit("Envió oferta", "Candidatos", candidate.name, "Negociación", "Pendiente firma");
   toast("Oferta enviada al candidato.", "success");

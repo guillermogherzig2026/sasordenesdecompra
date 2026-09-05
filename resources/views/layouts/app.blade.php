@@ -139,6 +139,7 @@
             .construction-project-name { max-width: 100%; color: #071f3d; font-size: .95rem; line-height: 1.15; overflow-wrap: anywhere; }
             .construction-project-status { display: inline-flex; align-items: center; justify-content: center; gap: 7px; color: var(--muted); font-size: .78rem; font-weight: 850; line-height: 1.1; }
             .construction-project-status span { width: 8px; height: 8px; border-radius: 999px; background: #18b886; flex: 0 0 auto; }
+            [data-carousel-project-status="Por iniciar"] .construction-project-status span { background: #d18a00; }
             .construction-overview-table { min-width: 1860px; }
             .construction-overview-table th, .construction-overview-table td { vertical-align: middle; }
             .construction-overview-table td:nth-child(n+3):nth-child(-n+6) { font-variant-numeric: tabular-nums; white-space: nowrap; }
@@ -317,9 +318,15 @@
             .labor-table-scroll { max-height: min(58vh, 520px); }
             .labor-table { min-width: 1660px; }
             .labor-table th, .labor-table td { white-space: nowrap; }
-            .labor-table td:nth-child(3) { min-width: 230px; white-space: normal; }
-            .labor-table .labor-actions-column { position: sticky; right: 0; z-index: 1; min-width: 100px; text-align: right; background: #fff; box-shadow: -1px 0 0 var(--line); }
-            .labor-table th.labor-actions-column { z-index: 3; }
+            .labor-table thead th { vertical-align: middle; }
+            .labor-table thead .th-filter { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-width: max-content; }
+            .labor-table thead .th-filter > span { flex: 0 0 auto; white-space: nowrap; }
+            .labor-table td:nth-child(4) { min-width: 210px; white-space: normal; }
+            .labor-table .labor-actions-column { min-width: 100px; text-align: right; }
+            .labor-project-cell { width: 168px; max-width: 168px; white-space: normal !important; }
+            .labor-project-cell strong, .labor-project-cell span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+            .labor-project-cell strong { color: var(--primary-strong); font-size: .76rem; }
+            .labor-project-cell span { margin-top: 3px; color: var(--muted); font-size: .72rem; font-weight: 750; }
             .labor-type-badge { display: inline-flex; align-items: center; border-radius: 6px; padding: 5px 9px; font-size: .78rem; font-weight: 900; }
             .labor-type-badge.nomina { color: #176b87; background: #e5f3f7; }
             .labor-type-badge.estimacion { color: #9a5b00; background: #fff4d6; }
@@ -331,6 +338,26 @@
             .labor-file-actions form { display: inline-flex; margin: 0; }
             .file-upload-input { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
             .labor-file-actions .labor-view-button:disabled { border-color: #d0d5dd; background: #eef1f4; color: #98a2b3; opacity: 1; cursor: not-allowed; box-shadow: none; }
+            .invoice-upload-button.invoice-upload-partial { border-color: #d79a21; background: #fff4d6; color: #7a4b00; }
+            .invoice-upload-button.invoice-upload-complete { border-color: #48a878; background: #e8f6ee; color: #0b6b3d; }
+            .invoice-documents-dialog { width: min(760px, calc(100vw - 42px)); }
+            .invoice-documents-card { gap: 18px; }
+            .invoice-documents-heading { display: flex; align-items: center; gap: 12px; min-width: 0; padding-right: 42px; }
+            .invoice-documents-heading-icon { width: 42px; height: 42px; flex: 0 0 42px; display: grid; place-items: center; border-radius: 7px; color: #176b87; background: #e5f3f7; font-size: .72rem; font-weight: 900; }
+            .invoice-documents-heading > div { min-width: 0; }
+            .invoice-documents-heading .fine-print { margin-top: 4px; overflow-wrap: anywhere; }
+            .invoice-document-list { border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+            .invoice-document-row { min-height: 78px; display: grid; grid-template-columns: 46px minmax(150px, 1fr) minmax(210px, auto); align-items: center; gap: 14px; padding: 14px 0; border-bottom: 1px solid var(--line); }
+            .invoice-document-row:last-child { border-bottom: 0; }
+            .invoice-document-kind { width: 42px; height: 34px; display: grid; place-items: center; border-radius: 6px; color: #b42318; background: #fdecec; font-size: .72rem; font-weight: 900; }
+            .invoice-document-kind.xml { color: #176b87; background: #e5f3f7; }
+            .invoice-document-kind.fiscal { color: #157347; background: #e8f6ee; }
+            .invoice-document-copy { min-width: 0; display: grid; gap: 4px; }
+            .invoice-document-copy strong { color: var(--text); }
+            .invoice-document-copy > span { color: var(--muted); font-size: .82rem; overflow-wrap: anywhere; }
+            .invoice-document-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
+            .invoice-document-actions form { margin: 0; }
+            .invoice-document-actions .button { white-space: normal; text-align: center; }
             .construction-payment-table { min-width: 1460px; }
             .construction-payment-table th, .construction-payment-table td { white-space: nowrap; }
             .construction-payment-table td:nth-child(3) { min-width: 250px; white-space: normal; }
@@ -488,7 +515,55 @@
             .provider-subcategory-create-row td { padding-left: 96px; }
             .provider-subcategory-create-form { display: flex; align-items: end; gap: 12px; flex-wrap: wrap; }
             .provider-subcategory-create-form label { min-width: min(360px, 100%); }
-            .alert { padding: 12px 14px; border-radius: 8px; border: 1px solid #b7dfca; background: #e8f6ee; color: var(--success); font-weight: 700; }
+            .system-message-dialog {
+                width: min(480px, calc(100vw - 32px));
+                padding: 0;
+                border: 0;
+                border-radius: 8px;
+                color: var(--text);
+                box-shadow: 0 24px 70px rgba(24, 34, 53, .3);
+            }
+            .system-message-dialog::backdrop { background: rgba(16, 43, 58, .5); }
+            .system-message-dialog-content {
+                min-height: 104px;
+                padding: 24px 58px 24px 24px;
+                position: relative;
+                display: flex;
+                align-items: center;
+                gap: 14px;
+                background: #fff;
+            }
+            .system-message-dialog-icon {
+                width: 40px;
+                height: 40px;
+                flex: 0 0 40px;
+                border-radius: 999px;
+                background: #e3f5ee;
+                color: #14845a;
+                display: grid;
+                place-items: center;
+                font-size: 1.15rem;
+                font-weight: 900;
+            }
+            .system-message-dialog-message { margin: 0; font-size: 1.02rem; font-weight: 800; line-height: 1.4; }
+            .system-message-dialog-close {
+                width: 32px;
+                height: 32px;
+                padding: 0;
+                position: absolute;
+                top: 12px;
+                right: 12px;
+                border: 1px solid var(--line);
+                border-radius: 7px;
+                background: #fff;
+                color: var(--text);
+                display: grid;
+                place-items: center;
+                font-size: 1.15rem;
+                line-height: 1;
+                cursor: pointer;
+            }
+            .system-message-dialog-close:hover { background: #f4f7fb; color: var(--primary); }
             .error-list { padding: 12px 14px; border-radius: 8px; border: 1px solid #f1b8b4; background: #fdecec; color: var(--danger); }
             .inline-form { display: inline; }
             .item-actions { display: flex; gap: 8px; flex-wrap: wrap; }
@@ -707,6 +782,10 @@
                 .labor-budget-grid { grid-template-columns: 1fr; }
                 .labor-toolbar { align-items: flex-start; }
                 .labor-tab { width: 100%; }
+                .invoice-document-row { grid-template-columns: 42px minmax(0, 1fr); }
+                .invoice-document-actions { grid-column: 1 / -1; justify-content: stretch; }
+                .invoice-document-actions form { flex: 1 1 210px; }
+                .invoice-document-actions .button { width: 100%; }
                 .unit-price-panel { grid-template-rows: auto; }
                 .unit-price-filters { grid-template-columns: 1fr; }
                 .unit-price-filter-actions .button { flex: 1 1 0; }
@@ -722,6 +801,22 @@
         <script id="global-table-tools">
             document.addEventListener('DOMContentLoaded', () => {
                 const normalize = (value) => (value || '').replace(/\s+/g, ' ').trim();
+                document.querySelectorAll('[data-system-message-dialog]').forEach((dialog) => {
+                    const closeDialog = () => {
+                        if (typeof dialog.close === 'function' && dialog.open) dialog.close();
+                        else dialog.removeAttribute('open');
+                    };
+
+                    dialog.querySelector('[data-system-message-close]')?.addEventListener('click', closeDialog);
+                    dialog.addEventListener('click', (event) => {
+                        if (event.target === dialog) closeDialog();
+                    });
+
+                    if (dialog.hasAttribute('data-auto-open') && !dialog.open) {
+                        if (typeof dialog.showModal === 'function') dialog.showModal();
+                        else dialog.setAttribute('open', 'open');
+                    }
+                });
                 const preserveSidebarScroll = () => {
                     const navList = document.querySelector('.nav-list');
                     if (!navList) return;

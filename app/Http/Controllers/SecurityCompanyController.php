@@ -48,7 +48,7 @@ class SecurityCompanyController extends Controller
         if ($section === 'companies') {
             $securityCompanies = SecurityCompany::query()
                 ->with('financeCompany')
-                ->withCount('branches')
+                ->withCount(['branches', 'cameras'])
                 ->orderBy('name')
                 ->get();
 
@@ -82,7 +82,7 @@ class SecurityCompanyController extends Controller
                 ->get(['id', 'name', 'rfc']);
         } elseif ($section === 'branches') {
             $securityCompanies = SecurityCompany::query()
-                ->withCount('branches')
+                ->withCount(['branches', 'cameras'])
                 ->orderBy('name')
                 ->get();
 
@@ -93,6 +93,7 @@ class SecurityCompanyController extends Controller
                     'securityCompany',
                     'cameras' => fn ($query) => $query->orderBy('sort_order'),
                 ])
+                ->withCount('cameras')
                 ->when(
                     $selectedSectionCompany,
                     fn ($query) => $query->where('security_company_id', $selectedSectionCompany->id),
@@ -105,8 +106,8 @@ class SecurityCompanyController extends Controller
                 ?? $securityBranches->first();
         } elseif ($section === 'analytics') {
             $securityCompanies = SecurityCompany::query()
-                ->with(['branches' => fn ($query) => $query->orderBy('name')])
-                ->withCount('branches')
+                ->with(['branches' => fn ($query) => $query->withCount('cameras')->orderBy('name')])
+                ->withCount(['branches', 'cameras'])
                 ->orderBy('name')
                 ->get();
 
@@ -130,7 +131,7 @@ class SecurityCompanyController extends Controller
             $analyticsParameters = SecurityAnalyticsCatalog::parameters();
         } else {
             $securityCompanies = SecurityCompany::query()
-                ->withCount('branches')
+                ->withCount(['branches', 'cameras'])
                 ->orderBy('name')
                 ->get();
 
@@ -228,7 +229,7 @@ class SecurityCompanyController extends Controller
             'camera_urls' => ['nullable', 'array', 'max:24'],
             'camera_urls.*' => ['array:name,url'],
             'camera_urls.*.name' => ['nullable', 'string', 'max:120'],
-            'camera_urls.*.url' => ['nullable', 'string', 'max:2048', 'url:http,https,rtsp,rtsps'],
+            'camera_urls.*.url' => ['nullable', 'string', 'max:2048'],
         ], [], [
             'security_company_id' => 'empresa o negocio',
             'name' => 'nombre de la sucursal',
@@ -314,7 +315,7 @@ class SecurityCompanyController extends Controller
             'camera_urls' => ['nullable', 'array', 'max:24'],
             'camera_urls.*' => ['array:name,url'],
             'camera_urls.*.name' => ['nullable', 'string', 'max:120'],
-            'camera_urls.*.url' => ['nullable', 'string', 'max:2048', 'url:http,https,rtsp,rtsps'],
+            'camera_urls.*.url' => ['nullable', 'string', 'max:2048'],
         ]);
 
         $validated['name'] = trim($validated['name']);
@@ -344,14 +345,14 @@ class SecurityCompanyController extends Controller
     private function normalizeCameraUrls(array $cameraUrls): array
     {
         return collect($cameraUrls)
-            ->filter(fn (array $camera) => filled($camera['url'] ?? null))
+            ->filter(fn (array $camera) => filled($camera['name'] ?? null) || filled($camera['url'] ?? null))
             ->values()
             ->map(function (array $camera, int $index): array {
                 return [
                     'name' => filled($camera['name'] ?? null)
                         ? trim((string) $camera['name'])
                         : 'Cámara '.str_pad((string) ($index + 1), 2, '0', STR_PAD_LEFT),
-                    'stream_url' => trim((string) $camera['url']),
+                    'stream_url' => trim((string) ($camera['url'] ?? '')),
                     'sort_order' => $index,
                 ];
             })

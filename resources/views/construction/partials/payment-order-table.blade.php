@@ -1,6 +1,7 @@
 @php
     $financeContext = $financeContext ?? false;
     $allowPaymentUpload = $allowPaymentUpload ?? false;
+    $allowDiscard = $allowDiscard ?? false;
     $emptyMessage = $emptyMessage ?? 'No hay pagos registrados.';
     $money = fn ($value) => '$'.number_format((float) $value, 2);
 @endphp
@@ -20,6 +21,9 @@
                 <th>Factura</th>
                 <th>Pago</th>
                 <th>Fecha de Pago</th>
+                @if ($allowDiscard)
+                    <th data-no-filter data-no-sort>Descartar</th>
+                @endif
             </tr>
         </thead>
         <tbody>
@@ -44,7 +48,7 @@
                     <td>{{ $paymentOrder->periodLabel() }}</td>
                     <td>{{ $paymentOrder->payment_due_date?->format('d/m/Y') ?? '-' }}</td>
                     <td>{{ $money($paymentOrder->amount) }}</td>
-                    <td><span class="status {{ $paymentOrder->statusClass() }}">{{ $paymentOrder->status }}</span></td>
+                    <td><span class="status {{ $paymentOrder->statusClass() }}">{{ $paymentOrder->displayStatus() }}</span></td>
                     <td>
                         <div class="labor-file-actions">
                             @if ($invoiceUrl)
@@ -74,10 +78,19 @@
                         </div>
                     </td>
                     <td>{{ $paymentOrder->paid_on?->format('d/m/Y') ?? '-' }}</td>
+                    @if ($allowDiscard)
+                        <td>
+                            <form method="POST" action="{{ route('finance.construction-payment-orders.discard', $paymentOrder) }}">
+                                @csrf
+                                @method('PATCH')
+                                <button class="button danger small" type="submit">Descartar</button>
+                            </form>
+                        </td>
+                    @endif
                 </tr>
             @empty
                 <tr>
-                    <td class="empty-state" colspan="11">{{ $emptyMessage }}</td>
+                    <td class="empty-state" colspan="{{ $allowDiscard ? 12 : 11 }}">{{ $emptyMessage }}</td>
                 </tr>
             @endforelse
         </tbody>

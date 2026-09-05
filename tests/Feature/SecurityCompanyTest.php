@@ -8,6 +8,7 @@ use App\Models\SecurityCamera;
 use App\Models\SecurityCompany;
 use App\Models\User;
 use App\Support\NavigationPermissionCatalog;
+use Database\Seeders\SecurityDemoCameraSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -187,8 +188,11 @@ class SecurityCompanyTest extends TestCase
             ->assertSee('SC-01')
             ->assertSee('2 cámaras')
             ->assertSee('data-security-camera-preview-grid', false)
+            ->assertSee('Cámaras activas')
+            ->assertSee('data-security-active-cameras="0/2"', false)
             ->assertSee('Entrada principal')
             ->assertSee('Acceso lateral')
+            ->assertSee('Sin conexión')
             ->assertDontSee('CÁMARAS POR SUCURSAL')
             ->assertDontSee('VISTA PREVIA')
             ->assertDontSee('Cuadrícula de monitoreo de ejemplo')
@@ -198,6 +202,20 @@ class SecurityCompanyTest extends TestCase
             ->assertSee('Catálogo de sucursales')
             ->assertDontSee('security-branch-form', false);
 
+        $this->get(route('security.index', ['company' => $securityCompany->id]))
+            ->assertOk()
+            ->assertSee('data-security-dashboard-camera-count', false)
+            ->assertSee('data-security-company-camera-count="2"', false);
+
+        $this->get(route('security.index', [
+            'section' => 'analytics',
+            'company_id' => $securityCompany->id,
+            'branch_id' => $securityBranch->id,
+        ]))
+            ->assertOk()
+            ->assertSee('data-security-analytics-camera-count', false)
+            ->assertSee('2 cámaras registradas');
+
         $this->get(route('security.index', [
             'section' => 'branches',
             'company_id' => $securityCompany->id,
@@ -205,9 +223,46 @@ class SecurityCompanyTest extends TestCase
         ]))
             ->assertOk()
             ->assertSee('0 cámaras')
+            ->assertSee('Sucursal sin cámaras · 0 cámaras')
             ->assertSee('data-security-camera-preview-empty', false)
+            ->assertSee('No hay cámaras de vigilancia registradas para esta sucursal.')
             ->assertDontSee('data-security-camera-preview-grid', false)
             ->assertDontSee('DEMO-01');
+    }
+
+    public function test_demo_camera_seeder_assigns_exactly_four_cameras_to_each_branch(): void
+    {
+        $securityCompany = SecurityCompany::create([
+            'name' => 'Empresa para demo de cámaras',
+            'entity_type' => 'company',
+        ]);
+        $branches = collect([
+            SecurityBranch::create([
+                'security_company_id' => $securityCompany->id,
+                'name' => 'Sucursal Centro',
+            ]),
+            SecurityBranch::create([
+                'security_company_id' => $securityCompany->id,
+                'name' => 'Sucursal Norte',
+            ]),
+        ]);
+        $branches->first()->cameras()->create([
+            'name' => 'Registro anterior',
+            'stream_url' => 'rtsp://old.example/camera',
+            'sort_order' => 0,
+        ]);
+
+        $this->seed(SecurityDemoCameraSeeder::class);
+
+        foreach ($branches as $branch) {
+            $this->assertSame(4, $branch->cameras()->count());
+            $this->assertSame(
+                ['Entrada principal', 'Estacionamiento', 'Área de cajas', 'Almacén'],
+                $branch->cameras()->pluck('name')->all(),
+            );
+        }
+
+        $this->assertDatabaseMissing('security_cameras', ['name' => 'Registro anterior']);
     }
 
     public function test_branch_modal_stores_location_contact_and_configuration(): void
@@ -278,11 +333,12 @@ class SecurityCompanyTest extends TestCase
             'analytics_enabled' => true,
             'alerts_enabled' => true,
         ]);
-        $this->assertSame(2, SecurityCamera::query()->count());
+        $this->assertSame(3, SecurityCamera::query()->count());
         $this->assertSame(
             [
                 ['name' => 'Entrada principal', 'url' => 'https://cameras.example.com/entrada.m3u8'],
                 ['name' => 'Cámara 02', 'url' => 'rtsp://10.0.0.25/live'],
+                ['name' => 'Fila vacía', 'url' => ''],
             ],
             $securityBranch->cameras()
                 ->get()
@@ -316,7 +372,7 @@ class SecurityCompanyTest extends TestCase
             'analytics_enabled' => '0',
             'alerts_enabled' => '1',
             'camera_urls' => [
-                ['name' => 'Acceso norte', 'url' => 'rtsps://cameras.example.com/norte'],
+                ['name' => 'Acceso norte', 'url' => 'rtsp'],
             ],
         ]);
 
@@ -339,7 +395,7 @@ class SecurityCompanyTest extends TestCase
         ]);
         $this->assertSame(1, SecurityCamera::query()->count());
         $this->assertSame('Acceso norte', SecurityCamera::query()->firstOrFail()->name);
-        $this->assertSame('rtsps://cameras.example.com/norte', SecurityCamera::query()->firstOrFail()->stream_url);
+        $this->assertSame('rtsp', SecurityCamera::query()->firstOrFail()->stream_url);
 
         $this->get(route('security.index', [
             'section' => 'branches',
@@ -348,7 +404,7 @@ class SecurityCompanyTest extends TestCase
         ]))
             ->assertOk()
             ->assertSee('security-branch-success-dialog', false)
-            ->assertSee('Cambios guardados con éxito')
+            ->assertSee('Cambios guardados con exito')
             ->assertSee('data-security-branch-success-close', false);
     }
 }

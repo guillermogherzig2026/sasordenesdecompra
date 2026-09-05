@@ -101,7 +101,7 @@
                                     </details>
                                 </td>
                                 <td data-excel-filter-value="{{ $order->is_credit ? 'Credito' : 'Contado' }}">
-                                    <input type="checkbox" disabled @checked($order->is_credit)>
+                                    <input class="finance-credit-checkbox" type="checkbox" disabled @checked($order->is_credit)>
                                 </td>
                                 <td data-excel-filter-value="{{ $order->is_credit ? $order->credit_days : 'Sin credito' }}">
                                     {{ $order->is_credit ? $order->credit_days : '-' }}
@@ -178,6 +178,14 @@
             white-space: nowrap;
         }
 
+        .finance-active-panel .finance-credit-checkbox {
+            width: 14px;
+            height: 14px;
+            min-height: 0;
+            margin: 0;
+            padding: 0;
+            vertical-align: middle;
+        }
 
         .finance-active-panel .due-date-pill {
             border-radius: 8px;
@@ -800,7 +808,6 @@
         });
     </script>
 @endsection
-
 
 
 

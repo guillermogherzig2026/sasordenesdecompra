@@ -5,8 +5,8 @@
         <section class="panel construction-carousel-panel" data-construction-carousel>
             <div class="construction-carousel-header">
                 <div class="construction-carousel-title">
-                    <span class="construction-carousel-count">{{ $activeProjects->count() }}</span>
-                    <h2>Obras activas</h2>
+                    <span class="construction-carousel-count">{{ $carouselProjects->count() }}</span>
+                    <h2>Obras activas y por iniciar</h2>
                 </div>
                 <a class="button ghost small" href="{{ route('construction.dashboard') }}">Atras</a>
             </div>
@@ -14,10 +14,12 @@
             <div class="construction-carousel-shell">
                 <button class="construction-carousel-nav" type="button" data-carousel-prev aria-label="Obra anterior">&lt;</button>
                 <div class="construction-carousel-track" data-construction-carousel-track>
-                    @forelse ($activeProjects as $project)
+                    @forelse ($carouselProjects as $project)
                         <a
                             class="construction-project-tile {{ $project->id === $selectedProjectId ? 'active' : '' }}"
                             href="{{ route('construction.placeholder', ['section' => 'calendario', 'project' => $project->id, 'month' => $monthValue]) }}"
+                            data-carousel-project-id="{{ $project->id }}"
+                            data-carousel-project-status="{{ $project->status }}"
                             aria-current="{{ $project->id === $selectedProjectId ? 'page' : 'false' }}"
                         >
                             <span class="construction-project-avatar">
