@@ -120,6 +120,7 @@
             ['label' => 'Panel de inicio', 'url' => route('dashboard'), 'active' => request()->routeIs('dashboard'), 'permission' => $homeDashboardPermission],
             ['label' => 'Usuarios y Roles', 'url' => route('superadmin.users.index'), 'active' => request()->routeIs('superadmin.users.*')],
             ['label' => 'Proveedores', 'url' => route('superadmin.provider-lines.index'), 'active' => request()->routeIs('superadmin.provider-lines.*')],
+            ['label' => 'Centro de agentes', 'url' => route('superadmin.agents.index'), 'active' => request()->routeIs('superadmin.agents.*')],
         ],
         'Finanzas' => [
             ['label' => 'OC Vigentes', 'url' => route('finance.orders.active'), 'active' => request()->routeIs('finance.orders.active') || request()->routeIs('finance.orders.payment'), 'pending_badge' => true, 'menu_box' => 'oc', 'menu_box_start' => true, 'menu_box_title' => 'Ordenes de compra'],
@@ -175,7 +176,7 @@
             ['label' => 'Materiales e insumos', 'url' => route('construction.placeholder', 'materiales-insumos'), 'active' => request()->routeIs('construction.placeholder') && request()->route('section') === 'materiales-insumos', 'menu_box' => 'construction-obras', 'menu_box_end' => true],
 
             ['label' => 'Mano de obra', 'url' => route('construction.placeholder', 'mano-obra'), 'active' => request()->routeIs('construction.placeholder') && request()->route('section') === 'mano-obra', 'menu_box' => 'construction-operacion', 'menu_box_start' => true, 'menu_box_title' => 'Operacion'],
-            ['label' => 'Calendario', 'url' => route('construction.placeholder', 'calendario'), 'active' => request()->routeIs('construction.placeholder') && request()->route('section') === 'calendario', 'menu_box' => 'construction-operacion'],
+            ['label' => 'Calendario y Avances', 'url' => route('construction.placeholder', 'calendario'), 'active' => request()->routeIs('construction.placeholder') && request()->route('section') === 'calendario', 'menu_box' => 'construction-operacion'],
             ['label' => 'Historial de pagos', 'url' => route('construction.placeholder', 'pagos'), 'active' => request()->routeIs('construction.placeholder') && request()->route('section') === 'pagos', 'menu_box' => 'construction-operacion', 'menu_box_end' => true],
 
             ['label' => 'Ordenes de suministro', 'url' => route('construction.placeholder', 'ordenes-suministro'), 'active' => request()->routeIs('construction.placeholder') && request()->route('section') === 'ordenes-suministro', 'menu_box' => 'construction-materiales', 'menu_box_start' => true, 'menu_box_title' => 'Administracion'],
@@ -261,7 +262,7 @@
             'Generadores de obra' => 'construction.generators',
             'Materiales e insumos' => 'construction.materials',
             'Mano de obra' => 'construction.labor',
-            'Calendario' => 'construction.calendar',
+            'Calendario y Avances' => 'construction.calendar',
             'Historial de pagos' => 'construction.payments',
             'Ordenes de suministro' => 'construction.supply',
             'Almacenes' => 'construction.warehouses',

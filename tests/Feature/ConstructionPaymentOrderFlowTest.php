@@ -201,6 +201,7 @@ class ConstructionPaymentOrderFlowTest extends TestCase
             'section' => 'mano-obra',
             'project' => $order->construction_project_id,
         ]);
+        $dialogId = 'invoice-documents-dialog-'.$order->id;
 
         $this->assertSame(0, $order->invoiceDocumentCount());
         $this->assertSame('empty', $order->invoiceDocumentStatus());
@@ -215,7 +216,9 @@ class ConstructionPaymentOrderFlowTest extends TestCase
                 route('construction.payment-orders.invoice.store', $order),
                 ['invoice_file' => UploadedFile::fake()->create('factura-nomina.pdf', 80, 'application/pdf')]
             )
-            ->assertRedirect($laborUrl);
+            ->assertRedirect($laborUrl)
+            ->assertSessionHas('open_invoice_dialog', $dialogId)
+            ->assertSessionHas('invoice_document_status');
 
         $order->refresh();
         $this->assertSame(1, $order->invoiceDocumentCount());
@@ -223,7 +226,10 @@ class ConstructionPaymentOrderFlowTest extends TestCase
         $this->actingAs($user)
             ->get($laborUrl)
             ->assertSee('class="button ghost small invoice-upload-button invoice-upload-partial"', false)
-            ->assertSee('data-invoice-document-count="1"', false);
+            ->assertSee('data-invoice-document-count="1"', false)
+            ->assertSee('data-document-complete="invoice-pdf"', false)
+            ->assertDontSee('data-document-complete="invoice-xml"', false)
+            ->assertDontSee('data-document-complete="fiscal-verification-pdf"', false);
 
         $this->actingAs($user)
             ->from($laborUrl)
@@ -231,7 +237,9 @@ class ConstructionPaymentOrderFlowTest extends TestCase
                 route('construction.payment-orders.invoice.store', $order),
                 ['invoice_xml_file' => UploadedFile::fake()->create('factura-nomina.xml', 20, 'application/xml')]
             )
-            ->assertRedirect($laborUrl);
+            ->assertRedirect($laborUrl)
+            ->assertSessionHas('open_invoice_dialog', $dialogId)
+            ->assertSessionHas('invoice_document_status');
 
         $order->refresh();
         $this->assertSame(2, $order->invoiceDocumentCount());
@@ -243,7 +251,9 @@ class ConstructionPaymentOrderFlowTest extends TestCase
                 route('construction.payment-orders.invoice.store', $order),
                 ['fiscal_verification_file' => UploadedFile::fake()->create('verificacion-fiscal.pdf', 60, 'application/pdf')]
             )
-            ->assertRedirect($laborUrl);
+            ->assertRedirect($laborUrl)
+            ->assertSessionHas('open_invoice_dialog', $dialogId)
+            ->assertSessionHas('invoice_document_status');
 
         $order->refresh();
         $this->assertSame(3, $order->invoiceDocumentCount());
@@ -266,6 +276,11 @@ class ConstructionPaymentOrderFlowTest extends TestCase
         $labor->assertSee('name="invoice_file"', false);
         $labor->assertSee('name="invoice_xml_file"', false);
         $labor->assertSee('name="fiscal_verification_file"', false);
+        $labor->assertSee('data-invoice-documents-save', false);
+        $labor->assertSee('invoice-documents-inline-status', false);
+        $labor->assertSee('data-document-complete="invoice-pdf"', false);
+        $labor->assertSee('data-document-complete="invoice-xml"', false);
+        $labor->assertSee('data-document-complete="fiscal-verification-pdf"', false);
 
         $this->actingAs($user)
             ->get(route('construction.payment-orders.invoice', $order))
@@ -280,6 +295,122 @@ class ConstructionPaymentOrderFlowTest extends TestCase
         $this->actingAs($user)
             ->get(route('finance.construction-payment-orders.active'))
             ->assertSee(route('finance.construction-payment-orders.invoice', $order), false);
+    }
+
+    public function test_progress_photos_can_be_uploaded_and_viewed_from_the_invoice_modal(): void
+    {
+        Storage::fake('local');
+        $user = $this->superadmin();
+        $order = ConstructionPaymentOrder::where('code', 'NOM-S26')->firstOrFail();
+        $laborUrl = route('construction.placeholder', [
+            'section' => 'mano-obra',
+            'project' => $order->construction_project_id,
+        ]);
+
+        $response = $this->actingAs($user)
+            ->from($laborUrl)
+            ->post(route('construction.payment-orders.progress-photos.store', $order), [
+                'invoice_dialog' => 'invoice-documents-dialog-'.$order->id,
+                'progress_photos' => [
+                    UploadedFile::fake()->image('avance-frente.jpg', 640, 480),
+                    UploadedFile::fake()->image('avance-interior.png', 640, 480),
+                ],
+                'progress_descriptions' => [
+                    'Preparacion de muros en planta baja.',
+                    'Instalacion electrica en pasillo.',
+                ],
+            ]);
+
+        $response->assertRedirect($laborUrl);
+        $response->assertSessionHas('open_invoice_dialog', 'invoice-documents-dialog-'.$order->id);
+        $response->assertSessionHas('invoice_document_status');
+        $photos = $order->progressPhotos()->get();
+        $this->assertCount(2, $photos);
+
+        foreach ($photos as $photo) {
+            Storage::disk('local')->assertExists($photo->file_path);
+            $this->actingAs($user)
+                ->get(route('construction.payment-orders.progress-photos.show', [$order, $photo]))
+                ->assertOk();
+        }
+
+        $this->assertDatabaseHas('construction_payment_progress_photos', [
+            'construction_payment_order_id' => $order->id,
+            'original_name' => 'avance-frente.jpg',
+            'description' => 'Preparacion de muros en planta baja.',
+            'uploaded_by' => $user->id,
+        ]);
+        $this->assertDatabaseHas('construction_audit_logs', [
+            'construction_project_id' => $order->construction_project_id,
+            'action' => 'Fotos de avance cargadas',
+            'description' => 'Se cargaron 2 fotos de avance de NOM-S26.',
+        ]);
+
+        $this->actingAs($user)
+            ->get($laborUrl)
+             ->assertOk()
+             ->assertSee('Documentos de factura y avance')
+             ->assertSee('Fotos del avance')
+             ->assertSee('2 fotos')
+             ->assertSee('Preparacion de muros en planta baja.')
+             ->assertSee('data-progress-photo-open="progress-photo-dialog-'.$order->id.'"', false)
+             ->assertSee('data-progress-photo-drop-zone', false)
+             ->assertSee('data-progress-photo-stage="describe"', false)
+             ->assertSee('name="progress_photos[]"', false)
+             ->assertSee("textarea.name = 'progress_descriptions[]'", false)
+             ->assertSee('multiple', false)
+             ->assertSee('capture="environment"', false)
+             ->assertSee('data-document-complete="progress-photos"', false)
+             ->assertSee('avance-frente.jpg')
+             ->assertSee(route('construction.payment-orders.progress-photos.update', [$order, $photos->first()]), false)
+             ->assertSee(route('construction.payment-orders.progress-photos.destroy', [$order, $photos->first()]), false)
+             ->assertSee(route('construction.payment-orders.progress-photos.show', [$order, $photos->first()]), false);
+    }
+
+    public function test_progress_photo_descriptions_can_be_updated_and_photos_deleted(): void
+    {
+        Storage::fake('local');
+        $user = $this->superadmin();
+        $order = ConstructionPaymentOrder::where('code', 'NOM-S26')->firstOrFail();
+        $storedFile = UploadedFile::fake()->image('avance.jpg', 640, 480)
+            ->store('construction-payment-progress-photos');
+        $photo = $order->progressPhotos()->create([
+            'file_path' => $storedFile,
+            'original_name' => 'avance.jpg',
+            'description' => 'Descripcion inicial.',
+            'uploaded_by' => $user->id,
+        ]);
+
+        $this->actingAs($user)
+            ->patch(route('construction.payment-orders.progress-photos.update', [$order, $photo]), [
+                'invoice_dialog' => 'invoice-documents-dialog-'.$order->id,
+                'description' => 'Colado de columnas en planta baja.',
+            ])
+            ->assertSessionHas('open_invoice_dialog', 'invoice-documents-dialog-'.$order->id)
+            ->assertSessionHas('invoice_document_status');
+
+        $this->assertDatabaseHas('construction_payment_progress_photos', [
+            'id' => $photo->id,
+            'description' => 'Colado de columnas en planta baja.',
+        ]);
+        $this->assertDatabaseHas('construction_audit_logs', [
+            'construction_project_id' => $order->construction_project_id,
+            'action' => 'Descripcion de foto de avance actualizada',
+        ]);
+
+        $this->actingAs($user)
+            ->delete(route('construction.payment-orders.progress-photos.destroy', [$order, $photo]), [
+                'invoice_dialog' => 'invoice-documents-dialog-'.$order->id,
+            ])
+            ->assertSessionHas('open_invoice_dialog', 'invoice-documents-dialog-'.$order->id)
+            ->assertSessionHas('invoice_document_status');
+
+        $this->assertDatabaseMissing('construction_payment_progress_photos', ['id' => $photo->id]);
+        Storage::disk('local')->assertMissing($storedFile);
+        $this->assertDatabaseHas('construction_audit_logs', [
+            'construction_project_id' => $order->construction_project_id,
+            'action' => 'Foto de avance eliminada',
+        ]);
     }
 
     public function test_superadmin_can_delete_an_estimate_package_from_the_catalog(): void

@@ -27,6 +27,10 @@ class ConstructionCalendarTest extends TestCase
         ]));
 
         $response->assertOk();
+        $response->assertSee('Calendario y Avances');
+        $response->assertSee('data-initial-schedule-view="calendar"', false);
+        $response->assertSee('data-schedule-view-tab="calendar"', false);
+        $response->assertSee('data-schedule-view-tab="advances"', false);
         $response->assertSee('Calendario de alcances');
         $response->assertSee('Agosto 2026');
         $response->assertSee('Todos los contratistas');
@@ -65,6 +69,45 @@ class ConstructionCalendarTest extends TestCase
         $response->assertSee('Concluido');
         $response->assertSee(route('construction.schedule-items.store'), false);
         $this->assertDatabaseCount('construction_schedule_items', 6);
+    }
+
+    public function test_advances_view_groups_scope_progress_by_week(): void
+    {
+        $user = User::factory()->create([
+            'role' => 'superadmin',
+            'active' => true,
+        ]);
+        $project = ConstructionProject::where('project_key', 'OBR-001')->firstOrFail();
+
+        $response = $this->actingAs($user)->get(route('construction.placeholder', [
+            'section' => 'calendario',
+            'project' => $project->id,
+            'month' => '2026-08',
+            'view' => 'advances',
+        ]));
+
+        $response->assertOk();
+        $response->assertSee('data-initial-schedule-view="advances"', false);
+        $response->assertSee('Reporte semanal de obra');
+        $response->assertSee('Reportes semanales');
+        $response->assertSee('Generado automáticamente');
+        $response->assertSee('Obra seleccionada previamente');
+        $response->assertSee('Resumen semanal de la obra');
+        $response->assertSee('Paquetes de fotografías');
+        $response->assertSee('Incidencias y acciones');
+        $response->assertSee('Próxima semana');
+        $response->assertSee('Redacción generada automáticamente');
+        $response->assertSee('El próximo reporte se generará automáticamente el lunes 31 de agosto a las 07:00.');
+        $response->assertSee('Descargar PDF');
+        $response->assertSee('Compartir');
+        $response->assertSee('data-weekly-report-actual="65"', false);
+        $response->assertSee('data-weekly-report-actual="25"', false);
+        $response->assertSee('Cimentacion y armado');
+        $response->assertSee('Constructora Alfa');
+        $this->assertSame(4, substr_count($response->getContent(), 'data-weekly-report-select="'));
+        $this->assertSame(8, substr_count($response->getContent(), 'data-weekly-report-select-target="'));
+        $this->assertSame(4, substr_count($response->getContent(), 'data-weekly-report-panel="'));
+        $this->assertSame(4, substr_count($response->getContent(), 'data-weekly-report-dialog="'));
     }
 
     public function test_superadmin_can_create_update_and_delete_a_calendar_scope(): void

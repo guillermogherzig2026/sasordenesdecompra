@@ -263,6 +263,8 @@
     <script id="buyer-column-filters">
         document.addEventListener('DOMContentLoaded', () => {
             const normalize = (value) => (value || '').replace(/\s+/g, ' ').trim();
+            const normalizeSearch = (value) => normalize(value).toLocaleLowerCase('es-MX')
+                .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
             const closeFilters = (except = null) => {
                 document.querySelectorAll('.column-filter[open]').forEach((filter) => {
                     if (filter !== except) {
@@ -314,18 +316,42 @@
                     summary.setAttribute('aria-label', `Filtrar ${label}`);
                     const panel = document.createElement('div');
                     panel.className = 'column-filter-panel';
+                    const search = document.createElement('input');
+                    search.type = 'search';
+                    search.className = 'column-filter-search';
+                    search.placeholder = 'Buscar';
+                    search.autocomplete = 'off';
+                    search.setAttribute('aria-label', `Buscar en ${label}`);
                     const options = document.createElement('div');
                     options.className = 'column-filter-options';
 
                     values.forEach((value) => {
                         const option = document.createElement('label');
                         option.className = 'column-filter-option';
+                        option.dataset.filterSearch = normalizeSearch(value);
                         const checkbox = document.createElement('input');
                         checkbox.type = 'checkbox';
                         checkbox.value = value;
                         checkbox.checked = true;
                         option.append(checkbox, document.createTextNode(value));
                         options.append(option);
+                    });
+
+                    const noMatches = document.createElement('div');
+                    noMatches.className = 'column-filter-empty';
+                    noMatches.textContent = 'Sin coincidencias';
+                    noMatches.hidden = true;
+                    options.append(noMatches);
+
+                    search.addEventListener('input', () => {
+                        const query = normalizeSearch(search.value);
+                        let visibleOptions = 0;
+                        options.querySelectorAll('.column-filter-option').forEach((option) => {
+                            const matches = !query || option.dataset.filterSearch.includes(query);
+                            option.hidden = !matches;
+                            if (matches) visibleOptions += 1;
+                        });
+                        noMatches.hidden = values.length === 0 || visibleOptions > 0;
                     });
 
                     const actions = document.createElement('div');
@@ -339,14 +365,20 @@
                     clear.className = 'button ghost small';
                     clear.textContent = 'Limpiar';
                     actions.append(all, clear);
-                    panel.append(options, actions);
+                    panel.append(search, options, actions);
                     filter.append(summary, panel);
                     wrapper.append(title, filter);
                     header.textContent = '';
                     header.append(wrapper);
 
                     filter.addEventListener('toggle', () => {
-                        if (filter.open) closeFilters(filter);
+                        if (filter.open) {
+                            closeFilters(filter);
+                            search.value = '';
+                            options.querySelectorAll('.column-filter-option').forEach((option) => option.hidden = false);
+                            noMatches.hidden = true;
+                            requestAnimationFrame(() => search.focus());
+                        }
                     });
                     filter.addEventListener('click', (event) => event.stopPropagation());
                     options.addEventListener('change', () => {
