@@ -6,6 +6,7 @@ use App\Models\Company;
 use App\Models\ConstructionAuditLog;
 use App\Models\ConstructionClient;
 use App\Models\ConstructionPaymentOrder;
+use App\Models\ConstructionPaymentProgressPhoto;
 use App\Models\ConstructionPayroll;
 use App\Models\ConstructionProject;
 use App\Models\ConstructionScheduleItem;
@@ -24,6 +25,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class ConstructionAdminController extends Controller
@@ -531,7 +533,9 @@ class ConstructionAdminController extends Controller
             "Se cargo {$uploadedDescription} de {$paymentOrder->code}."
         );
 
-        return back()->with('status', "Se cargo {$uploadedDescription} de {$paymentOrder->code} correctamente.");
+        return back()
+            ->with('open_invoice_dialog', 'invoice-documents-dialog-'.$paymentOrder->id)
+            ->with('invoice_document_status', "Se cargo {$uploadedDescription} de {$paymentOrder->code} correctamente.");
     }
 
     public function paymentInvoice(Request $request, ConstructionPaymentOrder $paymentOrder)
@@ -570,6 +574,135 @@ class ConstructionAdminController extends Controller
         );
     }
 
+    public function storePaymentProgressPhotos(Request $request, ConstructionPaymentOrder $paymentOrder): RedirectResponse
+    {
+        $paymentOrder->loadMissing('project');
+        abort_unless($this->canEditProject($request->user(), $paymentOrder->project), 403);
+
+        $validated = $request->validate([
+            'progress_photos' => ['required', 'array', 'min:1', 'max:10'],
+            'progress_photos.*' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:10240'],
+            'progress_descriptions' => ['required', 'array', 'min:1', 'max:10'],
+            'progress_descriptions.*' => ['required', 'string', 'max:500'],
+        ]);
+
+        $photos = array_values($validated['progress_photos']);
+        $descriptions = array_values($validated['progress_descriptions']);
+
+        if (count($photos) !== count($descriptions)) {
+            throw ValidationException::withMessages([
+                'progress_descriptions' => 'Agrega una descripcion para cada foto seleccionada.',
+            ]);
+        }
+
+        $storedPaths = [];
+
+        try {
+            DB::transaction(function () use ($paymentOrder, $request, $photos, $descriptions, &$storedPaths): void {
+                foreach ($photos as $index => $photo) {
+                    $path = $photo->store('construction-payment-progress-photos');
+                    $storedPaths[] = $path;
+
+                    $paymentOrder->progressPhotos()->create([
+                        'file_path' => $path,
+                        'original_name' => $photo->getClientOriginalName(),
+                        'description' => trim($descriptions[$index]),
+                        'uploaded_by' => $request->user()->id,
+                    ]);
+                }
+            });
+        } catch (\Throwable $exception) {
+            Storage::delete($storedPaths);
+
+            throw $exception;
+        }
+
+        $photoCount = count($photos);
+        $label = $photoCount === 1 ? 'foto de avance' : 'fotos de avance';
+
+        $this->recordAudit(
+            $request,
+            $paymentOrder->project,
+            'Fotos de avance cargadas',
+            "Se cargaron {$photoCount} {$label} de {$paymentOrder->code}."
+        );
+
+        return back()
+            ->with('open_invoice_dialog', 'invoice-documents-dialog-'.$paymentOrder->id)
+            ->with('invoice_document_status', "Se cargaron {$photoCount} {$label} de {$paymentOrder->code} correctamente.");
+    }
+
+    public function paymentProgressPhoto(
+        Request $request,
+        ConstructionPaymentOrder $paymentOrder,
+        ConstructionPaymentProgressPhoto $progressPhoto
+    ) {
+        $paymentOrder->loadMissing('project');
+        $this->authorizeProject($request, $paymentOrder->project);
+        abort_unless($progressPhoto->construction_payment_order_id === $paymentOrder->id, 404);
+
+        return StoredFileResponse::inline($progressPhoto->file_path, $progressPhoto->original_name);
+    }
+
+    public function updatePaymentProgressPhoto(
+        Request $request,
+        ConstructionPaymentOrder $paymentOrder,
+        ConstructionPaymentProgressPhoto $progressPhoto
+    ): RedirectResponse {
+        $paymentOrder->loadMissing('project');
+        abort_unless($this->canEditProject($request->user(), $paymentOrder->project), 403);
+        abort_unless($progressPhoto->construction_payment_order_id === $paymentOrder->id, 404);
+
+        $validated = $request->validate([
+            'description' => ['required', 'string', 'max:500'],
+        ]);
+        $oldValues = $progressPhoto->toArray();
+        $progressPhoto->update(['description' => trim($validated['description'])]);
+
+        $this->recordAudit(
+            $request,
+            $paymentOrder->project,
+            'Descripcion de foto de avance actualizada',
+            "Se actualizo la descripcion de una foto de avance de {$paymentOrder->code}.",
+            $oldValues,
+            $progressPhoto->fresh()->toArray(),
+        );
+
+        return back()
+            ->with('open_invoice_dialog', 'invoice-documents-dialog-'.$paymentOrder->id)
+            ->with('invoice_document_status', 'Descripcion de la foto actualizada correctamente.');
+    }
+
+    public function destroyPaymentProgressPhoto(
+        Request $request,
+        ConstructionPaymentOrder $paymentOrder,
+        ConstructionPaymentProgressPhoto $progressPhoto
+    ): RedirectResponse {
+        $paymentOrder->loadMissing('project');
+        abort_unless($this->canEditProject($request->user(), $paymentOrder->project), 403);
+        abort_unless($progressPhoto->construction_payment_order_id === $paymentOrder->id, 404);
+
+        $oldValues = $progressPhoto->toArray();
+        $filePath = $progressPhoto->file_path;
+        $progressPhoto->delete();
+
+        if ($filePath && Storage::exists($filePath)) {
+            Storage::delete($filePath);
+        }
+
+        $this->recordAudit(
+            $request,
+            $paymentOrder->project,
+            'Foto de avance eliminada',
+            "Se elimino una foto de avance de {$paymentOrder->code}.",
+            $oldValues,
+        );
+
+        return back()
+            ->with('open_invoice_dialog', 'invoice-documents-dialog-'.$paymentOrder->id)
+            ->with('invoice_document_status', 'Foto de avance eliminada correctamente.');
+    }
+
     public function paymentReceipt(Request $request, ConstructionPaymentOrder $paymentOrder)
     {
         $paymentOrder->loadMissing('project');
@@ -584,7 +717,7 @@ class ConstructionAdminController extends Controller
 
     public function destroyPaymentOrder(Request $request, ConstructionPaymentOrder $paymentOrder): RedirectResponse
     {
-        $paymentOrder->loadMissing('project');
+        $paymentOrder->loadMissing(['project', 'progressPhotos']);
         abort_unless($this->canEditProject($request->user(), $paymentOrder->project), 403);
 
         $oldValues = $paymentOrder->toArray();
@@ -620,6 +753,7 @@ class ConstructionAdminController extends Controller
             $paymentOrder->invoice_xml_file_path,
             $paymentOrder->fiscal_verification_file_path,
             $paymentOrder->payment_file_path,
+            ...$paymentOrder->progressPhotos->pluck('file_path')->all(),
         ] as $path) {
             if ($path && Storage::exists($path)) {
                 Storage::delete($path);
@@ -760,13 +894,13 @@ class ConstructionAdminController extends Controller
             $estimateOrders = ConstructionPaymentOrder::query()
                 ->whereIn('construction_project_id', $carouselProjects->pluck('id'))
                 ->where('type', 'Estimacion')
-                ->with('project')
+                ->with(['project', 'progressPhotos'])
                 ->orderBy('code')
                 ->get();
             $pendingPaymentOrders = ConstructionPaymentOrder::query()
                 ->pending()
                 ->whereIn('construction_project_id', $carouselProjects->pluck('id'))
-                ->with(['project', 'payroll'])
+                ->with(['project', 'payroll', 'progressPhotos'])
                 ->orderBy('payment_due_date')
                 ->orderBy('code')
                 ->get();
@@ -875,6 +1009,8 @@ class ConstructionAdminController extends Controller
             $monthValue = now()->format('Y-m');
         }
 
+        $calendarView = $request->query('view') === 'advances' ? 'advances' : 'calendar';
+
         if ($selectedProject) {
             Cookie::queue(Cookie::forever($projectCookieName, (string) $selectedProject->id));
         }
@@ -886,6 +1022,7 @@ class ConstructionAdminController extends Controller
         $gridEnd = $monthStart->endOfMonth()->endOfWeek(CarbonInterface::SUNDAY);
         $scheduleItems = collect();
         $projectScheduleItems = collect();
+        $projectProgressPhotos = collect();
 
         if ($selectedProject) {
             $scheduleItems = $selectedProject->scheduleItems()
@@ -899,6 +1036,12 @@ class ConstructionAdminController extends Controller
                 ->orderBy('contractor')
                 ->orderBy('title')
                 ->get(['contractor', 'title']);
+            $projectProgressPhotos = ConstructionPaymentProgressPhoto::query()
+                ->whereHas('paymentOrder', fn (Builder $orders) => $orders
+                    ->where('construction_project_id', $selectedProject->id))
+                ->with('paymentOrder:id,construction_project_id,contractor,description,area')
+                ->latest('created_at')
+                ->get();
         }
 
         $contractors = $projectScheduleItems->pluck('contractor')->filter()->unique()->values();
@@ -917,6 +1060,11 @@ class ConstructionAdminController extends Controller
             $contractorStyles[$contractor] = $palette[$index % count($palette)];
         }
 
+        $progressOverview = $this->scheduleProgressOverview($monthStart, $scheduleItems);
+        $weeklyReports = $selectedProject
+            ? $this->weeklyProgressReports(collect($progressOverview['weeks']), $projectProgressPhotos, $selectedProject)
+            : [];
+
         return view('construction.calendar', [
             'projects' => $projects,
             'carouselProjects' => $carouselProjects,
@@ -927,6 +1075,7 @@ class ConstructionAdminController extends Controller
                 : false,
             'monthValue' => $monthStart->format('Y-m'),
             'monthTitle' => ucfirst($monthStart->locale('es')->translatedFormat('F Y')),
+            'calendarView' => $calendarView,
             'previousMonth' => $monthStart->subMonth()->format('Y-m'),
             'nextMonth' => $monthStart->addMonth()->format('Y-m'),
             'todayMonth' => CarbonImmutable::today()->format('Y-m'),
@@ -936,6 +1085,11 @@ class ConstructionAdminController extends Controller
             'scopes' => $scopes,
             'contractorStyles' => $contractorStyles,
             'scheduleStatuses' => ConstructionScheduleItem::STATUSES,
+            'progressSummary' => $progressOverview['summary'],
+            'weeklyProgress' => $progressOverview['weeks'],
+            'currentWeeklyReport' => $weeklyReports[0] ?? null,
+            'previousWeeklyReports' => array_slice($weeklyReports, 1),
+            'weeklyReports' => $weeklyReports,
         ]);
     }
 
@@ -996,6 +1150,303 @@ class ConstructionAdminController extends Controller
         }
 
         return $weeks;
+    }
+
+    private function scheduleProgressOverview(CarbonImmutable $monthStart, Collection $scheduleItems): array
+    {
+        $monthEnd = $monthStart->endOfMonth();
+        $monthlyItems = $scheduleItems
+            ->filter(fn (ConstructionScheduleItem $item): bool => $item->start_date->lte($monthEnd) && $item->end_date->gte($monthStart))
+            ->unique('id')
+            ->values();
+        $weeks = [];
+
+        for ($weekStart = $monthStart->startOfWeek(CarbonInterface::MONDAY); $weekStart->lte($monthEnd); $weekStart = $weekStart->addWeek()) {
+            $weekEnd = $weekStart->addDays(6);
+            $periodStart = $weekStart->lt($monthStart) ? $monthStart : $weekStart;
+            $periodEnd = $weekEnd->gt($monthEnd) ? $monthEnd : $weekEnd;
+            $weekItems = $monthlyItems
+                ->filter(fn (ConstructionScheduleItem $item): bool => $item->start_date->lte($periodEnd) && $item->end_date->gte($periodStart))
+                ->sortBy(fn (ConstructionScheduleItem $item): string => $item->start_date->format('Y-m-d').'|'.$item->contractor.'|'.$item->title)
+                ->values();
+
+            $weeks[] = [
+                'start' => $periodStart,
+                'end' => $periodEnd,
+                'items' => $weekItems,
+                'average_progress' => (int) round((float) ($weekItems->avg('progress') ?? 0)),
+                'completed' => $weekItems->where('status', 'Concluido')->count(),
+                'in_progress' => $weekItems->where('status', 'En proceso')->count(),
+                'programmed' => $weekItems->where('status', 'Programado')->count(),
+            ];
+        }
+
+        return [
+            'summary' => [
+                'average_progress' => (int) round((float) ($monthlyItems->avg('progress') ?? 0)),
+                'total' => $monthlyItems->count(),
+                'completed' => $monthlyItems->where('status', 'Concluido')->count(),
+                'in_progress' => $monthlyItems->where('status', 'En proceso')->count(),
+            ],
+            'weeks' => $weeks,
+        ];
+    }
+
+    private function weeklyProgressReports(Collection $weeks, Collection $progressPhotos, ConstructionProject $project): array
+    {
+        $fallbackPhotos = [
+            asset('images/construction-weekly-reports/site-overview.png'),
+            asset('images/construction-weekly-reports/excavation.png'),
+            asset('images/construction-weekly-reports/reinforcement.png'),
+        ];
+        $fullWeeksWithItems = $weeks->filter(fn (array $week): bool => $week['items']->isNotEmpty()
+            && $week['start']->isMonday()
+            && $week['end']->isSunday());
+        $reportWeeks = $fullWeeksWithItems->isNotEmpty()
+            ? $fullWeeksWithItems
+            : $weeks->filter(fn (array $week): bool => $week['items']->isNotEmpty());
+
+        if ($reportWeeks->isEmpty()) {
+            $reportWeeks = $weeks->filter(fn (array $week): bool => $week['start']->isMonday() && $week['end']->isSunday());
+        }
+
+        if ($reportWeeks->isEmpty()) {
+            $reportWeeks = $weeks;
+        }
+
+        return $reportWeeks
+            ->reverse()
+            ->take(4)
+            ->values()
+            ->map(function (array $week, int $index) use ($fallbackPhotos, $progressPhotos, $project): array {
+                $items = $week['items'];
+                $actualProgress = (int) round((float) ($items->avg('progress') ?? 0));
+                $plannedProgress = (int) round((float) ($items
+                    ->map(fn (ConstructionScheduleItem $item): int => $this->scheduledProgressAt($item, $week['end']))
+                    ->avg() ?? 0));
+                $variation = $actualProgress - $plannedProgress;
+                $weekPhotos = $progressPhotos
+                    ->filter(fn (ConstructionPaymentProgressPhoto $photo): bool => $photo->created_at
+                        && $photo->created_at->betweenIncluded($week['start']->startOfDay(), $week['end']->endOfDay()))
+                    ->values();
+
+                if ($index === 0 && $weekPhotos->isEmpty()) {
+                    $weekPhotos = $progressPhotos->take(3)->values();
+                }
+
+                $photoUrls = $weekPhotos
+                    ->map(fn (ConstructionPaymentProgressPhoto $photo): string => route(
+                        'construction.payment-orders.progress-photos.show',
+                        [$photo->paymentOrder, $photo],
+                    ))
+                    ->all();
+                $photos = $photoUrls ?: $fallbackPhotos;
+                $photoPackages = $this->weeklyReportPhotoPackages(
+                    $weekPhotos,
+                    $items,
+                    $fallbackPhotos,
+                    $week['start'],
+                );
+                $highlights = $items
+                    ->take(3)
+                    ->map(fn (ConstructionScheduleItem $item): string => match ($item->status) {
+                        'Concluido' => "{$item->title} concluido.",
+                        'En proceso' => "{$item->title} en proceso con {$item->progress}% de avance.",
+                        default => "{$item->title} programado conforme al calendario.",
+                    })
+                    ->values()
+                    ->all();
+
+                if ($highlights === []) {
+                    $highlights[] = 'Sin alcances programados para esta semana.';
+                }
+
+                $incidents = $items
+                    ->filter(fn (ConstructionScheduleItem $item): bool => $item->status !== 'Concluido'
+                        && $item->progress < $this->scheduledProgressAt($item, $week['end']))
+                    ->count();
+                $weekNumber = $week['start']->isoWeek();
+                $scopeSummary = $items
+                    ->pluck('title')
+                    ->filter()
+                    ->unique()
+                    ->take(4)
+                    ->map(fn (string $title): string => Str::lower($title))
+                    ->implode(', ');
+                $scopeSummary = $scopeSummary !== '' ? $scopeSummary : 'las actividades programadas';
+
+                return [
+                    'id' => $project->id.'-'.$week['start']->format('Y-m-d'),
+                    'project_name' => $project->name,
+                    'project_key' => $project->project_key,
+                    'week_number' => $weekNumber,
+                    'week_label' => "Semana {$weekNumber}",
+                    'period_short' => $this->weeklyReportPeriod($week['start'], $week['end'], false),
+                    'period_long' => $this->weeklyReportPeriod($week['start'], $week['end'], true),
+                    'reported_at' => $week['end']->locale('es')->translatedFormat('d M Y').' · 07:00',
+                    'next_report_at' => $week['end']->addDay()->locale('es')->translatedFormat('l j \d\e F'),
+                    'actual_progress' => $actualProgress,
+                    'planned_progress' => $plannedProgress,
+                    'variation' => $variation,
+                    'variation_label' => ($variation > 0 ? '+' : '').$variation.'%',
+                    'photo_count' => $photoUrls ? count($photoUrls) : count($fallbackPhotos),
+                    'photos' => array_slice($photos, 0, 3),
+                    'photo_packages' => $photoPackages,
+                    'hero_photo' => $photos[0],
+                    'highlights' => $highlights,
+                    'summary' => "Durante la semana se registraron trabajos de {$scopeSummary} en la obra {$project->name}. Las evidencias fueron aportadas por los contratistas asignados. El avance real permanece en {$actualProgress}% frente al {$plannedProgress}% programado, por lo que se requiere validar los porcentajes capturados y actualizar el calendario de ejecución.",
+                    'incident_actions' => $incidents > 0
+                        ? 'Se mantienen incidencias abiertas. Se recomienda asignar responsables, establecer fechas compromiso y dar seguimiento antes del siguiente corte semanal.'
+                        : 'No se registraron incidencias abiertas durante el periodo. Se recomienda mantener el seguimiento de los alcances programados.',
+                    'next_week_summary' => 'Validar los porcentajes de avance, actualizar el programa de obra, cerrar las incidencias pendientes y confirmar las actividades previstas con cada contratista.',
+                    'incidents' => $incidents,
+                    'incidents_label' => $incidents === 1 ? '1 incidencia abierta' : "{$incidents} incidencias abiertas",
+                    'status' => $index === 0 ? 'Generado automáticamente' : 'Enviado',
+                ];
+            })
+            ->all();
+    }
+
+    private function weeklyReportPhotoPackages(
+        Collection $weekPhotos,
+        Collection $items,
+        array $fallbackPhotos,
+        CarbonImmutable $weekStart,
+    ): array {
+        if ($weekPhotos->isNotEmpty()) {
+            return $weekPhotos
+                ->groupBy(fn (ConstructionPaymentProgressPhoto $photo): string => $photo->paymentOrder?->contractor ?: 'Contratista de obra')
+                ->take(3)
+                ->map(function (Collection $contractorPhotos, string $contractor): array {
+                    $groups = $contractorPhotos
+                        ->groupBy(fn (ConstructionPaymentProgressPhoto $photo): string => $photo->paymentOrder?->area
+                            ?: $photo->paymentOrder?->description
+                            ?: 'Avance de obra')
+                        ->map(function (Collection $scopePhotos, string $scope): array {
+                            return [
+                                'name' => $scope,
+                                'photos' => $scopePhotos->take(4)->map(function (ConstructionPaymentProgressPhoto $photo) use ($scope): array {
+                                    return [
+                                        'url' => route('construction.payment-orders.progress-photos.show', [$photo->paymentOrder, $photo]),
+                                        'date' => ucfirst($photo->created_at->locale('es')->translatedFormat('d M Y')),
+                                        'caption' => $photo->description ?: $scope,
+                                    ];
+                                })->values()->all(),
+                            ];
+                        })
+                        ->values()
+                        ->all();
+
+                    return [
+                        'contractor' => $contractor,
+                        'photo_count' => $contractorPhotos->count(),
+                        'groups' => $groups,
+                    ];
+                })
+                ->values()
+                ->all();
+        }
+
+        $contractors = $items->pluck('contractor')->filter()->unique()->values();
+        $contractorName = fn (int $index, string $fallback): string => (string) ($contractors->get($index) ?: $fallback);
+        $dateLabel = fn (int $offset): string => ucfirst($weekStart->addDays($offset)->locale('es')->translatedFormat('d M Y'));
+        $photo = fn (int $image, int $day, string $caption): array => [
+            'url' => $fallbackPhotos[$image],
+            'date' => $dateLabel($day),
+            'caption' => $caption,
+        ];
+
+        return [
+            [
+                'contractor' => $contractorName(0, 'Noé #001'),
+                'photo_count' => 4,
+                'groups' => [
+                    [
+                        'name' => $items->first()?->title ?: 'Estructura de azotea',
+                        'photos' => [
+                            $photo(0, 1, 'Montaje de estructura'),
+                            $photo(2, 3, 'Armado en azotea'),
+                        ],
+                    ],
+                    [
+                        'name' => 'Cimbra',
+                        'photos' => [
+                            $photo(0, 5, 'Colocación de cimbra'),
+                            $photo(0, 6, 'Montaje de cimbra'),
+                        ],
+                    ],
+                ],
+            ],
+            [
+                'contractor' => $contractorName(1, 'Excavaciones MX'),
+                'photo_count' => 3,
+                'groups' => [
+                    [
+                        'name' => 'Excavación',
+                        'photos' => [
+                            $photo(1, 1, 'Excavación de terreno'),
+                            $photo(1, 4, 'Carga de material'),
+                        ],
+                    ],
+                    [
+                        'name' => 'Cimentación',
+                        'photos' => [
+                            $photo(2, 5, 'Preparación de cimentación'),
+                        ],
+                    ],
+                ],
+            ],
+            [
+                'contractor' => $contractorName(2, 'Estructuras del Centro'),
+                'photo_count' => 3,
+                'groups' => [
+                    [
+                        'name' => 'Acero de refuerzo',
+                        'photos' => [
+                            $photo(2, 1, 'Habilitado de acero'),
+                            $photo(2, 3, 'Armado de columnas'),
+                            $photo(2, 6, 'Colocación de acero'),
+                        ],
+                    ],
+                ],
+            ],
+        ];
+    }
+
+    private function scheduledProgressAt(ConstructionScheduleItem $item, CarbonImmutable $date): int
+    {
+        $start = CarbonImmutable::parse($item->start_date->format('Y-m-d'));
+        $end = CarbonImmutable::parse($item->end_date->format('Y-m-d'));
+
+        if ($date->lt($start)) {
+            return 0;
+        }
+
+        if ($date->gte($end)) {
+            return 100;
+        }
+
+        $duration = $start->diffInDays($end) + 1;
+        $elapsed = $start->diffInDays($date) + 1;
+
+        return (int) round(($elapsed / $duration) * 100);
+    }
+
+    private function weeklyReportPeriod(CarbonImmutable $start, CarbonImmutable $end, bool $long): string
+    {
+        $startMonth = $start->locale('es')->translatedFormat($long ? 'F' : 'M');
+        $endMonth = $end->locale('es')->translatedFormat($long ? 'F' : 'M');
+        $year = $end->format('Y');
+
+        if ($start->month === $end->month) {
+            return $long
+                ? $start->format('d').' al '.$end->format('d')." de {$endMonth} de {$year}"
+                : $start->format('d').' al '.$end->format('d')." {$endMonth}";
+        }
+
+        return $long
+            ? $start->format('d')." de {$startMonth} al ".$end->format('d')." de {$endMonth} de {$year}"
+            : $start->format('d')." {$startMonth} al ".$end->format('d')." {$endMonth}";
     }
 
     private function scheduleItemRules(): array
@@ -1586,7 +2037,7 @@ class ConstructionAdminController extends Controller
             'alcances-semanales' => 'Alcances semanales',
             'mano-obra' => 'Mano de obra',
             'nomina' => 'Nomina',
-            'calendario' => 'Calendario',
+            'calendario' => 'Calendario y Avances',
             'fotografias' => 'Fotografias',
             'incidencias' => 'Incidencias',
             'cambios' => 'Cambios',
@@ -1673,10 +2124,19 @@ class ConstructionAdminController extends Controller
                 ? route('construction.payment-orders.invoice.fiscal-verification', $order)
                 : null,
             'fiscal_verification_file_name' => $order->fiscal_verification_original_name,
+            'progress_photos' => $order->progressPhotos->map(fn (ConstructionPaymentProgressPhoto $photo): array => [
+                'id' => $photo->id,
+                'name' => $photo->original_name,
+                'description' => $photo->description,
+                'url' => route('construction.payment-orders.progress-photos.show', [$order, $photo]),
+                'update_url' => route('construction.payment-orders.progress-photos.update', [$order, $photo]),
+                'delete_url' => route('construction.payment-orders.progress-photos.destroy', [$order, $photo]),
+            ])->values()->all(),
             'payment_file_url' => filled($order->payment_file_path)
                 ? route('construction.payment-orders.payment', $order)
                 : null,
             'invoice_upload_url' => route('construction.payment-orders.invoice.store', $order),
+            'progress_photos_upload_url' => route('construction.payment-orders.progress-photos.store', $order),
             'payment_upload_url' => route('finance.construction-payment-orders.payment.store', $order),
             'delete_url' => route('construction.payment-orders.destroy', $order),
         ])->values()->all();

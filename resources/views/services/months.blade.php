@@ -373,6 +373,8 @@
             });
 
             const normalize = (value) => (value || '').replace(/\s+/g, ' ').trim();
+            const normalizeSearch = (value) => normalize(value).toLocaleLowerCase('es-MX')
+                .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
             const closeColumnFilters = (except = null) => {
                 document.querySelectorAll('.column-filter[open]').forEach((filter) => {
                     if (filter !== except) {
@@ -752,12 +754,20 @@
                         return;
                     }
 
+                    const search = document.createElement('input');
+                    search.type = 'search';
+                    search.className = 'column-filter-search';
+                    search.placeholder = 'Buscar';
+                    search.autocomplete = 'off';
+                    search.setAttribute('aria-label', `Buscar en ${label}`);
+
                     const options = document.createElement('div');
                     options.className = 'column-filter-options';
 
                     const checkboxes = values.map((value) => {
                         const option = document.createElement('label');
                         option.className = 'column-filter-option';
+                        option.dataset.filterSearch = normalizeSearch(value);
 
                         const checkbox = document.createElement('input');
                         checkbox.type = 'checkbox';
@@ -786,6 +796,23 @@
                         return checkbox;
                     });
 
+                    const noMatches = document.createElement('div');
+                    noMatches.className = 'column-filter-empty';
+                    noMatches.textContent = 'Sin coincidencias';
+                    noMatches.hidden = true;
+                    options.append(noMatches);
+
+                    search.addEventListener('input', () => {
+                        const query = normalizeSearch(search.value);
+                        let visibleOptions = 0;
+                        options.querySelectorAll('.column-filter-option').forEach((option) => {
+                            const matches = !query || option.dataset.filterSearch.includes(query);
+                            option.hidden = !matches;
+                            if (matches) visibleOptions += 1;
+                        });
+                        noMatches.hidden = values.length === 0 || visibleOptions > 0;
+                    });
+
                     const actions = document.createElement('div');
                     actions.className = 'column-filter-actions';
 
@@ -810,12 +837,18 @@
                     });
 
                     actions.append(selectAll, clear);
-                    panel.append(options, actions);
+                    panel.append(search, options, actions);
                     details.append(summary, panel);
                     details.addEventListener('toggle', () => {
                         if (details.open) {
                             closeColumnFilters(details);
-                            requestAnimationFrame(() => positionFilterPanel(panel, summary));
+                            search.value = '';
+                            options.querySelectorAll('.column-filter-option').forEach((option) => option.hidden = false);
+                            noMatches.hidden = true;
+                            requestAnimationFrame(() => {
+                                positionFilterPanel(panel, summary);
+                                search.focus();
+                            });
                         }
                     });
                     wrapper.append(text, details);

@@ -6,6 +6,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class ConstructionPaymentOrder extends Model
 {
@@ -74,6 +75,11 @@ class ConstructionPaymentOrder extends Model
     public function discardedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'discarded_by');
+    }
+
+    public function progressPhotos(): HasMany
+    {
+        return $this->hasMany(ConstructionPaymentProgressPhoto::class)->oldest();
     }
 
     public function scopePending(Builder $query): Builder

@@ -191,6 +191,7 @@ Route::middleware(['auth', EnforceNavigationPermission::class])->prefix('superad
     Route::get('/administracion-plazas/catalogo-arrendatarios', [SuperAdminPlazaController::class, 'tenants'])->name('plazas.tenants');
     Route::get('/administracion-plazas/panel', [SuperAdminPlazaController::class, 'panel'])->name('plazas.panel');
     Route::get('/usuarios', [SuperAdminUserController::class, 'index'])->name('users.index');
+    Route::get('/centro-de-agentes', [SuperAdminUserController::class, 'agents'])->name('agents.index');
     Route::post('/usuarios', [SuperAdminUserController::class, 'store'])->name('users.store');
     Route::put('/usuarios/{user}', [SuperAdminUserController::class, 'update'])->name('users.update');
     Route::patch('/usuarios/{user}/estado', [SuperAdminUserController::class, 'toggle'])->name('users.toggle');
@@ -243,6 +244,10 @@ Route::middleware(['auth', EnforceNavigationPermission::class])->prefix('adminis
     Route::get('/pagos-vigentes/{paymentOrder}/factura', [ConstructionAdminController::class, 'paymentInvoice'])->name('payment-orders.invoice');
     Route::get('/pagos-vigentes/{paymentOrder}/factura/xml', [ConstructionAdminController::class, 'paymentInvoiceXml'])->name('payment-orders.invoice.xml');
     Route::get('/pagos-vigentes/{paymentOrder}/factura/verificacion-fiscal', [ConstructionAdminController::class, 'paymentFiscalVerification'])->name('payment-orders.invoice.fiscal-verification');
+    Route::post('/pagos-vigentes/{paymentOrder}/fotos-avance', [ConstructionAdminController::class, 'storePaymentProgressPhotos'])->name('payment-orders.progress-photos.store');
+    Route::get('/pagos-vigentes/{paymentOrder}/fotos-avance/{progressPhoto}', [ConstructionAdminController::class, 'paymentProgressPhoto'])->name('payment-orders.progress-photos.show');
+    Route::patch('/pagos-vigentes/{paymentOrder}/fotos-avance/{progressPhoto}', [ConstructionAdminController::class, 'updatePaymentProgressPhoto'])->name('payment-orders.progress-photos.update');
+    Route::delete('/pagos-vigentes/{paymentOrder}/fotos-avance/{progressPhoto}', [ConstructionAdminController::class, 'destroyPaymentProgressPhoto'])->name('payment-orders.progress-photos.destroy');
     Route::get('/pagos-vigentes/{paymentOrder}/pago', [ConstructionAdminController::class, 'paymentReceipt'])->name('payment-orders.payment');
     Route::delete('/pagos-vigentes/{paymentOrder}', [ConstructionAdminController::class, 'destroyPaymentOrder'])->name('payment-orders.destroy');
     Route::get('/proveedores', [BuyerProviderController::class, 'index'])->name('providers.index');

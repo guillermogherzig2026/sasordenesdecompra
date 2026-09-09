@@ -340,24 +340,86 @@
             .labor-file-actions .labor-view-button:disabled { border-color: #d0d5dd; background: #eef1f4; color: #98a2b3; opacity: 1; cursor: not-allowed; box-shadow: none; }
             .invoice-upload-button.invoice-upload-partial { border-color: #d79a21; background: #fff4d6; color: #7a4b00; }
             .invoice-upload-button.invoice-upload-complete { border-color: #48a878; background: #e8f6ee; color: #0b6b3d; }
-            .invoice-documents-dialog { width: min(760px, calc(100vw - 42px)); }
-            .invoice-documents-card { gap: 18px; }
+            .invoice-documents-dialog { width: min(920px, calc(100vw - 42px)); }
+            .invoice-documents-card { max-height: min(90vh, 820px); gap: 18px; overflow-y: auto; }
             .invoice-documents-heading { display: flex; align-items: center; gap: 12px; min-width: 0; padding-right: 42px; }
             .invoice-documents-heading-icon { width: 42px; height: 42px; flex: 0 0 42px; display: grid; place-items: center; border-radius: 7px; color: #176b87; background: #e5f3f7; font-size: .72rem; font-weight: 900; }
             .invoice-documents-heading > div { min-width: 0; }
             .invoice-documents-heading .fine-print { margin-top: 4px; overflow-wrap: anywhere; }
+            .invoice-documents-inline-status { display: flex; align-items: center; gap: 8px; margin: 0; padding: 10px 12px; border: 1px solid #a7e2c6; border-radius: 6px; background: #ecfdf3; color: #067647; font-size: .82rem; font-weight: 700; }
+            .invoice-documents-inline-status > span { width: 20px; height: 20px; flex: 0 0 20px; display: grid; place-items: center; border-radius: 50%; background: #12b76a; color: #fff; font-size: .72rem; }
             .invoice-document-list { border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
-            .invoice-document-row { min-height: 78px; display: grid; grid-template-columns: 46px minmax(150px, 1fr) minmax(210px, auto); align-items: center; gap: 14px; padding: 14px 0; border-bottom: 1px solid var(--line); }
+            .invoice-document-row { min-height: 78px; display: grid; grid-template-columns: 28px 46px minmax(150px, 1fr) minmax(210px, auto); align-items: center; gap: 12px; padding: 14px 0; border-bottom: 1px solid var(--line); }
             .invoice-document-row:last-child { border-bottom: 0; }
             .invoice-document-kind { width: 42px; height: 34px; display: grid; place-items: center; border-radius: 6px; color: #b42318; background: #fdecec; font-size: .72rem; font-weight: 900; }
             .invoice-document-kind.xml { color: #176b87; background: #e5f3f7; }
             .invoice-document-kind.fiscal { color: #157347; background: #e8f6ee; }
+            .invoice-document-kind.progress-photo { color: #765600; background: #fff4d6; }
             .invoice-document-copy { min-width: 0; display: grid; gap: 4px; }
             .invoice-document-copy strong { color: var(--text); }
             .invoice-document-copy > span { color: var(--muted); font-size: .82rem; overflow-wrap: anywhere; }
+            .invoice-document-completion-slot { width: 28px; height: 28px; display: grid; place-items: center; }
+            .invoice-document-complete-marker { width: 22px; height: 22px; display: inline-grid; place-items: center; border-radius: 50%; background: #12b76a; color: #fff; font-size: .76rem; font-weight: 900; line-height: 1; box-shadow: 0 0 0 3px #ecfdf3; }
             .invoice-document-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
             .invoice-document-actions form { margin: 0; }
             .invoice-document-actions .button { white-space: normal; text-align: center; }
+            .invoice-documents-footer { display: flex; justify-content: flex-end; gap: 8px; padding-top: 2px; }
+            .progress-photo-section { display: grid; gap: 12px; padding-top: 2px; }
+            .progress-photo-heading { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; align-items: center; gap: 12px; }
+            .progress-photo-heading h4 { margin: 0; font-size: 1rem; }
+            .progress-photo-heading-summary { min-width: 0; display: flex; align-items: center; gap: 14px; }
+            .progress-photo-heading-copy { min-width: 0; display: grid; gap: 2px; }
+            .progress-photo-heading-copy > span { color: var(--muted); font-size: .78rem; }
+            .progress-photo-add-button { display: inline-flex; align-items: center; gap: 8px; }
+            .progress-photo-add-icon { width: 26px; height: 26px; display: inline-grid; place-items: center; border-radius: 6px; background: rgba(255, 255, 255, .16); font-size: 1.25rem; line-height: 1; }
+            .progress-photo-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+            .progress-photo-card { min-width: 0; overflow: hidden; border: 1px solid var(--line); border-radius: 8px; background: #fff; }
+            .progress-photo-image-link { display: block; aspect-ratio: 4 / 3; overflow: hidden; background: #edf3f7; }
+            .progress-photo-image-link:focus-visible { outline: 3px solid rgba(23, 107, 135, .22); outline-offset: -3px; }
+            .progress-photo-image-link img { width: 100%; height: 100%; display: block; object-fit: cover; transition: transform .18s ease; }
+            .progress-photo-image-link:hover img { transform: scale(1.025); }
+            .progress-photo-description { min-height: 50px; margin: 0; padding: 9px 10px 5px; color: var(--text); font-size: .78rem; line-height: 1.35; overflow-wrap: anywhere; }
+            .progress-photo-description.is-pending { color: var(--muted); font-style: italic; }
+            .progress-photo-card-actions { display: flex; align-items: center; gap: 12px; padding: 5px 10px 10px; }
+            .progress-photo-card-actions form { margin: 0; }
+            .progress-photo-text-action { padding: 0; border: 0; background: transparent; color: var(--primary-strong); cursor: pointer; font: inherit; font-size: .76rem; font-weight: 800; }
+            .progress-photo-text-action:hover { text-decoration: underline; }
+            .progress-photo-text-action.danger { color: var(--danger); }
+            .progress-photo-edit-form { margin: 0 10px 10px; padding-top: 9px; border-top: 1px solid var(--line); }
+            .progress-photo-edit-form label { display: grid; gap: 6px; color: var(--text); font-size: .76rem; font-weight: 800; }
+            .progress-photo-edit-form textarea { min-height: 76px; resize: vertical; font-size: .8rem; font-weight: 500; }
+            .progress-photo-edit-actions { display: flex; justify-content: flex-end; gap: 7px; margin-top: 8px; }
+            .progress-photo-empty { margin: 0; padding: 22px 14px; border: 1px dashed #bfd3de; border-radius: 8px; background: #f8fbfd; color: var(--muted); text-align: center; }
+            .progress-photo-help { margin: 0; padding-top: 8px; border-top: 1px solid var(--line); color: var(--muted); font-size: .78rem; }
+            .progress-photo-dialog { width: min(700px, calc(100vw - 42px)); }
+            .progress-photo-dialog-card { max-height: min(88vh, 760px); overflow-y: auto; gap: 14px; }
+            .progress-photo-dialog-heading { min-width: 0; padding-right: 42px; }
+            .progress-photo-dialog-heading .fine-print { margin-top: 4px; overflow-wrap: anywhere; }
+            .progress-photo-server-errors { display: grid; gap: 3px; padding: 9px 11px; border: 1px solid #efb1ad; border-radius: 6px; background: #fff1f0; }
+            .progress-photo-stage { display: grid; gap: 13px; }
+            .progress-photo-drop-zone { min-height: 260px; display: grid; place-items: center; align-content: center; gap: 12px; padding: 28px; border: 2px dashed #acc9db; border-radius: 8px; background: #f8fbfd; color: var(--muted); text-align: center; cursor: pointer; transition: border-color .16s ease, background .16s ease; }
+            .progress-photo-drop-zone:hover, .progress-photo-drop-zone:focus-visible, .progress-photo-drop-zone.is-dragging { border-color: var(--primary); background: #edf8fa; outline: 0; }
+            .progress-photo-drop-zone strong { color: var(--text); font-size: 1.12rem; }
+            .progress-photo-drop-zone > span:last-child { font-size: .86rem; }
+            .progress-photo-upload-symbol { width: 60px; height: 52px; display: grid; place-items: center; border: 3px solid #7188a3; border-radius: 999px 999px 8px 8px; color: #7188a3; font-size: 2.35rem; font-weight: 600; line-height: 1; }
+            .progress-photo-select-button { display: inline-flex; align-items: center; gap: 8px; }
+            .progress-photo-select-button > span { font-size: 1.25rem; line-height: 1; }
+            .progress-photo-camera-button { justify-self: center; }
+            .progress-photo-info { margin: 0; padding: 10px 12px; border-bottom: 1px solid var(--line); color: var(--muted); font-size: .82rem; }
+            .progress-photo-stage-actions { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+            .progress-photo-stage-actions > :only-child { margin-right: auto; }
+            .progress-photo-selected-list { display: grid; gap: 0; border-top: 1px solid var(--line); }
+            .progress-photo-selected-item { display: grid; grid-template-columns: 150px minmax(0, 1fr) 38px; align-items: start; gap: 14px; padding: 14px 0; border-bottom: 1px solid var(--line); }
+            .progress-photo-selected-preview { width: 150px; aspect-ratio: 4 / 3; display: block; object-fit: cover; border: 1px solid var(--line); border-radius: 7px; background: #edf3f7; }
+            .progress-photo-selected-copy { min-width: 0; display: grid; gap: 6px; }
+            .progress-photo-selected-copy label { color: var(--text); font-size: .8rem; font-weight: 850; }
+            .progress-photo-selected-copy label span { color: var(--danger); }
+            .progress-photo-selected-copy textarea { min-height: 92px; resize: vertical; }
+            .progress-photo-remove-selected { width: 34px; height: 34px; display: grid; place-items: center; border: 1px solid #f2c4c0; border-radius: 7px; background: #fff4f3; color: var(--danger); cursor: pointer; font-size: 1rem; font-weight: 900; }
+            .progress-photo-remove-selected:hover { background: #fde7e5; }
+            .progress-photo-required-note { margin: 0; color: var(--muted); font-size: .78rem; }
+            .progress-photo-required-note span { color: var(--danger); }
+            .progress-photo-more-button { justify-self: start; }
             .construction-payment-table { min-width: 1460px; }
             .construction-payment-table th, .construction-payment-table td { white-space: nowrap; }
             .construction-payment-table td:nth-child(3) { min-width: 250px; white-space: normal; }
@@ -782,14 +844,26 @@
                 .labor-budget-grid { grid-template-columns: 1fr; }
                 .labor-toolbar { align-items: flex-start; }
                 .labor-tab { width: 100%; }
-                .invoice-document-row { grid-template-columns: 42px minmax(0, 1fr); }
+                .invoice-document-row { grid-template-columns: 28px 42px minmax(0, 1fr); }
                 .invoice-document-actions { grid-column: 1 / -1; justify-content: stretch; }
                 .invoice-document-actions form { flex: 1 1 210px; }
                 .invoice-document-actions .button { width: 100%; }
+                .progress-photo-grid { grid-template-columns: 1fr; }
+                .progress-photo-selected-item { grid-template-columns: 96px minmax(0, 1fr) 34px; gap: 9px; }
+                .progress-photo-selected-preview { width: 96px; }
                 .unit-price-panel { grid-template-rows: auto; }
                 .unit-price-filters { grid-template-columns: 1fr; }
                 .unit-price-filter-actions .button { flex: 1 1 0; }
                 .unit-price-pagination { align-items: flex-start; flex-direction: column; }
+            }
+            @media (max-width: 420px) {
+                .progress-photo-heading { grid-template-columns: 28px minmax(0, 1fr); align-items: center; }
+                .progress-photo-add-button { grid-column: 1 / -1; justify-content: center; }
+                .progress-photo-drop-zone { min-height: 230px; padding: 20px 12px; }
+                .progress-photo-selected-item { grid-template-columns: 1fr 34px; }
+                .progress-photo-selected-preview { width: 100%; grid-column: 1 / -1; }
+                .progress-photo-stage-actions { align-items: stretch; flex-direction: column-reverse; }
+                .progress-photo-stage-actions .button { width: 100%; }
             }
             .ejemplo{
                 color:red;
@@ -1045,15 +1119,12 @@
                         summary.setAttribute('aria-label', `Filtrar ${label}`);
                         const panel = document.createElement('div');
                         panel.className = 'column-filter-panel';
-                        const search = table.hasAttribute('data-filter-search')
-                            ? document.createElement('input')
-                            : null;
-                        if (search) {
-                            search.type = 'search';
-                            search.className = 'column-filter-search';
-                            search.placeholder = 'Buscar';
-                            search.setAttribute('aria-label', `Buscar en ${label}`);
-                        }
+                        const search = document.createElement('input');
+                        search.type = 'search';
+                        search.className = 'column-filter-search';
+                        search.placeholder = 'Buscar';
+                        search.autocomplete = 'off';
+                        search.setAttribute('aria-label', `Buscar en ${label}`);
                         const options = document.createElement('div');
                         options.className = 'column-filter-options';
                         let selectedValues = new Set(values);
@@ -1102,8 +1173,7 @@
                         cancel.className = 'button ghost small';
                         cancel.textContent = 'Cancelar';
                         actions.append(accept, cancel);
-                        if (search) panel.append(search);
-                        panel.append(options, actions);
+                        panel.append(search, options, actions);
                         filter.append(summary, panel);
                         wrapper.append(title, filter);
                         header.textContent = '';
@@ -1121,7 +1191,6 @@
                             syncSelectAll();
                         };
                         const resetSearch = () => {
-                            if (!search) return;
                             search.value = '';
                             valueCheckboxes().forEach((input) => {
                                 input.closest('.column-filter-option').hidden = false;
@@ -1132,15 +1201,16 @@
                             summary.classList.toggle('is-filtered', selectedValues.size !== values.length);
                         };
 
-                        search?.addEventListener('input', () => {
-                            const query = normalize(search.value).toLocaleLowerCase('es-MX');
+                        search.addEventListener('input', () => {
+                            const query = normalize(search.value).toLocaleLowerCase('es-MX').normalize('NFD').replace(/[\u0300-\u036f]/g, '');
                             let visibleOptions = 0;
                             valueCheckboxes().forEach((input) => {
-                                const matches = !query || normalize(input.value).toLocaleLowerCase('es-MX').includes(query);
+                                const searchableValue = normalize(input.value).toLocaleLowerCase('es-MX').normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+                                const matches = !query || searchableValue.includes(query);
                                 input.closest('.column-filter-option').hidden = !matches;
                                 if (matches) visibleOptions += 1;
                             });
-                            noMatches.hidden = visibleOptions > 0;
+                            noMatches.hidden = values.length === 0 || visibleOptions > 0;
                         });
 
                         filter.addEventListener('toggle', () => {
@@ -1150,7 +1220,7 @@
                                 restoreSelection();
                                 requestAnimationFrame(() => {
                                     positionColumnFilterPanel(filter);
-                                    search?.focus();
+                                    search.focus();
                                 });
                             }
                         });

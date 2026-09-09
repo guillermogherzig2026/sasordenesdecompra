@@ -390,6 +390,7 @@
         @foreach ($laborRows as $row)
             @php
                 $invoiceDialogId = 'invoice-documents-dialog-'.$row['payment_order_id'];
+                $progressPhotoDialogId = 'progress-photo-dialog-'.$row['payment_order_id'];
             @endphp
             <dialog
                 class="supply-detail-dialog invoice-documents-dialog"
@@ -403,13 +404,25 @@
                     <div class="invoice-documents-heading">
                         <span class="invoice-documents-heading-icon" aria-hidden="true">DOC</span>
                         <div>
-                            <h3 id="{{ $invoiceDialogId }}-title">Documentos de factura</h3>
+                            <h3 id="{{ $invoiceDialogId }}-title">Documentos de factura y avance</h3>
                             <p class="fine-print">{{ $row['code'] }} &middot; {{ $row['description'] }}</p>
                         </div>
                     </div>
 
+                    @if (session('invoice_document_status') && session('open_invoice_dialog') === $invoiceDialogId)
+                        <p class="invoice-documents-inline-status" role="status">
+                            <span aria-hidden="true">&#10003;</span>
+                            {{ session('invoice_document_status') }}
+                        </p>
+                    @endif
+
                     <div class="invoice-document-list">
                         <section class="invoice-document-row">
+                            <span class="invoice-document-completion-slot">
+                                @if (filled($row['invoice_file_url']))
+                                    <span class="invoice-document-complete-marker" role="img" aria-label="Factura en PDF cargada" title="Archivo cargado" data-document-complete="invoice-pdf">&#10003;</span>
+                                @endif
+                            </span>
                             <span class="invoice-document-kind">PDF</span>
                             <div class="invoice-document-copy">
                                 <strong>Factura en PDF</strong>
@@ -434,6 +447,11 @@
                         </section>
 
                         <section class="invoice-document-row">
+                            <span class="invoice-document-completion-slot">
+                                @if (filled($row['invoice_xml_file_url']))
+                                    <span class="invoice-document-complete-marker" role="img" aria-label="XML de la factura cargado" title="Archivo cargado" data-document-complete="invoice-xml">&#10003;</span>
+                                @endif
+                            </span>
                             <span class="invoice-document-kind xml">XML</span>
                             <div class="invoice-document-copy">
                                 <strong>XML de la factura</strong>
@@ -458,6 +476,11 @@
                         </section>
 
                         <section class="invoice-document-row">
+                            <span class="invoice-document-completion-slot">
+                                @if (filled($row['fiscal_verification_file_url']))
+                                    <span class="invoice-document-complete-marker" role="img" aria-label="Verificacion fiscal en PDF cargada" title="Archivo cargado" data-document-complete="fiscal-verification-pdf">&#10003;</span>
+                                @endif
+                            </span>
                             <span class="invoice-document-kind fiscal">PDF</span>
                             <div class="invoice-document-copy">
                                 <strong>Verificaci&oacute;n fiscal en PDF</strong>
@@ -480,8 +503,152 @@
                                 @endif
                             </div>
                         </section>
+
+                    </div>
+
+                    <section class="progress-photo-section" aria-labelledby="{{ $invoiceDialogId }}-photos-title">
+                        <div class="progress-photo-heading">
+                            <span class="invoice-document-completion-slot">
+                                @if ($row['progress_photos'])
+                                    <span class="invoice-document-complete-marker" role="img" aria-label="Fotos del avance cargadas" title="Archivos cargados" data-document-complete="progress-photos">&#10003;</span>
+                                @endif
+                            </span>
+                            <div class="progress-photo-heading-summary">
+                                <div class="progress-photo-heading-copy">
+                                    <h4 id="{{ $invoiceDialogId }}-photos-title">Fotos del avance</h4>
+                                    <span>{{ count($row['progress_photos']) === 1 ? '1 foto' : count($row['progress_photos']).' fotos' }}</span>
+                                </div>
+                            </div>
+                            <button class="button primary small progress-photo-add-button" type="button" data-progress-photo-open="{{ $progressPhotoDialogId }}">
+                                <span class="progress-photo-add-icon" aria-hidden="true">+</span>
+                                Agregar fotos
+                            </button>
+                        </div>
+
+                        @if ($row['progress_photos'])
+                            <div class="progress-photo-grid" aria-label="Fotos de avance cargadas">
+                                @foreach ($row['progress_photos'] as $photo)
+                                    <article class="progress-photo-card" data-progress-photo-card>
+                                        <a
+                                            class="progress-photo-image-link"
+                                            href="{{ $photo['url'] }}"
+                                            target="_blank"
+                                            rel="noopener"
+                                            title="Ver {{ $photo['name'] }}"
+                                            aria-label="Ver foto de avance {{ $loop->iteration }}: {{ $photo['name'] }}"
+                                        >
+                                            <img src="{{ $photo['url'] }}" alt="{{ $photo['description'] ?: 'Foto de avance '.$loop->iteration }}" loading="lazy">
+                                        </a>
+                                        <p class="progress-photo-description {{ filled($photo['description']) ? '' : 'is-pending' }}">
+                                            {{ $photo['description'] ?: 'Descripcion pendiente.' }}
+                                        </p>
+                                        <div class="progress-photo-card-actions">
+                                            <button class="progress-photo-text-action" type="button" data-progress-photo-edit-toggle>Editar</button>
+                                            <form method="POST" action="{{ $photo['delete_url'] }}" data-progress-photo-delete-form>
+                                                @csrf
+                                                @method('DELETE')
+                                                <input type="hidden" name="invoice_dialog" value="{{ $invoiceDialogId }}">
+                                                <button class="progress-photo-text-action danger" type="submit">Eliminar</button>
+                                            </form>
+                                        </div>
+                                        <form class="progress-photo-edit-form" method="POST" action="{{ $photo['update_url'] }}" data-progress-photo-edit-form hidden>
+                                            @csrf
+                                            @method('PATCH')
+                                            <input type="hidden" name="invoice_dialog" value="{{ $invoiceDialogId }}">
+                                            <label>
+                                                Descripcion
+                                                <textarea name="description" rows="3" maxlength="500" required>{{ $photo['description'] }}</textarea>
+                                            </label>
+                                            <div class="progress-photo-edit-actions">
+                                                <button class="button ghost small" type="button" data-progress-photo-edit-cancel>Cancelar</button>
+                                                <button class="button primary small" type="submit">Guardar</button>
+                                            </div>
+                                        </form>
+                                    </article>
+                                @endforeach
+                            </div>
+                        @else
+                            <p class="progress-photo-empty">Todavia no hay fotos de avance.</p>
+                        @endif
+
+                        @if (old('invoice_dialog') === $invoiceDialogId)
+                            @error('description')
+                                <small class="form-error">{{ $message }}</small>
+                            @enderror
+                        @endif
+                        <p class="progress-photo-help">Puedes agregar todas las fotos que necesites.</p>
+                    </section>
+
+                    <div class="invoice-documents-footer">
+                        <button class="button ghost" type="button" data-supply-detail-close>Cerrar</button>
+                        <button class="button primary" type="button" data-invoice-documents-save data-supply-detail-close>Guardar</button>
                     </div>
                 </div>
+            </dialog>
+
+            <dialog
+                class="supply-detail-dialog progress-photo-dialog"
+                id="{{ $progressPhotoDialogId }}"
+                data-supply-detail-dialog
+                data-progress-photo-dialog
+                data-return-dialog="{{ $invoiceDialogId }}"
+                aria-labelledby="{{ $progressPhotoDialogId }}-title"
+            >
+                <form class="supply-detail-card progress-photo-dialog-card" method="POST" action="{{ $row['progress_photos_upload_url'] }}" enctype="multipart/form-data" data-progress-photo-form>
+                    @csrf
+                    <input type="hidden" name="invoice_dialog" value="{{ $invoiceDialogId }}">
+                    <input type="hidden" name="progress_photo_dialog" value="{{ $progressPhotoDialogId }}">
+                    <input class="file-upload-input" type="file" name="progress_photos[]" data-progress-photo-submit-files multiple hidden>
+                    <button class="supply-detail-close" type="button" data-supply-detail-close aria-label="Cerrar">&times;</button>
+
+                    <div class="progress-photo-dialog-heading">
+                        <h3 id="{{ $progressPhotoDialogId }}-title" data-progress-photo-dialog-title>Agregar fotos</h3>
+                        <p class="fine-print" data-progress-photo-dialog-subtitle>{{ $row['code'] }} &middot; Fotos del avance</p>
+                    </div>
+
+                    @if (old('progress_photo_dialog') === $progressPhotoDialogId)
+                        <div class="form-error progress-photo-server-errors">
+                            @error('progress_photos')<span>{{ $message }}</span>@enderror
+                            @error('progress_photos.*')<span>{{ $message }}</span>@enderror
+                            @error('progress_descriptions')<span>{{ $message }}</span>@enderror
+                            @error('progress_descriptions.*')<span>{{ $message }}</span>@enderror
+                        </div>
+                    @endif
+
+                    <div class="progress-photo-stage" data-progress-photo-stage="select">
+                        <div class="progress-photo-drop-zone" data-progress-photo-drop-zone tabindex="0" role="button" aria-label="Seleccionar fotos del avance">
+                            <span class="progress-photo-upload-symbol" aria-hidden="true">&uarr;</span>
+                            <strong>Arrastra tus fotos aqui</strong>
+                            <button class="button primary progress-photo-select-button" type="button" data-progress-photo-select>
+                                <span aria-hidden="true">+</span>
+                                Seleccionar fotos
+                            </button>
+                            <span>Selecciona una o varias imagenes.</span>
+                        </div>
+                        <input class="file-upload-input" type="file" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" data-progress-photo-picker multiple hidden>
+                        <input class="file-upload-input" type="file" accept="image/*" capture="environment" data-progress-photo-camera hidden>
+                        <button class="button ghost progress-photo-camera-button" type="button" data-progress-photo-camera-button>Tomar foto</button>
+                        <p class="progress-photo-info">Cada foto llevara su propia descripcion.</p>
+                        <p class="form-error" data-progress-photo-client-error hidden></p>
+                        <div class="progress-photo-stage-actions">
+                            <button class="button ghost" type="button" data-progress-photo-cancel>Cancelar</button>
+                        </div>
+                    </div>
+
+                    <div class="progress-photo-stage" data-progress-photo-stage="describe" hidden>
+                        <div class="progress-photo-selected-list" data-progress-photo-selected-list></div>
+                        <p class="progress-photo-required-note"><span aria-hidden="true">*</span> La descripcion es obligatoria en cada foto.</p>
+                        <button class="button ghost small progress-photo-more-button" type="button" data-progress-photo-more>
+                            <span aria-hidden="true">+</span>
+                            Agregar mas fotos
+                        </button>
+                        <p class="form-error" data-progress-photo-client-error hidden></p>
+                        <div class="progress-photo-stage-actions">
+                            <button class="button ghost" type="button" data-progress-photo-cancel>Cancelar</button>
+                            <button class="button primary" type="submit" data-progress-photo-save disabled>Guardar fotos</button>
+                        </div>
+                    </div>
+                </form>
             </dialog>
         @endforeach
 
@@ -768,6 +935,329 @@
                     });
                 });
 
+                const progressPhotoDialogs = [...document.querySelectorAll('[data-progress-photo-dialog]')];
+
+                progressPhotoDialogs.forEach((dialog) => {
+                    const form = dialog.querySelector('[data-progress-photo-form]');
+                    const selectStage = dialog.querySelector('[data-progress-photo-stage="select"]');
+                    const describeStage = dialog.querySelector('[data-progress-photo-stage="describe"]');
+                    const title = dialog.querySelector('[data-progress-photo-dialog-title]');
+                    const subtitle = dialog.querySelector('[data-progress-photo-dialog-subtitle]');
+                    const dropZone = dialog.querySelector('[data-progress-photo-drop-zone]');
+                    const picker = dialog.querySelector('[data-progress-photo-picker]');
+                    const camera = dialog.querySelector('[data-progress-photo-camera]');
+                    const submitFiles = dialog.querySelector('[data-progress-photo-submit-files]');
+                    const selectedList = dialog.querySelector('[data-progress-photo-selected-list]');
+                    const saveButton = dialog.querySelector('[data-progress-photo-save]');
+                    const errorNodes = [...dialog.querySelectorAll('[data-progress-photo-client-error]')];
+                    const initialSubtitle = subtitle?.textContent || '';
+                    const maxFiles = 10;
+                    const maxFileSize = 10 * 1024 * 1024;
+                    let selectedPhotos = [];
+                    let isSubmitting = false;
+
+                    const setError = (message = '') => {
+                        errorNodes.forEach((node) => {
+                            node.textContent = message;
+                            node.hidden = message === '';
+                        });
+                    };
+
+                    const setStage = (stage) => {
+                        if (selectStage) selectStage.hidden = stage !== 'select';
+                        if (describeStage) describeStage.hidden = stage !== 'describe';
+
+                        if (title) {
+                            title.textContent = stage === 'describe' ? 'Descripcion de las fotos' : 'Agregar fotos';
+                        }
+
+                        if (subtitle) {
+                            subtitle.textContent = stage === 'describe'
+                                ? `${selectedPhotos.length} ${selectedPhotos.length === 1 ? 'foto seleccionada' : 'fotos seleccionadas'}`
+                                : initialSubtitle;
+                        }
+                    };
+
+                    const syncSubmissionFiles = () => {
+                        if (!submitFiles) return false;
+
+                        try {
+                            const transfer = new DataTransfer();
+                            selectedPhotos.forEach(({ file }) => transfer.items.add(file));
+                            submitFiles.files = transfer.files;
+
+                            return true;
+                        } catch (error) {
+                            setError('No fue posible preparar las fotos. Vuelve a seleccionarlas.');
+
+                            return false;
+                        }
+                    };
+
+                    const clearSelectedPhotos = () => {
+                        selectedPhotos.forEach(({ previewUrl }) => URL.revokeObjectURL(previewUrl));
+                        selectedPhotos = [];
+                        if (selectedList) selectedList.replaceChildren();
+                        if (submitFiles) submitFiles.value = '';
+                        if (picker) picker.value = '';
+                        if (camera) camera.value = '';
+                        if (saveButton) {
+                            saveButton.disabled = true;
+                            saveButton.textContent = 'Guardar fotos';
+                        }
+                        setError();
+                        setStage('select');
+                    };
+
+                    const renderSelectedPhotos = () => {
+                        if (!selectedList) return;
+
+                        selectedList.replaceChildren();
+
+                        selectedPhotos.forEach((photo, index) => {
+                            const item = document.createElement('article');
+                            item.className = 'progress-photo-selected-item';
+
+                            const image = document.createElement('img');
+                            image.className = 'progress-photo-selected-preview';
+                            image.src = photo.previewUrl;
+                            image.alt = `Vista previa de ${photo.file.name}`;
+
+                            const copy = document.createElement('div');
+                            copy.className = 'progress-photo-selected-copy';
+
+                            const label = document.createElement('label');
+                            label.htmlFor = `${dialog.id}-description-${index}`;
+                            label.append('Descripcion ');
+                            const requiredMark = document.createElement('span');
+                            requiredMark.textContent = '*';
+                            requiredMark.setAttribute('aria-hidden', 'true');
+                            label.append(requiredMark);
+
+                            const textarea = document.createElement('textarea');
+                            textarea.id = `${dialog.id}-description-${index}`;
+                            textarea.name = 'progress_descriptions[]';
+                            textarea.rows = 3;
+                            textarea.maxLength = 500;
+                            textarea.required = true;
+                            textarea.value = photo.description;
+                            textarea.placeholder = 'Describe el avance que aparece en esta foto.';
+                            textarea.addEventListener('input', () => {
+                                photo.description = textarea.value;
+                                setError();
+                            });
+
+                            copy.append(label, textarea);
+
+                            const removeButton = document.createElement('button');
+                            removeButton.className = 'progress-photo-remove-selected';
+                            removeButton.type = 'button';
+                            removeButton.textContent = '\u00d7';
+                            removeButton.title = 'Quitar foto';
+                            removeButton.setAttribute('aria-label', `Quitar ${photo.file.name}`);
+                            removeButton.addEventListener('click', () => {
+                                URL.revokeObjectURL(photo.previewUrl);
+                                selectedPhotos.splice(index, 1);
+
+                                if (selectedPhotos.length === 0) {
+                                    clearSelectedPhotos();
+                                    return;
+                                }
+
+                                renderSelectedPhotos();
+                            });
+
+                            item.append(image, copy, removeButton);
+                            selectedList.append(item);
+                        });
+
+                        if (saveButton) {
+                            saveButton.disabled = selectedPhotos.length === 0;
+                            saveButton.textContent = selectedPhotos.length === 1
+                                ? 'Guardar 1 foto'
+                                : `Guardar ${selectedPhotos.length} fotos`;
+                        }
+
+                        syncSubmissionFiles();
+                        setStage(selectedPhotos.length > 0 ? 'describe' : 'select');
+                    };
+
+                    const addFiles = (files) => {
+                        const incomingFiles = [...(files || [])];
+                        const existingKeys = new Set(selectedPhotos.map(({ file }) => `${file.name}:${file.size}:${file.lastModified}`));
+                        let rejectedType = false;
+                        let rejectedSize = false;
+                        let limitReached = false;
+
+                        incomingFiles.forEach((file) => {
+                            if (selectedPhotos.length >= maxFiles) {
+                                limitReached = true;
+                                return;
+                            }
+
+                            const extensionIsValid = /\.(jpe?g|png|webp)$/i.test(file.name);
+                            const mimeIsValid = ['image/jpeg', 'image/png', 'image/webp'].includes((file.type || '').toLowerCase());
+
+                            if (!extensionIsValid && !mimeIsValid) {
+                                rejectedType = true;
+                                return;
+                            }
+
+                            if (file.size > maxFileSize) {
+                                rejectedSize = true;
+                                return;
+                            }
+
+                            const key = `${file.name}:${file.size}:${file.lastModified}`;
+                            if (existingKeys.has(key)) return;
+
+                            existingKeys.add(key);
+                            selectedPhotos.push({
+                                file,
+                                description: '',
+                                previewUrl: URL.createObjectURL(file),
+                            });
+                        });
+
+                        if (selectedPhotos.length > 0) {
+                            renderSelectedPhotos();
+                        }
+
+                        if (limitReached) {
+                            setError('Puedes guardar hasta 10 fotos en cada carga.');
+                        } else if (rejectedSize) {
+                            setError('Cada foto debe pesar 10 MB o menos.');
+                        } else if (rejectedType) {
+                            setError('Selecciona imagenes JPG, PNG o WEBP.');
+                        } else {
+                            setError();
+                        }
+                    };
+
+                    dialog.querySelector('[data-progress-photo-select]')?.addEventListener('click', (event) => {
+                        event.stopPropagation();
+                        picker?.click();
+                    });
+
+                    dialog.querySelector('[data-progress-photo-more]')?.addEventListener('click', () => picker?.click());
+                    dialog.querySelector('[data-progress-photo-camera-button]')?.addEventListener('click', () => camera?.click());
+
+                    [picker, camera].forEach((input) => {
+                        input?.addEventListener('change', () => {
+                            addFiles(input.files);
+                            input.value = '';
+                        });
+                    });
+
+                    ['dragenter', 'dragover'].forEach((eventName) => {
+                        dropZone?.addEventListener(eventName, (event) => {
+                            event.preventDefault();
+                            dropZone.classList.add('is-dragging');
+                        });
+                    });
+
+                    ['dragleave', 'drop'].forEach((eventName) => {
+                        dropZone?.addEventListener(eventName, (event) => {
+                            event.preventDefault();
+                            dropZone.classList.remove('is-dragging');
+                        });
+                    });
+
+                    dropZone?.addEventListener('drop', (event) => addFiles(event.dataTransfer?.files));
+                    dropZone?.addEventListener('click', (event) => {
+                        if (!event.target.closest('button')) picker?.click();
+                    });
+                    dropZone?.addEventListener('keydown', (event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                            event.preventDefault();
+                            picker?.click();
+                        }
+                    });
+
+                    dialog.querySelectorAll('[data-progress-photo-cancel]').forEach((button) => {
+                        button.addEventListener('click', () => dialog.close());
+                    });
+
+                    form?.addEventListener('submit', (event) => {
+                        setError();
+
+                        if (selectedPhotos.length === 0) {
+                            event.preventDefault();
+                            setStage('select');
+                            setError('Selecciona al menos una foto.');
+                            return;
+                        }
+
+                        const missingDescription = selectedPhotos.some((photo) => photo.description.trim() === '');
+                        if (missingDescription) {
+                            event.preventDefault();
+                            setError('Agrega una descripcion para cada foto.');
+                            selectedList?.querySelector('textarea:invalid')?.focus();
+                            return;
+                        }
+
+                        if (!syncSubmissionFiles()) {
+                            event.preventDefault();
+                            return;
+                        }
+
+                        isSubmitting = true;
+                        if (saveButton) saveButton.disabled = true;
+                    });
+
+                    dialog.addEventListener('close', () => {
+                        if (isSubmitting) return;
+
+                        clearSelectedPhotos();
+                        const returnDialog = document.getElementById(dialog.dataset.returnDialog || '');
+                        if (returnDialog && !returnDialog.open) {
+                            window.requestAnimationFrame(() => returnDialog.showModal());
+                        }
+                    });
+
+                    dialog._resetProgressPhotoFlow = clearSelectedPhotos;
+                });
+
+                document.querySelectorAll('[data-progress-photo-open]').forEach((button) => {
+                    button.addEventListener('click', () => {
+                        const dialog = document.getElementById(button.dataset.progressPhotoOpen || '');
+                        if (!dialog) return;
+
+                        dialog._resetProgressPhotoFlow?.();
+                        button.closest('[data-supply-detail-dialog]')?.close();
+                        window.requestAnimationFrame(() => dialog.showModal());
+                    });
+                });
+
+                document.querySelectorAll('[data-progress-photo-edit-toggle]').forEach((button) => {
+                    button.addEventListener('click', () => {
+                        const form = button.closest('[data-progress-photo-card]')?.querySelector('[data-progress-photo-edit-form]');
+                        if (!form) return;
+
+                        form.hidden = false;
+                        form.querySelector('textarea')?.focus();
+                    });
+                });
+
+                document.querySelectorAll('[data-progress-photo-edit-cancel]').forEach((button) => {
+                    button.addEventListener('click', () => {
+                        const form = button.closest('[data-progress-photo-edit-form]');
+                        if (!form) return;
+
+                        const textarea = form.querySelector('textarea');
+                        if (textarea) textarea.value = textarea.defaultValue;
+                        form.hidden = true;
+                    });
+                });
+
+                document.querySelectorAll('[data-progress-photo-delete-form]').forEach((form) => {
+                    form.addEventListener('submit', (event) => {
+                        if (!window.confirm('Estas seguro que quieres eliminar esta foto de avance?')) {
+                            event.preventDefault();
+                        }
+                    });
+                });
+
                 document.querySelectorAll('[data-labor-delete]').forEach((button) => {
                     button.addEventListener('click', () => {
                         pendingDeleteRow = button.closest('[data-labor-row], [data-payroll-row], [data-estimate-row]');
@@ -821,10 +1311,14 @@
                     window.requestAnimationFrame(() => invalidDialog?.showModal());
                 }
 
-                const invalidInvoiceDialogId = @json(old('invoice_dialog'));
-                if (invalidInvoiceDialogId) {
-                    const invalidDialog = document.getElementById(invalidInvoiceDialogId);
-                    window.requestAnimationFrame(() => invalidDialog?.showModal());
+                const invoiceDialogToOpen = @json(old('invoice_dialog', session('open_invoice_dialog')));
+                const invalidProgressPhotoDialogId = @json(old('progress_photo_dialog'));
+                if (invalidProgressPhotoDialogId) {
+                    const invalidProgressDialog = document.getElementById(invalidProgressPhotoDialogId);
+                    window.requestAnimationFrame(() => invalidProgressDialog?.showModal());
+                } else if (invoiceDialogToOpen) {
+                    const invoiceDialog = document.getElementById(invoiceDialogToOpen);
+                    window.requestAnimationFrame(() => invoiceDialog?.showModal());
                 }
             })();
         </script>

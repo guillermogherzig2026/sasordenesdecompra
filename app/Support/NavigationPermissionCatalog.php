@@ -197,7 +197,7 @@ final class NavigationPermissionCatalog
                     'construction.generators' => 'Generadores de obra',
                     'construction.materials' => 'Materiales e insumos',
                     'construction.labor' => 'Mano de obra',
-                    'construction.calendar' => 'Calendario',
+                    'construction.calendar' => 'Calendario y Avances',
                     'construction.payments' => 'Historial de pagos',
                     'construction.supply' => 'Ordenes de suministro',
                     'construction.warehouses' => 'Almacenes',
@@ -509,6 +509,9 @@ final class NavigationPermissionCatalog
             }
             if (Str::startsWith($routeName, 'construction.estimates.')) {
                 return ['construction.generators'];
+            }
+            if (Str::startsWith($routeName, 'construction.payment-orders.progress-photos.')) {
+                return ['construction.labor'];
             }
             if (Str::startsWith($routeName, 'construction.payment-orders.')) {
                 return ['construction.payments'];
