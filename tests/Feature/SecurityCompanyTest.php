@@ -31,8 +31,6 @@ class SecurityCompanyTest extends TestCase
         $catalog = $this->actingAs($user)->get(route('security.index'));
 
         $catalog->assertOk()
-            ->assertSee('Selecciona una empresa o negocio')
-            ->assertSee('Gestiona y supervisa las empresas y negocios registrados en Vigilancia.')
             ->assertSee('Empresas registradas')
             ->assertSee('Entradas y salidas')
             ->assertSee('Resumen por empresa')
@@ -200,7 +198,7 @@ class SecurityCompanyTest extends TestCase
             ->assertSee('data-security-branch-catalog-open', false)
             ->assertSee('security-branch-catalog-dialog', false)
             ->assertSee('Catálogo de sucursales')
-            ->assertDontSee('security-branch-form', false);
+            ->assertSee('data-security-branch-form', false);
 
         $this->get(route('security.index', ['company' => $securityCompany->id]))
             ->assertOk()

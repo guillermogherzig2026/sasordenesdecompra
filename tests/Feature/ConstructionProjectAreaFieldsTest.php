@@ -212,9 +212,12 @@ class ConstructionProjectAreaFieldsTest extends TestCase
             'role' => 'superadmin',
             'active' => true,
         ]);
-        $runningProject = ConstructionProject::where('status', 'En ejecucion')->firstOrFail();
-        $notStartedProject = ConstructionProject::where('status', 'Por iniciar')->firstOrFail();
-        $completedProject = ConstructionProject::where('status', 'Concluida')->firstOrFail();
+        $runningProject = ConstructionProject::where('project_key', 'OBR-001')->firstOrFail();
+        $runningProject->update(['status' => 'En ejecucion']);
+        $notStartedProject = ConstructionProject::where('project_key', 'OBR-002')->firstOrFail();
+        $notStartedProject->update(['status' => 'Por iniciar']);
+        $completedProject = ConstructionProject::where('project_key', 'OBR-003')->firstOrFail();
+        $completedProject->update(['status' => 'Concluida']);
         $carouselUrls = [
             route('construction.dashboard'),
             route('construction.placeholder', 'generadores-obra'),

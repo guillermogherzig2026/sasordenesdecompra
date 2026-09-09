@@ -382,7 +382,7 @@ class FinanceAdminController extends Controller
         $this->syncCompanyBuyers($company, $validated['buyer_ids'] ?? [], $oldName);
         $this->audit($company, 'company_updated', "Empresa {$company->name} actualizada por Finanzas.");
 
-        return back()->with('status', 'Empresa actualizada.');
+        return redirect()->route('finance.admin.companies')->with('status', 'Empresa actualizada.');
     }
 
     public function editCompany(Company $company)

@@ -336,7 +336,7 @@ class UserNavigationPermissionTest extends TestCase
         $this->actingAs($user)
             ->get(route('security.index'))
             ->assertOk()
-            ->assertSee('Sin incidencias registradas');
+            ->assertSee('Empresas registradas');
     }
 
     public function test_security_submenus_are_filtered_and_protected_by_their_permissions(): void

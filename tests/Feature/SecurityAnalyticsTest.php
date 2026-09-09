@@ -72,11 +72,21 @@ class SecurityAnalyticsTest extends TestCase
             'name' => 'Sucursal Centro',
             'code' => 'cen-01',
             'address' => 'Centro, Monterrey',
+            'country' => 'México',
+            'state' => 'Nuevo León',
+            'city' => 'Monterrey',
+            'timezone' => 'America/Mexico_City',
+            'status' => 'active',
         ]);
+
+        $branch = SecurityBranch::where('security_company_id', $company->id)
+            ->where('code', 'CEN-01')
+            ->firstOrFail();
 
         $response->assertRedirect(route('security.index', [
             'section' => 'branches',
             'company_id' => $company->id,
+            'branch_id' => $branch->id,
         ]));
         $this->assertDatabaseHas('security_branches', [
             'security_company_id' => $company->id,

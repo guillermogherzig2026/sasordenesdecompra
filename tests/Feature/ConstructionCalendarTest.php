@@ -275,6 +275,7 @@ class ConstructionCalendarTest extends TestCase
         $user = User::factory()->create([
             'role' => 'buyer',
             'active' => true,
+            'menu_permissions' => ['construction.calendar'],
         ]);
         $project = ConstructionProject::where('project_key', 'OBR-001')->firstOrFail();
         $project->users()->syncWithoutDetaching([

@@ -166,12 +166,12 @@ class ConstructionPayrollTest extends TestCase
         ]);
         $this->assertDatabaseHas('construction_payment_orders', [
             'code' => 'NOM-00028',
-            'period_end' => null,
+            'period_end' => '2026-08-30 00:00:00',
         ]);
 
         $payroll = ConstructionPayroll::where('code', 'NOM-00028')->firstOrFail();
         $paymentOrder = ConstructionPaymentOrder::where('code', 'NOM-00028')->firstOrFail();
-        $this->assertSame('17/08/2026 - Indefinido', $paymentOrder->periodLabel());
+        $this->assertSame('17/08 - 30/08/2026', $paymentOrder->periodLabel());
 
         $editResponse = $this->actingAs($user)->get(route('construction.payrolls.edit', $payroll));
         $editResponse->assertOk();

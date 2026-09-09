@@ -42,7 +42,10 @@ class HumanResourcesModuleTest extends TestCase
 
         foreach ($sections as $section => $label) {
             $response->assertSee($label);
-            $response->assertSee('href="'.route('human-resources.show', $section).'"', false);
+            $expectedUrl = $section === 'inicio'
+                ? route('human-resources.index')
+                : route('human-resources.show', $section);
+            $response->assertSee('href="'.$expectedUrl.'"', false);
             $this->actingAs($user)->get(route('human-resources.show', $section))->assertOk();
         }
     }
@@ -59,8 +62,8 @@ class HumanResourcesModuleTest extends TestCase
         $response->assertOk();
         $response->assertSee('class="hr-suite-embedded"', false);
         $response->assertSee('body.hr-suite-embedded .content', false);
-        $response->assertSee('"embedded":true', false);
-        $response->assertSee('"route":"employees"', false);
+        $response->assertSee('\\u0022embedded\\u0022:true', false);
+        $response->assertSee('\\u0022route\\u0022:\\u0022employees\\u0022', false);
         $response->assertSee(asset('hr-suite/assets/css/styles.css'), false);
         $response->assertSee(asset('hr-suite/assets/js/app.js'), false);
         $this->assertFileExists(public_path('hr-suite/assets/js/data.js'));
@@ -157,7 +160,7 @@ class HumanResourcesModuleTest extends TestCase
         $response = $this->actingAs($user)->get(route('human-resources.embed', 'candidatos'));
 
         $response->assertOk();
-        $response->assertSee('"registeredCompanies":["Empresa Alfa","Empresa Zeta"]', false);
+        $response->assertSee('\\u0022registeredCompanies\\u0022:[\\u0022Empresa Alfa\\u0022,\\u0022Empresa Zeta\\u0022]', false);
 
         $applicationScript = file_get_contents(public_path('hr-suite/assets/js/app.js'));
         $this->assertStringContainsString('suiteConfig.registeredCompanies', $applicationScript);

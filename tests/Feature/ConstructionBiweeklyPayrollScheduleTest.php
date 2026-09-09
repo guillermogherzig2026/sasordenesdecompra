@@ -41,11 +41,11 @@ class ConstructionBiweeklyPayrollScheduleTest extends TestCase
                 'construction_project_id' => $project->id,
                 'contractor' => 'Leoncio',
                 'description' => 'Nomina Leoncio',
-                'area_category' => 'Mano de obra',
+                'area' => 'Mano de obra',
                 'periodicity' => 'Quincenal',
                 'period_start' => '2026-08-01',
                 'period_end_indefinite' => '1',
-                'progress_percent' => '0',
+                'progress' => '0',
                 'amount' => '102040',
                 'status' => 'Programada',
             ])
