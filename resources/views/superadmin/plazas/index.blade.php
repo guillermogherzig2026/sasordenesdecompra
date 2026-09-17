@@ -2,10 +2,23 @@
 
 @section('body')
     <x-app-shell title="Administracion de Plazas">
+        <x-slot:actions>
+            <a class="button ghost" href="{{ route('superadmin.plazas.agents.index') }}">Centro de agentes</a>
+        </x-slot:actions>
+
         @php
-            $panelUrl = $selectedSection === \App\Support\PlazaNavigation::defaultSection()
-                ? route('superadmin.plazas.panel')
-                : route('superadmin.plazas.panel', ['section' => $selectedSection]);
+            $panelParameters = $selectedSection === \App\Support\PlazaNavigation::defaultSection()
+                ? []
+                : ['section' => $selectedSection];
+
+            if (
+                $selectedSection === 'local_marketing'
+                && $localMarketingView !== \App\Support\PlazaNavigation::defaultLocalMarketingView()
+            ) {
+                $panelParameters['view'] = $localMarketingView;
+            }
+
+            $panelUrl = route('superadmin.plazas.panel', $panelParameters);
         @endphp
         <section class="plazas-module-host" aria-label="Panel de Administracion de Plazas">
             <iframe

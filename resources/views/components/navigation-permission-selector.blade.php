@@ -26,6 +26,7 @@
         'construction' => ['abbr' => 'AO', 'accent' => '#9b6b0b', 'tint' => '#fff6dc'],
         'plazas' => ['abbr' => 'AP', 'accent' => '#0d766e', 'tint' => '#e7f7f5'],
         'government_contracts' => ['abbr' => 'CG', 'accent' => '#355da8', 'tint' => '#edf2fc'],
+        'marketing' => ['abbr' => 'MK', 'accent' => '#b44672', 'tint' => '#fbeaf1'],
         'security' => ['abbr' => 'SV', 'accent' => '#8d4858', 'tint' => '#f9edf0'],
     ];
 @endphp

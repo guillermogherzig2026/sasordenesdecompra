@@ -4,6 +4,10 @@ namespace App\Support;
 
 final class PlazaNavigation
 {
+    public const LOCAL_MARKETING_SCREENS = 'screens';
+
+    public const LOCAL_MARKETING_CAMPAIGNS = 'campaigns';
+
     public static function items(): array
     {
         return [
@@ -25,12 +29,6 @@ final class PlazaNavigation
                 'permission' => 'plazas.contracts',
                 'route' => 'superadmin.plazas.contracts',
             ],
-            'marketplace' => [
-                'label' => 'Marketplace',
-                'tab' => 'plaza_marketplace',
-                'permission' => 'plazas.marketplace',
-                'route' => 'superadmin.plazas.marketplace',
-            ],
             'tenants' => [
                 'label' => 'Arrendatarios',
                 'tab' => 'tenants',
@@ -38,10 +36,22 @@ final class PlazaNavigation
                 'route' => 'superadmin.plazas.tenants',
             ],
             'properties' => [
-                'label' => 'Catalogo de unidades',
+                'label' => 'Catalogo de locales',
                 'tab' => 'properties',
                 'permission' => 'plazas.properties',
                 'route' => 'superadmin.plazas.properties',
+            ],
+            'marketplace' => [
+                'label' => 'Marketplace',
+                'tab' => 'plaza_marketplace',
+                'permission' => 'plazas.marketplace',
+                'route' => 'superadmin.plazas.marketplace',
+            ],
+            'local_marketing' => [
+                'label' => 'Marketing local',
+                'tab' => 'local_marketing',
+                'permission' => 'plazas.local_marketing',
+                'route' => 'superadmin.plazas.local-marketing',
             ],
             'users' => [
                 'label' => 'Alta de Usuarios',
@@ -55,6 +65,26 @@ final class PlazaNavigation
     public static function defaultSection(): string
     {
         return 'dashboard';
+    }
+
+    public static function localMarketingViews(): array
+    {
+        return [
+            self::LOCAL_MARKETING_SCREENS => 'Pantallas',
+            self::LOCAL_MARKETING_CAMPAIGNS => 'Campañas',
+        ];
+    }
+
+    public static function defaultLocalMarketingView(): string
+    {
+        return self::LOCAL_MARKETING_SCREENS;
+    }
+
+    public static function normalizeLocalMarketingView(?string $view): string
+    {
+        return array_key_exists((string) $view, self::localMarketingViews())
+            ? (string) $view
+            : self::defaultLocalMarketingView();
     }
 
     public static function normalizeSection(?string $section): string
@@ -98,6 +128,7 @@ final class PlazaNavigation
             'administration' => 'administration',
             'plaza_contracts' => 'contracts',
             'plaza_marketplace' => 'marketplace',
+            'local_marketing' => 'local_marketing',
             'user_new' => 'users',
             'tenants' => 'tenants',
             default => self::defaultSection(),

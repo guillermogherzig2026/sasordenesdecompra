@@ -25,5 +25,7 @@ class DatabaseSeeder extends Seeder
                 'active' => true,
             ],
         );
+
+        $this->call(MarketingLeadFlowSeeder::class);
     }
 }

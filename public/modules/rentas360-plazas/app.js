@@ -8,10 +8,16 @@ const DEMO_PASSWORD = "Demo360!";
 const PANEL_USER_ID = PANEL_CONFIG.userId || "u-conta-local-rosa";
 const PANEL_ROLE_ID = PANEL_CONFIG.roleId || "local_accounting";
 const PANEL_DEFAULT_TAB = PANEL_CONFIG.defaultTab || "local_accounting_dashboard";
+const PANEL_LOCAL_MARKETING_VIEW = ["screens", "campaigns"].includes(PANEL_CONFIG.localMarketingView)
+  ? PANEL_CONFIG.localMarketingView
+  : "screens";
 
 const icons = {
   alertCircle: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>',
   activity: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>',
+  arrowDown: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></svg>',
+  arrowUp: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg>',
+  arrowUpDown: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="m21 16-4 4-4-4"/><path d="M17 20V4"/><path d="m3 8 4-4 4 4"/><path d="M7 4v16"/></svg>',
   building: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect width="16" height="20" x="4" y="2" rx="2" ry="2"/><path d="M9 22v-4h6v4"/><path d="M8 6h.01"/><path d="M16 6h.01"/><path d="M12 6h.01"/><path d="M12 10h.01"/><path d="M12 14h.01"/><path d="M16 10h.01"/><path d="M16 14h.01"/><path d="M8 10h.01"/><path d="M8 14h.01"/></svg>',
   briefcase: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M16 20V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/><rect width="20" height="14" x="2" y="6" rx="2"/><path d="M12 12h.01"/></svg>',
   checkCircle: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/></svg>',
@@ -19,6 +25,7 @@ const icons = {
   chevronRight: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>',
   creditCard: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/></svg>',
   download: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>',
+  copy: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>',
   upload: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>',
   eye: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M2.06 12.35a1 1 0 0 1 0-.7A10.75 10.75 0 0 1 12 5a10.75 10.75 0 0 1 9.94 6.65 1 1 0 0 1 0 .7A10.75 10.75 0 0 1 12 19a10.75 10.75 0 0 1-9.94-6.65Z"/><circle cx="12" cy="12" r="3"/></svg>',
   fileText: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>',
@@ -26,11 +33,16 @@ const icons = {
   home: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>',
   layoutDashboard: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>',
   lock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>',
+  mapPin: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 5-8 12-8 12S4 15 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>',
+  monitor: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" x2="16" y1="21" y2="21"/><line x1="12" x2="12" y1="17" y2="21"/></svg>',
+  pencil: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M21.17 6.81a1 1 0 0 0-3.98-3.98L3.84 16.17a2 2 0 0 0-.5.83l-1.32 4.35a.5.5 0 0 0 .62.63L7 20.66a2 2 0 0 0 .83-.5Z"/><path d="m15 5 4 4"/></svg>',
+  plus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>',
   receipt: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M16 8h-6"/><path d="M16 12h-6"/><path d="M16 16h-6"/></svg>',
   scale: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="M7 21h10"/><path d="M12 3v18"/><path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"/></svg>',
   search: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>',
   settings: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.73l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.09a2 2 0 0 1-1-1.73v-.51a2 2 0 0 1 1-1.72l.15-.1a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2Z"/><circle cx="12" cy="12" r="3"/></svg>',
   shield: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1Z"/></svg>',
+  trash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>',
   users: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
   x: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>'
 };
@@ -440,6 +452,144 @@ const seedState = {
       notes: "Alta documental sin acceso de plataforma."
     }
   ],
+  localMarketingScreens: [
+    {
+      id: "screen-and-pb-01",
+      code: "PC-PB-01",
+      name: "Totem acceso",
+      propertyId: "prop-plaza-norte",
+      level: "Planta baja",
+      group: "Accesos",
+      format: "Totem digital",
+      orientation: "Vertical",
+      resolution: "1080 x 1920",
+      connection: "online",
+      lastSeen: "Hace 2 min",
+      campaign: "Bienvenida Andares",
+      active: true
+    },
+    {
+      id: "screen-and-pb-02",
+      code: "PC-PB-02",
+      name: "Pantalla pasillo",
+      propertyId: "prop-plaza-norte",
+      level: "Planta baja",
+      group: "Pasillos",
+      format: "Pantalla horizontal",
+      orientation: "Horizontal",
+      resolution: "1920 x 1080",
+      connection: "online",
+      lastSeen: "Hace 5 min",
+      campaign: "Promociones Septiembre",
+      active: true
+    },
+    {
+      id: "screen-and-pb-03",
+      code: "PC-PB-03",
+      name: "Banner atrio",
+      propertyId: "prop-plaza-norte",
+      level: "Planta baja",
+      group: "Atrio",
+      format: "Banner LED",
+      orientation: "Ultrapanoramica",
+      resolution: "3840 x 960",
+      connection: "online",
+      lastSeen: "Hace 1 min",
+      campaign: "Directorio comercial",
+      active: true
+    },
+    {
+      id: "screen-and-n1-01",
+      code: "PC-N1-01",
+      name: "Totem nivel 1",
+      propertyId: "prop-plaza-norte",
+      level: "Nivel 1",
+      group: "Accesos",
+      format: "Totem digital",
+      orientation: "Vertical",
+      resolution: "1080 x 1920",
+      connection: "online",
+      lastSeen: "Hace 3 min",
+      campaign: "Bienvenida Andares",
+      active: true
+    },
+    {
+      id: "screen-and-n1-02",
+      code: "PC-N1-02",
+      name: "Pantalla tiendas",
+      propertyId: "prop-plaza-norte",
+      level: "Nivel 1",
+      group: "Pasillos",
+      format: "Pantalla horizontal",
+      orientation: "Horizontal",
+      resolution: "1920 x 1080",
+      connection: "online",
+      lastSeen: "Hace 4 min",
+      campaign: "Promociones Septiembre",
+      active: true
+    },
+    {
+      id: "screen-and-n1-03",
+      code: "PC-N1-03",
+      name: "Banner principal",
+      propertyId: "prop-plaza-norte",
+      level: "Nivel 1",
+      group: "Atrio",
+      format: "Banner LED",
+      orientation: "Ultrapanoramica",
+      resolution: "3840 x 960",
+      connection: "offline",
+      lastSeen: "Desde hace 12 min",
+      campaign: "Directorio comercial",
+      active: true
+    },
+    {
+      id: "screen-bod-pb-01",
+      code: "BI-PB-01",
+      name: "Directorio de acceso",
+      propertyId: "prop-bodega-sur",
+      level: "Planta baja",
+      group: "Accesos",
+      format: "Pantalla horizontal",
+      orientation: "Horizontal",
+      resolution: "1920 x 1080",
+      connection: "online",
+      lastSeen: "Hace 6 min",
+      campaign: "Seguridad industrial",
+      active: true
+    },
+    {
+      id: "screen-bod-n1-01",
+      code: "BI-N1-01",
+      name: "Pantalla operaciones",
+      propertyId: "prop-bodega-sur",
+      level: "Nivel 1",
+      group: "Operaciones",
+      format: "Pantalla horizontal",
+      orientation: "Horizontal",
+      resolution: "1920 x 1080",
+      connection: "maintenance",
+      lastSeen: "En revision",
+      campaign: "Seguridad industrial",
+      active: false
+    },
+    {
+      id: "screen-res-pb-01",
+      code: "RV-PB-01",
+      name: "Pantalla recepcion",
+      propertyId: "prop-vivienda-bosque",
+      level: "Planta baja",
+      group: "Recepcion",
+      format: "Totem digital",
+      orientation: "Vertical",
+      resolution: "1080 x 1920",
+      connection: "online",
+      lastSeen: "Hace 8 min",
+      campaign: "Avisos residenciales",
+      active: true
+    }
+  ],
+  localMarketingMaintenanceTickets: [],
   units: [
     {
       id: "unit-and-l01",
@@ -663,9 +813,15 @@ const tabs = [
   },
   {
     id: "properties",
-    label: "Catalogo de unidades",
+    label: "Catalogo de locales",
     icon: "home",
     roles: ["superadmin", "admin", "project_manager", "local_accounting", "general_accounting", "legal"]
+  },
+  {
+    id: "local_marketing",
+    label: "Marketing local",
+    icon: "briefcase",
+    roles: ["superadmin"]
   },
   {
     id: "property_detail",
@@ -778,13 +934,38 @@ const view = {
   propertyFilter: "all",
   statusFilter: "all",
   administrationPropertyId: loadSelectedPropertyId(),
+  contractsPropertyId: loadSelectedPropertyId(),
+  marketplacePropertyId: loadSelectedPropertyId(),
+  propertiesCatalogPropertyId: loadSelectedPropertyId(),
+  localMarketingPropertyId: "all",
+  localMarketingView: PANEL_LOCAL_MARKETING_VIEW,
+  localMarketingScope: "all",
+  localMarketingCampaignSection: "playlists",
+  localMarketingScreenFilters: {
+    query: "",
+    format: "all",
+    connection: "all",
+    orientation: "all",
+    campaign: "all",
+    level: "all",
+    group: "all",
+    active: "all"
+  },
+  localMarketingFiltersOpen: false,
+  localMarketingScreenColumnFilters: {},
+  localMarketingScreenColumnFilterOpen: "",
+  localMarketingScreenSort: { key: "", direction: "none" },
+  usersPropertyId: loadSelectedPropertyId(),
   propertyAdministrationView: "units",
   legalReturnTab: "",
   propertyDetailId: "",
   propertyReturnTab: "",
   unitStatusId: "",
-  tenantCatalogPropertyId: ""
+  tenantCatalogPropertyId: loadSelectedPropertyId()
 };
+
+let localMarketingColumnFilterCleanup = null;
+let localMarketingMaintenanceMenuCleanup = null;
 
 const els = {
   loginView: document.querySelector("#loginView"),
@@ -835,6 +1016,7 @@ function loadState() {
       platformModules: mergeById(seed.platformModules, parsed.platformModules),
       users: mergeById(seed.users, parsed.users),
       tenantProfiles: mergeById(seed.tenantProfiles, parsed.tenantProfiles),
+      localMarketingScreens: mergeById(seed.localMarketingScreens, parsed.localMarketingScreens),
       units: mergeById(seed.units, parsed.units)
     });
   } catch {
@@ -887,6 +1069,35 @@ function normalizeState(nextState) {
   nextState.users = normalizeUsers(nextState.users || []);
   ensureDedicatedPanelUser(nextState);
   nextState.units = (nextState.units || []).map(normalizeUnitPayments);
+  nextState.localMarketingScreens = (Array.isArray(nextState.localMarketingScreens) ? nextState.localMarketingScreens : [])
+    .map((screen, index) => ({
+      id: screen.id || `screen-${index + 1}`,
+      code: String(screen.code || `PANTALLA-${index + 1}`),
+      name: String(screen.name || "Pantalla sin nombre"),
+      propertyId: String(screen.propertyId || ""),
+      level: String(screen.level || "Sin nivel"),
+      group: String(screen.group || "Sin grupo"),
+      format: String(screen.format || "Pantalla horizontal"),
+      orientation: String(screen.orientation || "Horizontal"),
+      resolution: String(screen.resolution || "1920 x 1080"),
+      connection: ["online", "offline", "maintenance"].includes(screen.connection) ? screen.connection : "offline",
+      lastSeen: String(screen.lastSeen || "Sin actividad reciente"),
+      campaign: String(screen.campaign || "Sin campaña"),
+      active: screen.active !== false,
+      deleted: Boolean(screen.deleted)
+    }));
+  nextState.localMarketingMaintenanceTickets = (
+    Array.isArray(nextState.localMarketingMaintenanceTickets) ? nextState.localMarketingMaintenanceTickets : []
+  ).map((ticket, index) => ({
+    id: String(ticket.id || `MT-${String(index + 1).padStart(4, "0")}`),
+    screenId: String(ticket.screenId || ""),
+    propertyId: String(ticket.propertyId || ""),
+    type: String(ticket.type || "Correctivo"),
+    priority: String(ticket.priority || "Normal"),
+    description: String(ticket.description || ""),
+    status: String(ticket.status || "Abierto"),
+    requestedAt: String(ticket.requestedAt || new Date().toISOString())
+  }));
   applyPlazaArgentinaDemoContractDates(nextState);
   applyPlazaArgentinaDemoTenants(nextState);
   syncExpiredContractValidations(nextState.units);
@@ -2019,6 +2230,10 @@ function ensureActiveTabAllowed() {
 }
 
 function render() {
+  localMarketingColumnFilterCleanup?.();
+  localMarketingColumnFilterCleanup = null;
+  localMarketingMaintenanceMenuCleanup?.();
+  localMarketingMaintenanceMenuCleanup = null;
   if (syncExpiredContractValidations()) saveState();
   ensureActiveTabAllowed();
   renderHeader();
@@ -2380,6 +2595,7 @@ function renderContent() {
     plaza_contracts: renderPlazaContracts,
     plaza_marketplace: renderPlazaMarketplace,
     properties: renderPropertiesCatalog,
+    local_marketing: renderLocalMarketing,
     property_detail: renderPropertyDetailSection,
     property_balance: renderPropertyBalanceSection,
     property_payment_method: renderPropertyPaymentMethodSection,
@@ -4330,7 +4546,7 @@ function renderPlazaGeneralDashboard() {
         </button>
 
         <div class="plaza-dashboard-viewport">
-          <div class="plaza-dashboard-cards">
+          <div class="plaza-dashboard-cards plaza-left-aligned-selector-cards">
             ${plazaDashboardAllCardMarkup(properties, allSelected)}
             ${properties.map((item) => plazaDashboardCardMarkup(item, !allSelected && item.id === property?.id)).join("")}
             <button class="plaza-dashboard-add-card" type="button" data-plaza-dashboard-new>
@@ -4369,6 +4585,8 @@ function renderPlazaGeneralDashboard() {
         <strong>${activeCarouselIndex + 1} de ${carouselItemCount}</strong>
       </div>
 
+      ${plazaDashboardGeneralInformationSectionMarkup(allSelected ? properties : [property], allSelected)}
+
       ${allSelected ? `
         <section class="property-detail-section plaza-dashboard-unit-status" aria-labelledby="plazaDashboardPortfolioTitle">
           <div class="section-header">
@@ -4397,25 +4615,22 @@ function renderPlazaGeneralDashboard() {
   bindPlazaDashboardActions(properties, activeCarouselIndex);
 }
 
-function plazaDashboardAllCardMarkup(properties, isActive) {
+function plazaDashboardAllCardMarkup(properties, isActive, dataAttribute = "data-plaza-dashboard-all") {
   const units = properties.flatMap((property) => propertyUnits(property.id));
   const totalUnits = properties.reduce((sum, property) => {
     const propertyUnitCount = propertyUnits(property.id).length;
     return sum + (propertyUnitCount || Number(property.plannedUnits || 0));
   }, 0);
-  const occupiedUnits = properties.reduce((sum, property) => {
-    const propertyUnitList = propertyUnits(property.id);
-    if (propertyUnitList.length) {
-      return sum + propertyUnitList.filter((unit) => !isUnitAvailable(unit)).length;
-    }
-    return sum + Number(property.plannedOccupiedUnits || 0);
-  }, 0);
+  const totalProgrammedRent = properties.reduce(
+    (sum, property) => sum + plazaDashboardProgrammedMonthlyIncome(property),
+    0
+  );
 
   return `
     <button
       class="plaza-dashboard-card plaza-dashboard-all-card ${isActive ? "is-selected" : ""}"
       type="button"
-      data-plaza-dashboard-all
+      ${dataAttribute}
       aria-label="Mostrar todas las plazas"
       aria-current="${isActive ? "true" : "false"}"
     >
@@ -4430,10 +4645,135 @@ function plazaDashboardAllCardMarkup(properties, isActive) {
       <span class="plaza-dashboard-card-metrics">
         <span><small>Plazas</small><strong>${properties.length}</strong></span>
         <span><small>Unidades</small><strong>${totalUnits || units.length}</strong></span>
-        <span><small>Ocupacion</small><strong class="is-positive">${occupiedUnits}/${totalUnits || units.length}</strong></span>
+        <span class="is-programmed-income">
+          <small>Total programado de rentas</small>
+          <strong>${formatCurrency(totalProgrammedRent)}</strong>
+        </span>
       </span>
     </button>
   `;
+}
+
+function plazaDashboardGeneralInformationSectionMarkup(properties, allSelected = false) {
+  const selectedProperties = properties.filter(Boolean);
+  if (!selectedProperties.length) return "";
+
+  return `
+    <section
+      class="property-detail-section plaza-dashboard-general-information"
+      aria-labelledby="plazaDashboardGeneralInformationTitle"
+      data-plaza-dashboard-general-information
+    >
+      <div class="section-header">
+        <div>
+          <p class="eyebrow">Información general</p>
+          <h3 id="plazaDashboardGeneralInformationTitle">
+            ${allSelected ? "Información general de todas las plazas" : "Información general de la plaza"}
+          </h3>
+        </div>
+      </div>
+      ${plazaDashboardGeneralInformationTableMarkup(selectedProperties)}
+    </section>
+  `;
+}
+
+function plazaDashboardGeneralInformationTableMarkup(properties) {
+  return `
+    <div class="table-panel plaza-dashboard-status-panel">
+      <div class="table-scroll">
+        <table class="plaza-dashboard-general-table" aria-label="Información general de plazas">
+          <thead>
+            <tr>
+              <th>Nombre</th>
+              <th>Dirección</th>
+              <th>Ubicación de Google Maps</th>
+              <th>Coordenadas</th>
+              <th>Número de niveles</th>
+              <th>Número de locales</th>
+              <th>Horario de servicio</th>
+              <th>Ingreso total estimado (mensual)</th>
+              <th>Ingreso total programado (mensual)</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${properties.map(plazaDashboardGeneralInformationRowMarkup).join("")}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
+function plazaDashboardGeneralInformationRowMarkup(property) {
+  const profile = property.profile && typeof property.profile === "object" ? property.profile : {};
+  const units = propertyUnits(property.id);
+  const address = plazaDashboardPropertyAddress(property, profile);
+  const latitude = String(profile.latitude ?? property.latitude ?? "").trim();
+  const longitude = String(profile.longitude ?? property.longitude ?? "").trim();
+  const hasCoordinates = Boolean(latitude && longitude);
+  const coordinates = hasCoordinates ? `${latitude}, ${longitude}` : "Sin registrar";
+  const mapQuery = hasCoordinates ? `${latitude},${longitude}` : `${property.name}, ${address}`;
+  const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapQuery)}`;
+  const configuredLevels = Math.max(0, Number(profile.levels ?? property.levels ?? 0));
+  const screenLevels = new Set(
+    (state.localMarketingScreens || [])
+      .filter((screen) => screen.propertyId === property.id && !screen.deleted)
+      .map((screen) => String(screen.level || "").trim())
+      .filter(Boolean)
+  ).size;
+  const levelCount = configuredLevels || screenLevels;
+  const localCount = Math.max(units.length, Number(property.plannedUnits ?? profile.totalUnits ?? 0));
+  const estimatedMonthlyIncome = Number(
+    property.targetMonthlyIncome
+      ?? profile.targetMonthlyIncome
+      ?? units.reduce((sum, unit) => sum + Number(unit.rentTotal ?? unit.monthlyRent ?? 0), 0)
+  );
+  const programmedMonthlyIncome = plazaDashboardProgrammedMonthlyIncome(property, units);
+  const serviceHours = profile.operationSchedule || property.operationSchedule || "Lun - Dom 08:00 - 22:00";
+
+  return `
+    <tr>
+      <td><strong>${escapeAttribute(property.name)}</strong></td>
+      <td>${escapeAttribute(address)}</td>
+      <td>
+        <a
+          class="secondary-button plaza-dashboard-map-link"
+          href="${escapeAttribute(mapsUrl)}"
+          target="_blank"
+          rel="noopener noreferrer"
+          title="Abrir ${escapeAttribute(property.name)} en Google Maps"
+        >
+          <span data-icon="mapPin" aria-hidden="true"></span>
+          Ver mapa
+        </a>
+      </td>
+      <td>${escapeAttribute(coordinates)}</td>
+      <td><strong>${levelCount || "Sin registrar"}</strong></td>
+      <td><strong>${localCount}</strong></td>
+      <td>${escapeAttribute(serviceHours)}</td>
+      <td><strong>${formatCurrency(estimatedMonthlyIncome)}</strong></td>
+      <td><strong>${formatCurrency(programmedMonthlyIncome)}</strong></td>
+    </tr>
+  `;
+}
+
+function plazaDashboardPropertyAddress(property, profile = {}) {
+  const street = [profile.street, profile.exteriorNumber].filter(Boolean).join(" ");
+  const interior = profile.interiorNumber ? `Int. ${profile.interiorNumber}` : "";
+  const neighborhood = profile.neighborhood ? `Col. ${profile.neighborhood}` : "";
+  const locality = [...new Set([profile.municipality, profile.city].filter(Boolean))].join(", ");
+  const postalCode = profile.postalCode ? `C.P. ${profile.postalCode}` : "";
+  const address = [street, interior, neighborhood, locality, profile.state, postalCode, profile.country]
+    .filter(Boolean)
+    .join(", ");
+
+  return address || property.location || "Sin dirección registrada";
+}
+
+function plazaDashboardProgrammedMonthlyIncome(property, units = propertyUnits(property.id)) {
+  return units
+    .filter((unit) => !isUnitAvailable(unit))
+    .reduce((sum, unit) => sum + Number(unit.rentTotal ?? unit.monthlyRent ?? 0), 0);
 }
 
 function plazaDashboardAllPropertiesTableMarkup(properties) {
@@ -4586,7 +4926,7 @@ function plazaDashboardContractStatus(unit) {
 function plazaDashboardCardMarkup(property, isActive, dataAttribute = "data-plaza-dashboard-property-id") {
   const units = propertyUnits(property.id);
   const occupied = units.filter((unit) => unit.tenant !== "Disponible").length;
-  const pending = units.reduce((sum, unit) => sum + unitPendingTotal(unit, recentMonthKeys()), 0);
+  const programmedMonthlyIncome = plazaDashboardProgrammedMonthlyIncome(property, units);
   const enabledMarketplaceUnits = units.filter((unit) => isUnitMarketplaceEnabled(property, unit)).length;
   const typeClass = property.type === "Bodega" ? "is-industrial" : property.type === "Vivienda" ? "is-housing" : "";
   const titleBadges = [
@@ -4616,7 +4956,10 @@ function plazaDashboardCardMarkup(property, isActive, dataAttribute = "data-plaz
       <span class="plaza-dashboard-card-metrics">
         <span><small>Unidades</small><strong>${units.length}</strong></span>
         <span><small>Ocupacion</small><strong class="is-positive">${occupied}/${units.length}</strong></span>
-        <span><small>Por cobrar</small><strong>${formatCurrency(pending)}</strong></span>
+        <span class="is-programmed-income">
+          <small>Total programado mensual</small>
+          <strong>${formatCurrency(programmedMonthlyIncome)}</strong>
+        </span>
       </span>
     </button>
   `;
@@ -4636,8 +4979,13 @@ function resolveCatalogPropertySelection(properties, preferredPropertyId = "") {
   return { activeIndex, property };
 }
 
-function plazaCatalogSelectorMarkup(properties, activeIndex, ariaLabel) {
-  const activeProperty = properties[activeIndex];
+function plazaCatalogSelectorMarkup(properties, activeIndex, ariaLabel, options = {}) {
+  const includeAll = options.includeAll === true;
+  const allSelected = includeAll && options.allSelected === true;
+  const carouselSelections = includeAll ? ["all", ...properties.map((property) => property.id)] : properties.map((property) => property.id);
+  const activeProperty = allSelected ? null : properties[activeIndex];
+  const activeCarouselIndex = allSelected ? 0 : activeIndex + (includeAll ? 1 : 0);
+  const cardsClass = ["plaza-dashboard-cards", options.cardsClass].filter(Boolean).join(" ");
 
   return `
     <section class="plaza-catalog-selector" aria-label="${escapeAttribute(ariaLabel)}">
@@ -4648,48 +4996,65 @@ function plazaCatalogSelectorMarkup(properties, activeIndex, ariaLabel) {
       </div>
 
       <section class="plaza-dashboard-carousel is-compact is-menu-compact" aria-label="Carrusel de plazas">
-        <button class="icon-button plaza-dashboard-arrow" type="button" data-catalog-plaza-carousel="previous" title="Plaza anterior" aria-label="Plaza anterior" ${properties.length < 2 ? "disabled" : ""}>
+        <button class="icon-button plaza-dashboard-arrow" type="button" data-catalog-plaza-carousel="previous" title="Seleccion anterior" aria-label="Seleccion anterior" ${carouselSelections.length < 2 ? "disabled" : ""}>
           <span data-icon="chevronLeft" aria-hidden="true"></span>
         </button>
 
         <div class="plaza-dashboard-viewport">
-          <div class="plaza-dashboard-cards">
-            ${properties.map((property) => plazaDashboardCardMarkup(property, property.id === activeProperty?.id, "data-catalog-plaza-property-id")).join("")}
+          <div class="${escapeAttribute(cardsClass)}">
+            ${includeAll ? plazaDashboardAllCardMarkup(properties, allSelected, "data-catalog-plaza-all") : ""}
+            ${properties.map((property) => plazaDashboardCardMarkup(property, !allSelected && property.id === activeProperty?.id, "data-catalog-plaza-property-id")).join("")}
           </div>
         </div>
 
-        <button class="icon-button plaza-dashboard-arrow" type="button" data-catalog-plaza-carousel="next" title="Plaza siguiente" aria-label="Plaza siguiente" ${properties.length < 2 ? "disabled" : ""}>
+        <button class="icon-button plaza-dashboard-arrow" type="button" data-catalog-plaza-carousel="next" title="Seleccion siguiente" aria-label="Seleccion siguiente" ${carouselSelections.length < 2 ? "disabled" : ""}>
           <span data-icon="chevronRight" aria-hidden="true"></span>
         </button>
       </section>
 
       <div class="plaza-dashboard-carousel-status" aria-label="Posicion del carrusel">
         <div class="plaza-dashboard-dots" role="group" aria-label="Seleccion rapida de plaza">
+          ${includeAll ? `
+            <button
+              class="plaza-dashboard-dot ${allSelected ? "is-active" : ""}"
+              type="button"
+              data-catalog-plaza-all
+              title="Mostrar todas las plazas"
+              aria-label="Mostrar todas las plazas"
+              aria-current="${allSelected ? "true" : "false"}"
+            ></button>
+          ` : ""}
           ${properties.map((property) => `
             <button
-              class="plaza-dashboard-dot ${property.id === activeProperty?.id ? "is-active" : ""}"
+              class="plaza-dashboard-dot ${!allSelected && property.id === activeProperty?.id ? "is-active" : ""}"
               type="button"
               data-catalog-plaza-property-id="${escapeAttribute(property.id)}"
               title="Seleccionar ${escapeAttribute(property.name)}"
               aria-label="Seleccionar ${escapeAttribute(property.name)}"
-              aria-current="${property.id === activeProperty?.id ? "true" : "false"}"
+              aria-current="${!allSelected && property.id === activeProperty?.id ? "true" : "false"}"
             ></button>
           `).join("")}
         </div>
-        <strong>${activeIndex + 1} de ${properties.length}</strong>
+        <strong>${activeCarouselIndex + 1} de ${carouselSelections.length}</strong>
       </div>
     </section>
   `;
 }
 
-function bindCatalogPlazaSelector(properties, activeIndex, onSelect) {
+function bindCatalogPlazaSelector(properties, activeIndex, onSelect, options = {}) {
+  const includeAll = options.includeAll === true;
+  const allSelected = includeAll && options.allSelected === true;
+  const carouselSelections = includeAll ? ["all", ...properties.map((property) => property.id)] : properties.map((property) => property.id);
+  const activeCarouselIndex = allSelected ? 0 : activeIndex + (includeAll ? 1 : 0);
   const selectProperty = (propertyId) => {
-    if (!properties.some((property) => property.id === propertyId)) return;
-    rememberSelectedProperty(propertyId);
+    if (propertyId === "all" ? !includeAll : !properties.some((property) => property.id === propertyId)) return;
+    if (propertyId !== "all") rememberSelectedProperty(propertyId);
     onSelect(propertyId);
     requestAnimationFrame(() => {
       centerPlazaCarouselCard(
-        els.contentArea.querySelector(`.plaza-dashboard-card[data-catalog-plaza-property-id="${propertyId}"]`)
+        propertyId === "all"
+          ? els.contentArea.querySelector(".plaza-dashboard-card[data-catalog-plaza-all]")
+          : els.contentArea.querySelector(`.plaza-dashboard-card[data-catalog-plaza-property-id="${propertyId}"]`)
       );
     });
   };
@@ -4697,9 +5062,13 @@ function bindCatalogPlazaSelector(properties, activeIndex, onSelect) {
   els.contentArea.querySelectorAll("[data-catalog-plaza-carousel]").forEach((button) => {
     button.addEventListener("click", () => {
       const direction = button.dataset.catalogPlazaCarousel === "previous" ? -1 : 1;
-      const nextIndex = (activeIndex + direction + properties.length) % properties.length;
-      selectProperty(properties[nextIndex].id);
+      const nextIndex = (activeCarouselIndex + direction + carouselSelections.length) % carouselSelections.length;
+      selectProperty(carouselSelections[nextIndex]);
     });
+  });
+
+  els.contentArea.querySelectorAll("[data-catalog-plaza-all]").forEach((button) => {
+    button.addEventListener("click", () => selectProperty("all"));
   });
 
   els.contentArea.querySelectorAll("[data-catalog-plaza-property-id]").forEach((button) => {
@@ -4772,13 +5141,21 @@ function renderPlazaAdministration() {
     return;
   }
 
-  let activeIndex = properties.findIndex((property) => property.id === view.administrationPropertyId);
-  if (activeIndex < 0) activeIndex = 0;
+  const allSelected = view.administrationPropertyId === "all";
+  let activePropertyIndex = properties.findIndex((property) => property.id === view.administrationPropertyId);
+  if (!allSelected && activePropertyIndex < 0) activePropertyIndex = 0;
 
-  const property = properties[activeIndex];
-  rememberSelectedProperty(property.id);
-  view.propertyDetailId = property.id;
-  view.propertyFilter = property.id;
+  const property = allSelected ? null : properties[activePropertyIndex];
+  const carouselSelections = ["all", ...properties.map((item) => item.id)];
+  const activeCarouselIndex = allSelected ? 0 : activePropertyIndex + 1;
+
+  if (property) {
+    rememberSelectedProperty(property.id);
+    view.propertyDetailId = property.id;
+    view.propertyFilter = property.id;
+  } else {
+    view.propertyFilter = "all";
+  }
   view.propertyReturnTab = "administration";
 
   els.contentArea.innerHTML = `
@@ -4790,57 +5167,83 @@ function renderPlazaAdministration() {
       </div>
 
       <section class="plaza-dashboard-carousel is-compact is-menu-compact" aria-label="Carrusel de plazas existentes">
-        <button class="icon-button plaza-dashboard-arrow" type="button" data-administration-carousel="previous" title="Plaza anterior" aria-label="Plaza anterior" ${properties.length < 2 ? "disabled" : ""}>
+        <button class="icon-button plaza-dashboard-arrow" type="button" data-administration-carousel="previous" title="Seleccion anterior" aria-label="Seleccion anterior" ${carouselSelections.length < 2 ? "disabled" : ""}>
           <span data-icon="chevronLeft" aria-hidden="true"></span>
         </button>
 
         <div class="plaza-dashboard-viewport">
-          <div class="plaza-dashboard-cards plaza-administration-selector-cards">
-            ${properties.map((item) => plazaDashboardCardMarkup(item, item.id === property.id, "data-administration-property-id")).join("")}
+          <div class="plaza-dashboard-cards plaza-administration-selector-cards plaza-left-aligned-selector-cards">
+            ${plazaDashboardAllCardMarkup(properties, allSelected, "data-administration-all")}
+            ${properties.map((item) => plazaDashboardCardMarkup(item, !allSelected && item.id === property?.id, "data-administration-property-id")).join("")}
           </div>
         </div>
 
-        <button class="icon-button plaza-dashboard-arrow" type="button" data-administration-carousel="next" title="Plaza siguiente" aria-label="Plaza siguiente" ${properties.length < 2 ? "disabled" : ""}>
+        <button class="icon-button plaza-dashboard-arrow" type="button" data-administration-carousel="next" title="Seleccion siguiente" aria-label="Seleccion siguiente" ${carouselSelections.length < 2 ? "disabled" : ""}>
           <span data-icon="chevronRight" aria-hidden="true"></span>
         </button>
       </section>
 
       <div class="plaza-dashboard-carousel-status" aria-label="Posicion del carrusel">
         <div class="plaza-dashboard-dots" role="group" aria-label="Seleccion rapida de plaza">
+          <button
+            class="plaza-dashboard-dot ${allSelected ? "is-active" : ""}"
+            type="button"
+            data-administration-all
+            title="Mostrar todas las plazas"
+            aria-label="Mostrar todas las plazas"
+            aria-current="${allSelected ? "true" : "false"}"
+          ></button>
           ${properties.map((item) => `
             <button
-              class="plaza-dashboard-dot ${item.id === property.id ? "is-active" : ""}"
+              class="plaza-dashboard-dot ${!allSelected && item.id === property?.id ? "is-active" : ""}"
               type="button"
               data-administration-property-id="${escapeAttribute(item.id)}"
               title="Seleccionar ${escapeAttribute(item.name)}"
               aria-label="Seleccionar ${escapeAttribute(item.name)}"
-              aria-current="${item.id === property.id ? "true" : "false"}"
+              aria-current="${!allSelected && item.id === property?.id ? "true" : "false"}"
             ></button>
           `).join("")}
         </div>
-        <strong>${activeIndex + 1} de ${properties.length}</strong>
+        <strong>${activeCarouselIndex + 1} de ${carouselSelections.length}</strong>
       </div>
 
       <div class="plaza-administration-flow">
-        ${renderPropertyDetailSection({ property, markupOnly: true })}
+        ${allSelected ? `
+          <section class="property-detail-page">
+            <section class="property-detail-section plaza-dashboard-unit-status" aria-labelledby="plazaAdministrationPortfolioTitle">
+              <div class="section-header">
+                <div>
+                  <p class="eyebrow">Vista general</p>
+                  <h3 id="plazaAdministrationPortfolioTitle">Todas las plazas</h3>
+                  <p class="muted">Consulta el resumen consolidado o selecciona una plaza para administrar sus unidades y cobranza.</p>
+                </div>
+              </div>
+              ${plazaDashboardAllPropertiesTableMarkup(properties)}
+            </section>
+          </section>
+        ` : renderPropertyDetailSection({ property, markupOnly: true })}
       </div>
     </section>
   `;
 
-  bindPlazaAdministrationActions(properties, activeIndex);
-  bindPropertyDetailActions(property.id);
+  bindPlazaAdministrationActions(properties, activeCarouselIndex);
+  if (property) bindPropertyDetailActions(property.id);
 }
 
-function bindPlazaAdministrationActions(properties, activeIndex) {
+function bindPlazaAdministrationActions(properties, activeCarouselIndex) {
+  const carouselSelections = ["all", ...properties.map((property) => property.id)];
   const selectProperty = (nextPropertyId) => {
-    if (!properties.some((property) => property.id === nextPropertyId)) return;
-    rememberSelectedProperty(nextPropertyId);
+    if (nextPropertyId !== "all" && !properties.some((property) => property.id === nextPropertyId)) return;
+    if (nextPropertyId === "all") view.administrationPropertyId = "all";
+    else rememberSelectedProperty(nextPropertyId);
     view.propertyFilter = nextPropertyId;
     view.propertyAdministrationView = "units";
     render();
     requestAnimationFrame(() => {
       centerPlazaCarouselCard(
-        els.contentArea.querySelector(`.plaza-dashboard-card[data-administration-property-id="${nextPropertyId}"]`)
+        nextPropertyId === "all"
+          ? els.contentArea.querySelector(".plaza-dashboard-card[data-administration-all]")
+          : els.contentArea.querySelector(`.plaza-dashboard-card[data-administration-property-id="${nextPropertyId}"]`)
       );
     });
   };
@@ -4848,13 +5251,21 @@ function bindPlazaAdministrationActions(properties, activeIndex) {
   els.contentArea.querySelectorAll("[data-administration-carousel]").forEach((button) => {
     button.addEventListener("click", () => {
       const direction = button.dataset.administrationCarousel === "previous" ? -1 : 1;
-      const nextIndex = (activeIndex + direction + properties.length) % properties.length;
-      selectProperty(properties[nextIndex].id);
+      const nextIndex = (activeCarouselIndex + direction + carouselSelections.length) % carouselSelections.length;
+      selectProperty(carouselSelections[nextIndex]);
     });
+  });
+
+  els.contentArea.querySelectorAll("[data-administration-all]").forEach((button) => {
+    button.addEventListener("click", () => selectProperty("all"));
   });
 
   els.contentArea.querySelectorAll("[data-administration-property-id]").forEach((button) => {
     button.addEventListener("click", () => selectProperty(button.dataset.administrationPropertyId));
+  });
+
+  els.contentArea.querySelectorAll("[data-plaza-dashboard-edit]").forEach((button) => {
+    button.addEventListener("click", () => openPlazaCreationFlow(button.dataset.plazaDashboardEdit));
   });
 }
 
@@ -4875,15 +5286,30 @@ function renderPlazaContracts() {
     return;
   }
 
-  const { activeIndex, property } = resolveCatalogPropertySelection(properties);
-  const units = propertyUnits(property.id);
-  view.propertyDetailId = property.id;
-  view.propertyFilter = property.id;
+  const allSelected = view.contractsPropertyId === "all";
+  let activeIndex = properties.findIndex((property) => property.id === view.contractsPropertyId);
+  if (!allSelected && activeIndex < 0) {
+    const resolvedSelection = resolveCatalogPropertySelection(properties);
+    activeIndex = resolvedSelection.activeIndex;
+    view.contractsPropertyId = resolvedSelection.property?.id || "";
+  }
+
+  const property = allSelected ? null : properties[activeIndex];
+  const units = allSelected ? properties.flatMap((item) => propertyUnits(item.id)) : propertyUnits(property.id);
+  if (property) {
+    rememberSelectedProperty(property.id);
+    view.propertyDetailId = property.id;
+  }
+  view.propertyFilter = allSelected ? "all" : property.id;
   view.legalReturnTab = "plaza_contracts";
 
   els.contentArea.innerHTML = `
     <section class="plaza-dashboard-page plaza-contracts-page">
-      ${plazaCatalogSelectorMarkup(properties, activeIndex, "Selector de plazas para contratos")}
+      ${plazaCatalogSelectorMarkup(properties, activeIndex, "Selector de plazas para contratos", {
+        includeAll: true,
+        allSelected,
+        cardsClass: "plaza-contracts-selector-cards plaza-left-aligned-selector-cards"
+      })}
 
       <section class="plaza-catalog-content">
         <section id="propertyLegalPanel" class="property-detail-section property-legal-section">
@@ -4891,22 +5317,26 @@ function renderPlazaContracts() {
             <div>
               <p class="eyebrow">Contratos</p>
               <h3>Panel legal por unidad</h3>
-              <p class="muted">Consulta machotes, contratos firmados y genera el contrato del proximo periodo para la plaza seleccionada.</p>
+              <p class="muted">Consulta machotes, contratos firmados y genera el contrato del proximo periodo ${allSelected ? "de todas las plazas" : "para la plaza seleccionada"}.</p>
             </div>
           </div>
-          ${units.length ? propertyLegalPanelTableMarkup(units) : emptyState("Aun no hay unidades registradas para esta plaza.")}
+          ${units.length ? propertyLegalPanelTableMarkup(units) : emptyState(allSelected ? "Aun no hay unidades registradas en las plazas." : "Aun no hay unidades registradas para esta plaza.")}
         </section>
       </section>
     </section>
   `;
 
   bindCatalogPlazaSelector(properties, activeIndex, (propertyId) => {
-    view.propertyDetailId = propertyId;
+    view.contractsPropertyId = propertyId;
+    if (propertyId !== "all") view.propertyDetailId = propertyId;
     view.propertyFilter = propertyId;
     view.legalReturnTab = "plaza_contracts";
     render();
+  }, {
+    includeAll: true,
+    allSelected
   });
-  bindPropertyLegalPanelActions(property.id);
+  bindPropertyLegalPanelActions(property?.id || null);
 }
 
 function renderPlazaMarketplace() {
@@ -4926,14 +5356,29 @@ function renderPlazaMarketplace() {
     return;
   }
 
-  const { activeIndex, property } = resolveCatalogPropertySelection(properties);
-  const units = propertyUnits(property.id);
-  view.propertyDetailId = property.id;
-  view.propertyFilter = property.id;
+  const allSelected = view.marketplacePropertyId === "all";
+  let activeIndex = properties.findIndex((property) => property.id === view.marketplacePropertyId);
+  if (!allSelected && activeIndex < 0) {
+    const resolvedSelection = resolveCatalogPropertySelection(properties);
+    activeIndex = resolvedSelection.activeIndex;
+    view.marketplacePropertyId = resolvedSelection.property?.id || "";
+  }
+
+  const property = allSelected ? null : properties[activeIndex];
+  const units = allSelected ? properties.flatMap((item) => propertyUnits(item.id)) : propertyUnits(property.id);
+  if (property) {
+    rememberSelectedProperty(property.id);
+    view.propertyDetailId = property.id;
+  }
+  view.propertyFilter = allSelected ? "all" : property.id;
 
   els.contentArea.innerHTML = `
     <section class="plaza-dashboard-page plaza-marketplace-page">
-      ${plazaCatalogSelectorMarkup(properties, activeIndex, "Selector de plazas para marketplace")}
+      ${plazaCatalogSelectorMarkup(properties, activeIndex, "Selector de plazas para marketplace", {
+        includeAll: true,
+        allSelected,
+        cardsClass: "plaza-marketplace-selector-cards plaza-left-aligned-selector-cards"
+      })}
 
       <section class="plaza-catalog-content">
         <section class="property-detail-section marketplace-inventory-section">
@@ -4941,34 +5386,40 @@ function renderPlazaMarketplace() {
             <div class="marketplace-section-heading">
               <div>
                 <p class="eyebrow">Inventario comercial</p>
-                <h3>Espacios de la plaza</h3>
+                <h3>${allSelected ? "Espacios de todas las plazas" : `Espacios de ${escapeAttribute(property.name)}`}</h3>
               </div>
-              <label class="marketplace-toggle-control">
-                <span class="marketplace-toggle-copy">
-                  <strong>Marketplace</strong>
-                  <small>${property.marketplaceEnabled ? "Habilitado para esta plaza" : "Deshabilitado para esta plaza"}</small>
-                </span>
-                <input
-                  class="marketplace-toggle-input"
-                  type="checkbox"
-                  data-marketplace-toggle="${escapeAttribute(property.id)}"
-                  ${property.marketplaceEnabled ? "checked" : ""}
-                  aria-label="${property.marketplaceEnabled ? "Deshabilitar" : "Habilitar"} Marketplace para ${escapeAttribute(property.name)}"
-                >
-                <span class="marketplace-toggle-track" aria-hidden="true"></span>
-              </label>
+              ${property ? `
+                <label class="marketplace-toggle-control">
+                  <span class="marketplace-toggle-copy">
+                    <strong>Marketplace</strong>
+                    <small>${property.marketplaceEnabled ? "Habilitado para esta plaza" : "Deshabilitado para esta plaza"}</small>
+                  </span>
+                  <input
+                    class="marketplace-toggle-input"
+                    type="checkbox"
+                    data-marketplace-toggle="${escapeAttribute(property.id)}"
+                    ${property.marketplaceEnabled ? "checked" : ""}
+                    aria-label="${property.marketplaceEnabled ? "Deshabilitar" : "Habilitar"} Marketplace para ${escapeAttribute(property.name)}"
+                  >
+                  <span class="marketplace-toggle-track" aria-hidden="true"></span>
+                </label>
+              ` : '<p class="muted">Selecciona una plaza para habilitar o deshabilitar todo su inventario.</p>'}
             </div>
           </div>
-          ${units.length ? marketplaceUnitsTableMarkup(units, property) : emptyState("Aun no hay unidades registradas para esta plaza.")}
+          ${units.length ? marketplaceUnitsTableMarkup(units, property) : emptyState(allSelected ? "Aun no hay unidades registradas en las plazas." : "Aun no hay unidades registradas para esta plaza.")}
         </section>
       </section>
     </section>
   `;
 
   bindCatalogPlazaSelector(properties, activeIndex, (propertyId) => {
-    view.propertyDetailId = propertyId;
+    view.marketplacePropertyId = propertyId;
+    if (propertyId !== "all") view.propertyDetailId = propertyId;
     view.propertyFilter = propertyId;
     render();
+  }, {
+    includeAll: true,
+    allSelected
   });
 
   els.contentArea.querySelector("[data-marketplace-toggle]")?.addEventListener("change", (event) => {
@@ -4995,6 +5446,1374 @@ function renderPlazaMarketplace() {
   });
 }
 
+function localMarketingFilterOptions(values, selectedValue, allLabel = "Todos") {
+  return plazaCreationOptions([
+    { value: "all", label: allLabel },
+    ...values.map((value) => ({ value, label: value }))
+  ], selectedValue);
+}
+
+function localMarketingScreenCampaignValues() {
+  return [...new Set([
+    "Sin campaña",
+    ...state.localMarketingScreens
+      .filter((screen) => !screen.deleted)
+      .map((screen) => screen.campaign)
+      .filter(Boolean)
+  ])].sort((first, second) => first.localeCompare(second, "es"));
+}
+
+function localMarketingScreenGroupValues(propertyId = "", selectedGroup = "") {
+  const activeScreens = state.localMarketingScreens.filter((screen) => !screen.deleted);
+  const propertyGroups = activeScreens
+    .filter((screen) => !propertyId || screen.propertyId === propertyId)
+    .map((screen) => String(screen.group || "").trim())
+    .filter(Boolean);
+  const fallbackGroups = activeScreens
+    .map((screen) => String(screen.group || "").trim())
+    .filter(Boolean);
+  const availableGroups = propertyGroups.length ? propertyGroups : fallbackGroups;
+  const selectedGroupValue = normalizeText(selectedGroup) === normalizeText("Sin grupo") ? "Sin grupo" : selectedGroup;
+  const groupValues = [...new Set([
+    ...availableGroups,
+    selectedGroupValue || (availableGroups.length ? "" : "General")
+  ].filter(Boolean))]
+    .filter((group) => normalizeText(group) !== normalizeText("Sin grupo"))
+    .sort((first, second) => first.localeCompare(second, "es", { sensitivity: "base" }));
+
+  return [...groupValues, "Sin grupo"];
+}
+
+function isLocalMarketingScreenUngrouped(screen) {
+  return normalizeText(screen.group) === normalizeText("Sin grupo");
+}
+
+function localMarketingScreenGroupLabel(screen, activeScope, includeProperty) {
+  if (activeScope === "all") return "";
+  const property = getProperty(screen.propertyId);
+  const groupValue = activeScope === "level" ? screen.level : screen.group;
+  return includeProperty ? `${property?.name || "Plaza sin asignar"} / ${groupValue}` : groupValue;
+}
+
+function localMarketingConnectionMeta(connection) {
+  return {
+    online: { label: "En linea", className: "is-online" },
+    offline: { label: "Sin conexion", className: "is-offline" },
+    maintenance: { label: "Mantenimiento", className: "is-maintenance" }
+  }[connection] || { label: "Sin conexion", className: "is-offline" };
+}
+
+function localMarketingMaintenanceMeta(connection) {
+  return {
+    online: { label: "Al corriente", className: "is-current" },
+    offline: { label: "Requiere revision", className: "is-required" },
+    maintenance: { label: "En mantenimiento", className: "is-maintenance" }
+  }[connection] || { label: "Requiere revision", className: "is-required" };
+}
+
+function localMarketingOpenMaintenanceTicket(screenId) {
+  return state.localMarketingMaintenanceTickets.find((ticket) =>
+    ticket.screenId === screenId && normalizeText(ticket.status) === "abierto"
+  ) || null;
+}
+
+function nextLocalMarketingMaintenanceTicketId() {
+  const existingIds = new Set(state.localMarketingMaintenanceTickets.map((ticket) => ticket.id));
+  let sequence = state.localMarketingMaintenanceTickets.length + 1;
+  let ticketId = `MT-${String(sequence).padStart(4, "0")}`;
+
+  while (existingIds.has(ticketId)) {
+    sequence += 1;
+    ticketId = `MT-${String(sequence).padStart(4, "0")}`;
+  }
+
+  return ticketId;
+}
+
+const localMarketingScreenColumns = [
+  { key: "active", label: "Activa" },
+  { key: "screen", label: "Pantalla / ID" },
+  { key: "property", label: "Plaza / Nivel" },
+  { key: "format", label: "Formato" },
+  { key: "orientation", label: "Orientacion" },
+  { key: "resolution", label: "Resolucion" },
+  { key: "connection", label: "Conexion" },
+  { key: "programming", label: "Programacion" },
+  { key: "maintenance", label: "Mantenimiento" }
+];
+const localMarketingScreenTableColumnCount = localMarketingScreenColumns.length + 3;
+
+function localMarketingScreenColumnValue(screen, key) {
+  const property = getProperty(screen.propertyId);
+  const values = {
+    active: screen.active ? "Activa" : "Inactiva",
+    screen: `${screen.code} - ${screen.name}`,
+    property: `${property?.name || "Plaza sin asignar"} - ${screen.level}`,
+    format: screen.format,
+    orientation: screen.orientation,
+    resolution: screen.resolution,
+    connection: localMarketingConnectionMeta(screen.connection).label,
+    programming: screen.active ? "Activa" : "Inactiva",
+    maintenance: localMarketingMaintenanceMeta(screen.connection).label
+  };
+
+  return String(values[key] || "Sin dato");
+}
+
+function localMarketingScreenColumnOptions(screens, key) {
+  return [...new Set(screens.map((screen) => localMarketingScreenColumnValue(screen, key)))]
+    .sort((first, second) => first.localeCompare(second, "es", { numeric: true, sensitivity: "base" }));
+}
+
+function localMarketingScreenColumnHeaderMarkup(column, options) {
+  const columnFilters = view.localMarketingScreenColumnFilters || {};
+  const hasFilter = Object.prototype.hasOwnProperty.call(columnFilters, column.key);
+  const selectedValues = hasFilter ? columnFilters[column.key] : options;
+  const selectedSet = new Set(selectedValues);
+  const allChecked = options.length > 0 && options.every((option) => selectedSet.has(option));
+  const open = view.localMarketingScreenColumnFilterOpen === column.key;
+  const sort = view.localMarketingScreenSort || { key: "", direction: "none" };
+  const sortDirection = sort.key === column.key ? sort.direction : "none";
+  const sortIcon = sortDirection === "asc" ? "arrowUp" : sortDirection === "desc" ? "arrowDown" : "arrowUpDown";
+  const sortTitle = sortDirection === "asc"
+    ? `Orden ascendente en ${column.label}`
+    : sortDirection === "desc"
+      ? `Orden descendente en ${column.label}`
+      : `Ordenar ${column.label}`;
+
+  return `
+    <div class="local-marketing-column-header">
+      <span>${column.label}</span>
+      <span class="local-marketing-column-tools">
+        <button
+          class="local-marketing-column-tool ${hasFilter ? "has-filter" : ""} ${open ? "is-active" : ""}"
+          type="button"
+          data-local-marketing-column-filter="${column.key}"
+          title="Filtrar ${column.label}"
+          aria-label="Filtrar ${column.label}"
+          aria-expanded="${open ? "true" : "false"}"
+          ${options.length ? "" : "disabled"}
+        >
+          <span data-icon="filter" aria-hidden="true"></span>
+        </button>
+        <button
+          class="local-marketing-column-tool local-marketing-column-sort ${sortDirection !== "none" ? "is-active" : ""}"
+          type="button"
+          data-local-marketing-column-sort="${column.key}"
+          title="${sortTitle}"
+          aria-label="${sortTitle}"
+          aria-pressed="${sortDirection !== "none" ? "true" : "false"}"
+        >
+          <span data-icon="${sortIcon}" aria-hidden="true"></span>
+        </button>
+      </span>
+      ${open ? `
+        <div class="local-marketing-column-filter-popover" data-local-marketing-column-filter-popover data-column-key="${column.key}">
+          <label class="local-marketing-column-filter-search">
+            <span class="sr-only">Buscar en ${column.label}</span>
+            <input type="search" placeholder="Buscar (Todos)" autocomplete="off" data-local-marketing-column-filter-search>
+          </label>
+          <div class="local-marketing-column-filter-options">
+            <label class="local-marketing-column-filter-option is-all">
+              <input type="checkbox" data-local-marketing-column-filter-all ${allChecked ? "checked" : ""}>
+              <span>(Todos)</span>
+            </label>
+            ${options.map((option) => `
+              <label class="local-marketing-column-filter-option" data-local-marketing-column-filter-option data-search="${escapeAttribute(normalizeText(option))}">
+                <input type="checkbox" value="${escapeAttribute(option)}" data-local-marketing-column-filter-value ${selectedSet.has(option) ? "checked" : ""}>
+                <span>${escapeAttribute(option)}</span>
+              </label>
+            `).join("")}
+            <p class="local-marketing-column-filter-empty" data-local-marketing-column-filter-empty hidden>No hay valores coincidentes.</p>
+          </div>
+          <div class="local-marketing-column-filter-actions">
+            <button class="action-button" type="button" data-local-marketing-column-filter-apply>Aceptar</button>
+            <button class="secondary-button" type="button" data-local-marketing-column-filter-cancel>Cancelar</button>
+          </div>
+        </div>
+      ` : ""}
+    </div>
+  `;
+}
+
+function localMarketingScreenColumnHeadersMarkup(screens) {
+  const sort = view.localMarketingScreenSort || { key: "", direction: "none" };
+  const dataHeaders = localMarketingScreenColumns.map((column) => {
+    const ariaSort = sort.key === column.key && sort.direction !== "none"
+      ? sort.direction === "asc" ? "ascending" : "descending"
+      : "none";
+
+    return `<th aria-sort="${ariaSort}">${localMarketingScreenColumnHeaderMarkup(column, localMarketingScreenColumnOptions(screens, column.key))}</th>`;
+  }).join("");
+
+  return `${dataHeaders}
+    <th class="local-marketing-action-header"><span>Editar</span></th>
+    <th class="local-marketing-action-header"><span>Duplicar</span></th>
+    <th class="local-marketing-action-header"><span>Eliminar</span></th>`;
+}
+
+function compareLocalMarketingScreens(first, second, key) {
+  return localMarketingScreenColumnValue(first, key).localeCompare(
+    localMarketingScreenColumnValue(second, key),
+    "es",
+    { numeric: true, sensitivity: "base" }
+  );
+}
+
+function localMarketingScreenRowsMarkup(screens, activeScope, includeProperty, emptyMessage) {
+  if (!screens.length) {
+    return `
+      <tr>
+        <td class="local-marketing-table-empty" colspan="${localMarketingScreenTableColumnCount}">
+          <p class="eyebrow">Sin resultados</p>
+          <strong>${escapeAttribute(emptyMessage)}</strong>
+        </td>
+      </tr>
+    `;
+  }
+
+  let previousGroup = "";
+  const rowsMarkup = screens.map((screen) => {
+    const property = getProperty(screen.propertyId);
+    const groupLabel = localMarketingScreenGroupLabel(screen, activeScope, includeProperty);
+    const groupRow = groupLabel && groupLabel !== previousGroup
+      ? `<tr class="local-marketing-group-row"><td colspan="${localMarketingScreenTableColumnCount}">${escapeAttribute(groupLabel)}</td></tr>`
+      : "";
+    const connection = localMarketingConnectionMeta(screen.connection);
+    const maintenance = localMarketingMaintenanceMeta(screen.connection);
+    const maintenanceTicket = localMarketingOpenMaintenanceTicket(screen.id);
+    const previewClass = screen.orientation === "Vertical"
+      ? "is-vertical"
+      : screen.format === "Banner LED"
+        ? "is-banner"
+        : "is-horizontal";
+
+    previousGroup = groupLabel || previousGroup;
+
+    return `
+      ${groupRow}
+      <tr>
+        <td class="local-marketing-active-cell">
+          <label class="local-marketing-screen-toggle" title="${screen.active ? "Desactivar" : "Activar"} ${escapeAttribute(screen.code)}">
+            <input
+              class="marketplace-toggle-input"
+              type="checkbox"
+              data-local-marketing-screen-toggle="${escapeAttribute(screen.id)}"
+              aria-label="${screen.active ? "Desactivar" : "Activar"} pantalla ${escapeAttribute(screen.code)}"
+              ${screen.active ? "checked" : ""}
+            >
+            <span class="marketplace-toggle-track" aria-hidden="true"></span>
+          </label>
+        </td>
+        <td>
+          <div class="local-marketing-screen-identity">
+            <span class="local-marketing-screen-preview ${previewClass}" aria-hidden="true">
+              <span data-icon="monitor"></span>
+            </span>
+            <span class="stacked">
+              <strong>${escapeAttribute(screen.code)}</strong>
+              <small>${escapeAttribute(screen.name)}</small>
+            </span>
+          </div>
+        </td>
+        <td class="stacked">
+          <strong>${escapeAttribute(property?.name || "Plaza sin asignar")}</strong>
+          <small>${escapeAttribute(screen.level)}</small>
+        </td>
+        <td>${escapeAttribute(screen.format)}</td>
+        <td>${escapeAttribute(screen.orientation)}</td>
+        <td class="nowrap">${escapeAttribute(screen.resolution)}</td>
+        <td>
+          <span class="local-marketing-connection ${connection.className}">
+            <span class="local-marketing-connection-dot" aria-hidden="true"></span>
+            <span>
+              <strong>${connection.label}</strong>
+              <small>${escapeAttribute(screen.lastSeen)}</small>
+            </span>
+          </span>
+        </td>
+        <td>
+          <span class="local-marketing-programming ${screen.active ? "is-active" : "is-inactive"}">
+            <span class="local-marketing-programming-dot" aria-hidden="true"></span>
+            <strong>${screen.active ? "Activa" : "Inactiva"}</strong>
+          </span>
+        </td>
+        <td class="local-marketing-maintenance-cell">
+          <div class="local-marketing-maintenance-control">
+            <span class="local-marketing-maintenance ${maintenance.className}">
+              <span class="local-marketing-maintenance-dot" aria-hidden="true"></span>
+              <span>
+                <strong>${maintenance.label}</strong>
+                ${maintenanceTicket ? `<small>${escapeAttribute(maintenanceTicket.id)} · ${escapeAttribute(maintenanceTicket.status)}</small>` : ""}
+              </span>
+            </span>
+            <button
+              class="local-marketing-maintenance-menu-button"
+              type="button"
+              data-local-marketing-maintenance-menu="${escapeAttribute(screen.id)}"
+              title="Opciones de mantenimiento"
+              aria-label="Opciones de mantenimiento para ${escapeAttribute(screen.code)}"
+              aria-haspopup="menu"
+              aria-expanded="false"
+            >
+              <span data-icon="settings" aria-hidden="true"></span>
+            </button>
+            <div class="local-marketing-maintenance-menu" role="menu" data-local-marketing-maintenance-options hidden>
+              <button type="button" role="menuitem" data-local-marketing-maintenance-request="${escapeAttribute(screen.id)}">
+                <span data-icon="settings" aria-hidden="true"></span>
+                Solicitar mantenimiento
+              </button>
+            </div>
+          </div>
+        </td>
+        <td class="local-marketing-action-cell">
+          <button class="icon-button" type="button" data-local-marketing-screen-edit="${escapeAttribute(screen.id)}" title="Editar pantalla" aria-label="Editar pantalla ${escapeAttribute(screen.code)}">
+            <span data-icon="pencil" aria-hidden="true"></span>
+          </button>
+        </td>
+        <td class="local-marketing-action-cell">
+          <button class="icon-button" type="button" data-local-marketing-screen-copy="${escapeAttribute(screen.id)}" title="Duplicar pantalla" aria-label="Duplicar pantalla ${escapeAttribute(screen.code)}">
+            <span data-icon="copy" aria-hidden="true"></span>
+          </button>
+        </td>
+        <td class="local-marketing-action-cell">
+          <button class="icon-button local-marketing-delete-button" type="button" data-local-marketing-screen-delete="${escapeAttribute(screen.id)}" title="Eliminar pantalla" aria-label="Eliminar pantalla ${escapeAttribute(screen.code)}">
+            <span data-icon="trash" aria-hidden="true"></span>
+          </button>
+        </td>
+      </tr>
+    `;
+  }).join("");
+
+  const needsUngroupedRow = activeScope === "group" && !screens.some(isLocalMarketingScreenUngrouped);
+  return needsUngroupedRow
+    ? `${rowsMarkup}<tr class="local-marketing-group-row is-ungrouped"><td colspan="${localMarketingScreenTableColumnCount}">Sin grupo</td></tr>`
+    : rowsMarkup;
+}
+
+function localMarketingScreensWorkspaceMarkup(properties, property, allSelected, activeScope, scopeCopy) {
+  const filters = view.localMarketingScreenFilters;
+  const visiblePropertyIds = new Set(properties.map((item) => item.id));
+  const contextScreens = state.localMarketingScreens.filter((screen) =>
+    !screen.deleted &&
+    visiblePropertyIds.has(screen.propertyId) &&
+    (allSelected || screen.propertyId === property.id)
+  );
+  const optionValues = (key) => [...new Set(contextScreens.map((screen) => screen[key]).filter(Boolean))]
+    .sort((first, second) => first.localeCompare(second, "es"));
+  const formats = optionValues("format");
+  const connections = optionValues("connection");
+  const orientations = optionValues("orientation");
+  const campaigns = optionValues("campaign");
+  const levels = optionValues("level");
+  const groups = optionValues("group");
+
+  [
+    ["format", formats],
+    ["connection", connections],
+    ["orientation", orientations],
+    ["campaign", campaigns],
+    ["level", levels],
+    ["group", groups]
+  ].forEach(([key, values]) => {
+    if (filters[key] !== "all" && !values.includes(filters[key])) filters[key] = "all";
+  });
+
+  const query = normalizeText(filters.query);
+  const toolbarFilteredScreens = contextScreens.filter((screen) => {
+    const propertyName = getProperty(screen.propertyId)?.name || "";
+    const matchesQuery = !query || normalizeText([
+      screen.code,
+      screen.name,
+      propertyName,
+      screen.level,
+      screen.group,
+      screen.format,
+      screen.campaign
+    ].join(" ")).includes(query);
+
+    return matchesQuery &&
+      (filters.format === "all" || screen.format === filters.format) &&
+      (filters.connection === "all" || screen.connection === filters.connection) &&
+      (filters.orientation === "all" || screen.orientation === filters.orientation) &&
+      (filters.campaign === "all" || screen.campaign === filters.campaign) &&
+      (filters.level === "all" || screen.level === filters.level) &&
+      (filters.group === "all" || screen.group === filters.group) &&
+      (filters.active === "all" || String(screen.active) === filters.active);
+  });
+
+  const columnFilters = view.localMarketingScreenColumnFilters || {};
+  const filteredScreens = toolbarFilteredScreens.filter((screen) =>
+    Object.entries(columnFilters).every(([key, selectedValues]) =>
+      Array.isArray(selectedValues) && selectedValues.includes(localMarketingScreenColumnValue(screen, key))
+    )
+  );
+
+  const orderedScreens = [...filteredScreens];
+  const activeSort = view.localMarketingScreenSort || { key: "", direction: "none" };
+  const sortColumn = localMarketingScreenColumns.find((column) => column.key === activeSort.key);
+  if (activeScope !== "all" || (sortColumn && activeSort.direction !== "none")) {
+    orderedScreens.sort((first, second) => {
+      if (activeScope !== "all") {
+        if (activeScope === "group") {
+          const firstIsUngrouped = isLocalMarketingScreenUngrouped(first);
+          const secondIsUngrouped = isLocalMarketingScreenUngrouped(second);
+          if (firstIsUngrouped !== secondIsUngrouped) return firstIsUngrouped ? 1 : -1;
+        }
+
+        const firstGroup = localMarketingScreenGroupLabel(first, activeScope, allSelected);
+        const secondGroup = localMarketingScreenGroupLabel(second, activeScope, allSelected);
+        const groupComparison = firstGroup.localeCompare(secondGroup, "es", { numeric: true, sensitivity: "base" });
+        if (groupComparison) return groupComparison;
+      }
+
+      if (sortColumn && activeSort.direction !== "none") {
+        const direction = activeSort.direction === "desc" ? -1 : 1;
+        const columnComparison = compareLocalMarketingScreens(first, second, sortColumn.key);
+        if (columnComparison) return columnComparison * direction;
+      }
+
+      return first.code.localeCompare(second.code, "es", { numeric: true, sensitivity: "base" });
+    });
+  }
+
+  const activeToolbarFilterCount = Object.entries(filters).filter(([key, value]) =>
+    key === "query" ? Boolean(String(value).trim()) : value !== "all"
+  ).length;
+  const activeFilterCount = activeToolbarFilterCount + Object.keys(columnFilters).length;
+  const emptyMessage = activeFilterCount
+    ? "No hay pantallas que coincidan con los filtros."
+    : scopeCopy.empty;
+  const connectionOptions = [
+    { value: "all", label: "Todos" },
+    { value: "online", label: "En linea" },
+    { value: "offline", label: "Sin conexion" },
+    { value: "maintenance", label: "Mantenimiento" }
+  ].filter((option) => option.value === "all" || connections.includes(option.value));
+
+  return `
+    <section class="property-administration-view local-marketing-screen-view" data-local-marketing-view-panel="${activeScope}">
+      <div class="local-marketing-screen-toolbar" aria-label="Filtros de pantallas">
+        <label class="local-marketing-search-field">
+          <span class="sr-only">Buscar pantallas</span>
+          <span data-icon="search" aria-hidden="true"></span>
+          <input
+            type="search"
+            value="${escapeAttribute(filters.query)}"
+            placeholder="Buscar por ID, nombre o ubicacion..."
+            data-local-marketing-screen-search
+          >
+        </label>
+        <label class="local-marketing-filter-field">
+          <span>Formato</span>
+          <select data-local-marketing-screen-filter="format">
+            ${localMarketingFilterOptions(formats, filters.format)}
+          </select>
+        </label>
+        <label class="local-marketing-filter-field">
+          <span>Estado de conexion</span>
+          <select data-local-marketing-screen-filter="connection">
+            ${plazaCreationOptions(connectionOptions, filters.connection)}
+          </select>
+        </label>
+        <label class="local-marketing-filter-field">
+          <span>Orientacion</span>
+          <select data-local-marketing-screen-filter="orientation">
+            ${localMarketingFilterOptions(orientations, filters.orientation, "Todas")}
+          </select>
+        </label>
+        <label class="local-marketing-filter-field">
+          <span>Campaña asignada</span>
+          <select data-local-marketing-screen-filter="campaign">
+            ${localMarketingFilterOptions(campaigns, filters.campaign, "Todas")}
+          </select>
+        </label>
+        <button class="action-button local-marketing-new-screen" type="button" data-local-marketing-screen-new>
+          <span data-icon="plus" aria-hidden="true"></span>
+          Nueva pantalla
+        </button>
+        <button class="secondary-button local-marketing-filter-button ${view.localMarketingFiltersOpen ? "is-active" : ""}" type="button" data-local-marketing-screen-filters aria-expanded="${view.localMarketingFiltersOpen ? "true" : "false"}">
+          <span data-icon="filter" aria-hidden="true"></span>
+          Filtros${activeFilterCount ? ` (${activeFilterCount})` : ""}
+        </button>
+      </div>
+
+      <div class="local-marketing-advanced-filters" ${view.localMarketingFiltersOpen ? "" : "hidden"}>
+        <label class="local-marketing-filter-field">
+          <span>Nivel</span>
+          <select data-local-marketing-screen-filter="level">
+            ${localMarketingFilterOptions(levels, filters.level)}
+          </select>
+        </label>
+        <label class="local-marketing-filter-field">
+          <span>Grupo</span>
+          <select data-local-marketing-screen-filter="group">
+            ${localMarketingFilterOptions(groups, filters.group)}
+          </select>
+        </label>
+        <label class="local-marketing-filter-field">
+          <span>Estado</span>
+          <select data-local-marketing-screen-filter="active">
+            ${plazaCreationOptions([
+              { value: "all", label: "Todas" },
+              { value: "true", label: "Activas" },
+              { value: "false", label: "Inactivas" }
+            ], filters.active)}
+          </select>
+        </label>
+        <button class="secondary-button" type="button" data-local-marketing-screen-clear-filters ${activeFilterCount ? "" : "disabled"}>Limpiar filtros</button>
+      </div>
+
+      <table class="local-marketing-screen-table">
+        <thead>
+          <tr>
+            ${localMarketingScreenColumnHeadersMarkup(toolbarFilteredScreens)}
+          </tr>
+        </thead>
+        <tbody>
+          ${localMarketingScreenRowsMarkup(orderedScreens, activeScope, allSelected, emptyMessage)}
+        </tbody>
+        <tfoot class="local-marketing-table-footer">
+          <tr>
+            <td colspan="${localMarketingScreenTableColumnCount}">
+              <div class="local-marketing-table-summary">
+                <span>Mostrando ${orderedScreens.length} de ${orderedScreens.length} pantallas</span>
+                <span>${contextScreens.length} pantallas registradas</span>
+              </div>
+            </td>
+          </tr>
+        </tfoot>
+      </table>
+    </section>
+  `;
+}
+
+function uniqueLocalMarketingScreenCode(source, excludedScreenId = "") {
+  const existingCodes = new Set(state.localMarketingScreens
+    .filter((screen) => !screen.deleted && screen.id !== excludedScreenId)
+    .map((screen) => normalizeText(screen.code)));
+  let code = source;
+  let index = 2;
+
+  while (existingCodes.has(normalizeText(code))) {
+    code = `${source}-${index}`;
+    index += 1;
+  }
+
+  return code;
+}
+
+function openLocalMarketingScreenForm(screenId = "") {
+  const screen = state.localMarketingScreens.find((item) => item.id === screenId && !item.deleted) || null;
+  const properties = visibleProperties();
+  const defaultPropertyId = screen?.propertyId || (
+    view.localMarketingPropertyId !== "all" && properties.some((property) => property.id === view.localMarketingPropertyId)
+      ? view.localMarketingPropertyId
+      : properties[0]?.id || ""
+  );
+  const defaultGroup = localMarketingScreenGroupValues(defaultPropertyId)[0] || "General";
+  const draft = screen || {
+    code: "",
+    name: "",
+    propertyId: defaultPropertyId,
+    level: "Planta baja",
+    group: defaultGroup,
+    format: "Pantalla horizontal",
+    orientation: "Horizontal",
+    resolution: "1920 x 1080",
+    connection: "online",
+    campaign: "Sin campaña",
+    active: true
+  };
+
+  els.modal.classList.add("modal-wide");
+  els.modalEyebrow.textContent = "Marketing local";
+  els.modalTitle.textContent = screen ? `Editar ${screen.code}` : "Nueva pantalla";
+  els.modalBody.innerHTML = `
+    <form id="localMarketingScreenForm">
+      <div class="form-grid">
+        <div class="field">
+          <label for="localMarketingScreenCode">ID de pantalla</label>
+          <input id="localMarketingScreenCode" name="code" value="${escapeAttribute(draft.code)}" maxlength="30" placeholder="PC-PB-01" required>
+        </div>
+        <div class="field">
+          <label for="localMarketingScreenName">Nombre o ubicacion</label>
+          <input id="localMarketingScreenName" name="name" value="${escapeAttribute(draft.name)}" maxlength="80" placeholder="Pantalla pasillo" required>
+        </div>
+        <div class="field">
+          <label for="localMarketingScreenProperty">Plaza</label>
+          <select id="localMarketingScreenProperty" name="propertyId" required>
+            ${plazaCreationOptions(properties.map((property) => ({ value: property.id, label: property.name })), draft.propertyId)}
+          </select>
+        </div>
+        <div class="field">
+          <label for="localMarketingScreenLevel">Nivel</label>
+          <select id="localMarketingScreenLevel" name="level" required>
+            ${plazaCreationOptions(["Planta baja", "Nivel 1", "Nivel 2", "Nivel 3", "Nivel 4", "Planta alta", "Azotea"], draft.level)}
+          </select>
+        </div>
+        <div class="field">
+          <label for="localMarketingScreenGroup">Grupo</label>
+          <select id="localMarketingScreenGroup" name="group" required>
+            ${plazaCreationOptions(localMarketingScreenGroupValues(defaultPropertyId, draft.group), draft.group)}
+          </select>
+        </div>
+        <div class="field">
+          <label for="localMarketingScreenFormat">Formato</label>
+          <select id="localMarketingScreenFormat" name="format" required>
+            ${plazaCreationOptions(["Totem digital", "Pantalla horizontal", "Banner LED"], draft.format)}
+          </select>
+        </div>
+        <div class="field">
+          <label for="localMarketingScreenOrientation">Orientacion</label>
+          <select id="localMarketingScreenOrientation" name="orientation" required>
+            ${plazaCreationOptions(["Vertical", "Horizontal", "Ultrapanoramica"], draft.orientation)}
+          </select>
+        </div>
+        <div class="field">
+          <label for="localMarketingScreenResolution">Resolucion</label>
+          <input id="localMarketingScreenResolution" name="resolution" value="${escapeAttribute(draft.resolution)}" maxlength="30" placeholder="1920 x 1080" required>
+        </div>
+        <div class="field">
+          <label for="localMarketingScreenConnection">Estado de conexion</label>
+          <select id="localMarketingScreenConnection" name="connection" required>
+            ${plazaCreationOptions([
+              { value: "online", label: "En linea" },
+              { value: "offline", label: "Sin conexion" },
+              { value: "maintenance", label: "Mantenimiento" }
+            ], draft.connection)}
+          </select>
+        </div>
+        <div class="field">
+          <label for="localMarketingScreenCampaign">Campaña asignada</label>
+          <select id="localMarketingScreenCampaign" name="campaign" required>
+            ${plazaCreationOptions(localMarketingScreenCampaignValues(), draft.campaign)}
+          </select>
+        </div>
+        <div class="span-2">
+          ${plazaCreationToggleMarkup("active", "Pantalla activa", "Permite incluir esta pantalla en la programacion de contenidos.", draft.active)}
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="secondary-button" type="button" data-modal-cancel>Cancelar</button>
+        <button class="action-button" type="submit">
+          <span data-icon="checkCircle" aria-hidden="true"></span>
+          ${screen ? "Guardar cambios" : "Crear pantalla"}
+        </button>
+      </div>
+    </form>
+  `;
+
+  injectIcons(els.modalBody);
+  els.modalBody.querySelector("[data-modal-cancel]")?.addEventListener("click", closeModal);
+  const form = els.modalBody.querySelector("#localMarketingScreenForm");
+  const codeInput = form.querySelector("[name='code']");
+  const propertyInput = form.querySelector("[name='propertyId']");
+  const groupInput = form.querySelector("[name='group']");
+  codeInput.addEventListener("input", () => codeInput.setCustomValidity(""));
+  propertyInput.addEventListener("change", () => {
+    const groups = localMarketingScreenGroupValues(propertyInput.value);
+    const currentGroup = groups.includes(groupInput.value) ? groupInput.value : groups[0] || "General";
+    groupInput.innerHTML = plazaCreationOptions(groups.length ? groups : ["General"], currentGroup);
+  });
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const formData = new FormData(form);
+    const code = String(formData.get("code") || "").trim().toUpperCase();
+    const duplicateCode = state.localMarketingScreens.some((item) =>
+      !item.deleted && item.id !== screen?.id && normalizeText(item.code) === normalizeText(code)
+    );
+
+    if (duplicateCode) {
+      codeInput.setCustomValidity("Ya existe una pantalla con este ID.");
+      codeInput.reportValidity();
+      return;
+    }
+
+    const connection = String(formData.get("connection") || "offline");
+    const payload = {
+      code,
+      name: String(formData.get("name") || "").trim(),
+      propertyId: String(formData.get("propertyId") || ""),
+      level: String(formData.get("level") || ""),
+      group: String(formData.get("group") || "").trim(),
+      format: String(formData.get("format") || ""),
+      orientation: String(formData.get("orientation") || ""),
+      resolution: String(formData.get("resolution") || "").trim(),
+      connection,
+      lastSeen: connection === screen?.connection
+        ? screen.lastSeen
+        : connection === "online"
+          ? "Hace 1 min"
+          : connection === "maintenance"
+            ? "En revision"
+            : "Desde hace 1 min",
+      campaign: String(formData.get("campaign") || "Sin campaña"),
+      active: form.elements.active.checked,
+      deleted: false
+    };
+
+    if (screen) {
+      Object.assign(screen, payload);
+    } else {
+      state.localMarketingScreens.unshift({
+        id: uniqueId("screen", code, state.localMarketingScreens.map((item) => item.id)),
+        ...payload
+      });
+    }
+
+    saveState();
+    closeModal();
+    render();
+    toast(screen ? "Pantalla actualizada" : "Pantalla creada");
+  });
+  openModal();
+}
+
+function duplicateLocalMarketingScreen(screenId) {
+  const source = state.localMarketingScreens.find((screen) => screen.id === screenId && !screen.deleted);
+  if (!source) return;
+  const code = uniqueLocalMarketingScreenCode(`${source.code}-COPIA`);
+
+  state.localMarketingScreens.unshift({
+    ...structuredClone(source),
+    id: uniqueId("screen", code, state.localMarketingScreens.map((screen) => screen.id)),
+    code,
+    name: `${source.name} copia`,
+    connection: "offline",
+    lastSeen: "Sin conexion reciente",
+    active: false,
+    deleted: false
+  });
+  saveState();
+  render();
+  toast(`Pantalla ${code} duplicada`);
+}
+
+function openLocalMarketingScreenDelete(screenId) {
+  const screen = state.localMarketingScreens.find((item) => item.id === screenId && !item.deleted);
+  if (!screen) return;
+
+  els.modal.classList.add("modal-compact");
+  els.modalEyebrow.textContent = "Marketing local";
+  els.modalTitle.textContent = "Eliminar pantalla";
+  els.modalBody.innerHTML = `
+    <div class="local-marketing-delete-confirmation">
+      <p>Se eliminara <strong>${escapeAttribute(screen.code)}</strong> de la administracion de pantallas.</p>
+      <p class="muted">Esta accion deja de mostrarla en la programacion y en los grupos.</p>
+      <div class="form-actions form-actions-split">
+        <button class="secondary-button" type="button" data-modal-cancel>Cancelar</button>
+        <button class="danger-button" type="button" data-local-marketing-screen-confirm-delete>
+          <span data-icon="trash" aria-hidden="true"></span>
+          Eliminar pantalla
+        </button>
+      </div>
+    </div>
+  `;
+
+  injectIcons(els.modalBody);
+  els.modalBody.querySelector("[data-modal-cancel]")?.addEventListener("click", closeModal);
+  els.modalBody.querySelector("[data-local-marketing-screen-confirm-delete]")?.addEventListener("click", () => {
+    screen.deleted = true;
+    saveState();
+    closeModal();
+    render();
+    toast(`Pantalla ${screen.code} eliminada`);
+  });
+  openModal();
+}
+
+function openLocalMarketingMaintenanceRequest(screenId) {
+  const screen = state.localMarketingScreens.find((item) => item.id === screenId && !item.deleted);
+  if (!screen) return;
+  const property = getProperty(screen.propertyId);
+
+  els.modal.classList.remove("modal-wide", "modal-compact", "modal-plaza-flow");
+  els.modalEyebrow.textContent = "Mantenimiento";
+  els.modalTitle.textContent = "Solicitar mantenimiento";
+  els.modalBody.innerHTML = `
+    <form id="localMarketingMaintenanceForm">
+      <div class="local-marketing-maintenance-ticket-context">
+        <span class="local-marketing-maintenance-ticket-icon" data-icon="settings" aria-hidden="true"></span>
+        <span>
+          <strong>${escapeAttribute(screen.code)} · ${escapeAttribute(screen.name)}</strong>
+          <small>${escapeAttribute(property?.name || "Plaza sin asignar")} / ${escapeAttribute(screen.level)}</small>
+        </span>
+      </div>
+      <div class="form-grid">
+        <div class="field">
+          <label for="localMarketingMaintenanceType">Tipo de mantenimiento</label>
+          <select id="localMarketingMaintenanceType" name="type" required>
+            ${plazaCreationOptions(["Correctivo", "Preventivo", "Revision tecnica"], "Correctivo")}
+          </select>
+        </div>
+        <div class="field">
+          <label for="localMarketingMaintenancePriority">Prioridad</label>
+          <select id="localMarketingMaintenancePriority" name="priority" required>
+            ${plazaCreationOptions(["Normal", "Alta", "Urgente"], "Normal")}
+          </select>
+        </div>
+        <div class="field span-2">
+          <label for="localMarketingMaintenanceDescription">Descripcion del problema</label>
+          <textarea
+            id="localMarketingMaintenanceDescription"
+            name="description"
+            rows="4"
+            maxlength="500"
+            placeholder="Describe la falla o el servicio requerido"
+            required
+          ></textarea>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="secondary-button" type="button" data-modal-cancel>Cancelar</button>
+        <button class="action-button" type="submit">
+          <span data-icon="checkCircle" aria-hidden="true"></span>
+          Levantar ticket
+        </button>
+      </div>
+    </form>
+  `;
+
+  injectIcons(els.modalBody);
+  els.modalBody.querySelector("[data-modal-cancel]")?.addEventListener("click", closeModal);
+  els.modalBody.querySelector("#localMarketingMaintenanceForm")?.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    const ticket = {
+      id: nextLocalMarketingMaintenanceTicketId(),
+      screenId: screen.id,
+      propertyId: screen.propertyId,
+      type: String(formData.get("type") || "Correctivo"),
+      priority: String(formData.get("priority") || "Normal"),
+      description: String(formData.get("description") || "").trim(),
+      status: "Abierto",
+      requestedAt: new Date().toISOString()
+    };
+
+    state.localMarketingMaintenanceTickets.unshift(ticket);
+    screen.connection = "maintenance";
+    screen.lastSeen = `Ticket ${ticket.id} abierto`;
+    saveState();
+    closeModal();
+    render();
+    toast(`Ticket ${ticket.id} levantado`);
+  });
+  openModal();
+}
+
+function setupLocalMarketingColumnFilterPanel() {
+  localMarketingColumnFilterCleanup?.();
+  localMarketingColumnFilterCleanup = null;
+
+  const panel = els.contentArea.querySelector("[data-local-marketing-column-filter-popover]");
+  const trigger = panel?.closest(".local-marketing-column-header")?.querySelector("[data-local-marketing-column-filter]");
+  if (!panel || !trigger) return;
+
+  const positionPanel = () => {
+    const margin = 10;
+    const triggerRect = trigger.getBoundingClientRect();
+    const panelWidth = Math.min(panel.offsetWidth || 270, Math.max(230, window.innerWidth - (margin * 2)));
+    const panelHeight = panel.offsetHeight || 290;
+    let left = triggerRect.left;
+    let top = triggerRect.bottom + 7;
+
+    if (left + panelWidth > window.innerWidth - margin) {
+      left = window.innerWidth - panelWidth - margin;
+    }
+    if (top + panelHeight > window.innerHeight - margin) {
+      top = triggerRect.top - panelHeight - 7;
+    }
+
+    panel.style.setProperty("--local-marketing-filter-left", `${Math.max(margin, left)}px`);
+    panel.style.setProperty("--local-marketing-filter-top", `${Math.max(margin, top)}px`);
+    panel.classList.add("is-positioned");
+  };
+  const closeOnOutsideClick = (event) => {
+    if (event.target.closest(".local-marketing-column-header")) return;
+    view.localMarketingScreenColumnFilterOpen = "";
+    render();
+  };
+
+  positionPanel();
+  window.addEventListener("resize", positionPanel, { passive: true });
+  window.addEventListener("scroll", positionPanel, { passive: true });
+  document.addEventListener("click", closeOnOutsideClick);
+  localMarketingColumnFilterCleanup = () => {
+    window.removeEventListener("resize", positionPanel);
+    window.removeEventListener("scroll", positionPanel);
+    document.removeEventListener("click", closeOnOutsideClick);
+  };
+}
+
+function bindLocalMarketingColumnFilterActions() {
+  els.contentArea.querySelectorAll("[data-local-marketing-column-filter]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const key = button.dataset.localMarketingColumnFilter;
+      view.localMarketingScreenColumnFilterOpen = view.localMarketingScreenColumnFilterOpen === key ? "" : key;
+      render();
+    });
+  });
+
+  els.contentArea.querySelectorAll("[data-local-marketing-column-sort]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const key = button.dataset.localMarketingColumnSort;
+      const current = view.localMarketingScreenSort || { key: "", direction: "none" };
+      const direction = current.key !== key || current.direction === "none"
+        ? "asc"
+        : current.direction === "asc"
+          ? "desc"
+          : "none";
+
+      view.localMarketingScreenSort = direction === "none" ? { key: "", direction } : { key, direction };
+      view.localMarketingScreenColumnFilterOpen = "";
+      render();
+    });
+  });
+
+  const panel = els.contentArea.querySelector("[data-local-marketing-column-filter-popover]");
+  if (!panel) {
+    setupLocalMarketingColumnFilterPanel();
+    return;
+  }
+
+  const optionInputs = [...panel.querySelectorAll("[data-local-marketing-column-filter-value]")];
+  const selectAll = panel.querySelector("[data-local-marketing-column-filter-all]");
+  const syncSelectAll = () => {
+    const checkedCount = optionInputs.filter((input) => input.checked).length;
+    selectAll.checked = optionInputs.length > 0 && checkedCount === optionInputs.length;
+    selectAll.indeterminate = checkedCount > 0 && checkedCount < optionInputs.length;
+  };
+
+  panel.querySelector("[data-local-marketing-column-filter-search]")?.addEventListener("input", (event) => {
+    const query = normalizeText(event.currentTarget.value);
+    let visibleCount = 0;
+    panel.querySelectorAll("[data-local-marketing-column-filter-option]").forEach((option) => {
+      const visible = !query || option.dataset.search.includes(query);
+      option.hidden = !visible;
+      if (visible) visibleCount += 1;
+    });
+    panel.querySelector("[data-local-marketing-column-filter-empty]").hidden = visibleCount > 0;
+  });
+
+  selectAll?.addEventListener("change", () => {
+    optionInputs.forEach((input) => {
+      input.checked = selectAll.checked;
+    });
+    syncSelectAll();
+  });
+  optionInputs.forEach((input) => input.addEventListener("change", syncSelectAll));
+  syncSelectAll();
+
+  panel.querySelector("[data-local-marketing-column-filter-apply]")?.addEventListener("click", () => {
+    const key = panel.dataset.columnKey;
+    const checkedValues = optionInputs.filter((input) => input.checked).map((input) => input.value);
+    const columnFilters = { ...(view.localMarketingScreenColumnFilters || {}) };
+    if (checkedValues.length === optionInputs.length) {
+      delete columnFilters[key];
+    } else {
+      columnFilters[key] = checkedValues;
+    }
+    view.localMarketingScreenColumnFilters = columnFilters;
+    view.localMarketingScreenColumnFilterOpen = "";
+    render();
+  });
+  panel.querySelector("[data-local-marketing-column-filter-cancel]")?.addEventListener("click", () => {
+    view.localMarketingScreenColumnFilterOpen = "";
+    render();
+  });
+
+  setupLocalMarketingColumnFilterPanel();
+}
+
+function bindLocalMarketingScreenActions() {
+  const filters = view.localMarketingScreenFilters;
+  const searchInput = els.contentArea.querySelector("[data-local-marketing-screen-search]");
+
+  searchInput?.addEventListener("input", (event) => {
+    const caret = event.currentTarget.selectionStart ?? event.currentTarget.value.length;
+    filters.query = event.currentTarget.value;
+    render();
+
+    const nextSearchInput = els.contentArea.querySelector("[data-local-marketing-screen-search]");
+    nextSearchInput?.focus();
+    nextSearchInput?.setSelectionRange(caret, caret);
+  });
+
+  els.contentArea.querySelectorAll("[data-local-marketing-screen-filter]").forEach((select) => {
+    select.addEventListener("change", () => {
+      filters[select.dataset.localMarketingScreenFilter] = select.value;
+      render();
+    });
+  });
+
+  els.contentArea.querySelector("[data-local-marketing-screen-filters]")?.addEventListener("click", () => {
+    view.localMarketingFiltersOpen = !view.localMarketingFiltersOpen;
+    view.localMarketingScreenColumnFilterOpen = "";
+    render();
+  });
+
+  els.contentArea.querySelector("[data-local-marketing-screen-clear-filters]")?.addEventListener("click", () => {
+    Object.assign(filters, {
+      query: "",
+      format: "all",
+      connection: "all",
+      orientation: "all",
+      campaign: "all",
+      level: "all",
+      group: "all",
+      active: "all"
+    });
+    view.localMarketingScreenColumnFilters = {};
+    view.localMarketingScreenColumnFilterOpen = "";
+    render();
+  });
+
+  els.contentArea.querySelector("[data-local-marketing-screen-new]")?.addEventListener("click", () => openLocalMarketingScreenForm());
+  els.contentArea.querySelectorAll("[data-local-marketing-screen-edit]").forEach((button) => {
+    button.addEventListener("click", () => openLocalMarketingScreenForm(button.dataset.localMarketingScreenEdit));
+  });
+  els.contentArea.querySelectorAll("[data-local-marketing-screen-copy]").forEach((button) => {
+    button.addEventListener("click", () => duplicateLocalMarketingScreen(button.dataset.localMarketingScreenCopy));
+  });
+  els.contentArea.querySelectorAll("[data-local-marketing-screen-delete]").forEach((button) => {
+    button.addEventListener("click", () => openLocalMarketingScreenDelete(button.dataset.localMarketingScreenDelete));
+  });
+  els.contentArea.querySelectorAll("[data-local-marketing-screen-toggle]").forEach((input) => {
+    input.addEventListener("change", () => {
+      const screen = state.localMarketingScreens.find((item) => item.id === input.dataset.localMarketingScreenToggle && !item.deleted);
+      if (!screen) return;
+      screen.active = input.checked;
+      saveState();
+      render();
+      toast(`Pantalla ${screen.code} ${screen.active ? "activada" : "desactivada"}`);
+    });
+  });
+
+  const closeMaintenanceMenus = () => {
+    els.contentArea.querySelectorAll("[data-local-marketing-maintenance-options]").forEach((menu) => {
+      menu.hidden = true;
+    });
+    els.contentArea.querySelectorAll("[data-local-marketing-maintenance-menu]").forEach((button) => {
+      button.setAttribute("aria-expanded", "false");
+    });
+  };
+
+  els.contentArea.querySelectorAll("[data-local-marketing-maintenance-menu]").forEach((button) => {
+    button.addEventListener("click", (event) => {
+      event.stopPropagation();
+      const menu = button.parentElement?.querySelector("[data-local-marketing-maintenance-options]");
+      if (!menu) return;
+      const willOpen = menu.hidden;
+      closeMaintenanceMenus();
+
+      if (willOpen) {
+        menu.hidden = false;
+        button.setAttribute("aria-expanded", "true");
+      }
+    });
+  });
+
+  els.contentArea.querySelectorAll("[data-local-marketing-maintenance-request]").forEach((button) => {
+    button.addEventListener("click", (event) => {
+      event.stopPropagation();
+      closeMaintenanceMenus();
+      openLocalMarketingMaintenanceRequest(button.dataset.localMarketingMaintenanceRequest);
+    });
+  });
+
+  const closeMaintenanceMenusOnOutsideClick = (event) => {
+    if (event.target.closest(".local-marketing-maintenance-control")) return;
+    closeMaintenanceMenus();
+  };
+  const closeMaintenanceMenusOnEscape = (event) => {
+    if (event.key === "Escape") closeMaintenanceMenus();
+  };
+
+  document.addEventListener("click", closeMaintenanceMenusOnOutsideClick);
+  document.addEventListener("keydown", closeMaintenanceMenusOnEscape);
+  localMarketingMaintenanceMenuCleanup = () => {
+    document.removeEventListener("click", closeMaintenanceMenusOnOutsideClick);
+    document.removeEventListener("keydown", closeMaintenanceMenusOnEscape);
+  };
+
+  bindLocalMarketingColumnFilterActions();
+}
+
+const localMarketingCampaignCarouselOptions = [
+  { id: "playlists", label: "Listas de reproducción", icon: "fileText" },
+  { id: "library", label: "Biblioteca", icon: "layoutDashboard" }
+];
+
+function localMarketingCampaignMiniCarouselMarkup() {
+  const activeSection = localMarketingCampaignCarouselOptions.some((option) => option.id === view.localMarketingCampaignSection)
+    ? view.localMarketingCampaignSection
+    : localMarketingCampaignCarouselOptions[0].id;
+  view.localMarketingCampaignSection = activeSection;
+  const activeIndex = localMarketingCampaignCarouselOptions.findIndex((option) => option.id === activeSection);
+
+  return `
+    <nav class="local-marketing-campaign-carousel" aria-label="Contenido de campañas">
+      <button
+        class="icon-button local-marketing-campaign-carousel-arrow"
+        type="button"
+        data-local-marketing-campaign-carousel="previous"
+        title="Opcion anterior"
+        aria-label="Opcion anterior"
+      >
+        <span data-icon="chevronLeft" aria-hidden="true"></span>
+      </button>
+
+      <div class="local-marketing-campaign-carousel-viewport">
+        <div class="local-marketing-campaign-carousel-track">
+          ${localMarketingCampaignCarouselOptions.map((option) => `
+            <button
+              class="local-marketing-campaign-carousel-option ${activeSection === option.id ? "is-selected" : ""}"
+              type="button"
+              data-local-marketing-campaign-section="${option.id}"
+              aria-pressed="${activeSection === option.id ? "true" : "false"}"
+            >
+              <span class="local-marketing-campaign-carousel-icon" data-icon="${option.icon}" aria-hidden="true"></span>
+              <strong>${option.label}</strong>
+            </button>
+          `).join("")}
+        </div>
+      </div>
+
+      <button
+        class="icon-button local-marketing-campaign-carousel-arrow"
+        type="button"
+        data-local-marketing-campaign-carousel="next"
+        title="Opcion siguiente"
+        aria-label="Opcion siguiente"
+      >
+        <span data-icon="chevronRight" aria-hidden="true"></span>
+      </button>
+      <span class="sr-only" aria-live="polite">${activeIndex + 1} de ${localMarketingCampaignCarouselOptions.length}</span>
+    </nav>
+  `;
+}
+
+function renderLocalMarketing() {
+  const properties = visibleProperties();
+  const isCampaignView = view.localMarketingView === "campaigns";
+  const sectionLabel = isCampaignView ? "Campañas" : "Pantallas";
+  const sectionLabelLower = isCampaignView ? "campañas locales" : "pantallas";
+  const screenScopeOptions = [
+    { id: "all", label: "Todas" },
+    { id: "level", label: "Por Nivel" },
+    { id: "group", label: "Por grupo" }
+  ];
+  const campaignScopeOptions = [
+    { id: "all", label: "Todas" },
+    { id: "generic", label: "Genericas" },
+    { id: "category", label: "Por categoria" },
+    { id: "season", label: "Por Temporada" },
+    { id: "promotions", label: "Promociones" },
+    { id: "drafts", label: "Borradores" }
+  ];
+  const scopeOptions = isCampaignView ? campaignScopeOptions : screenScopeOptions;
+  const activeScope = scopeOptions.some((option) => option.id === view.localMarketingScope)
+    ? view.localMarketingScope
+    : "all";
+
+  view.localMarketingScope = activeScope;
+
+  if (!properties.length) {
+    els.contentArea.innerHTML = `
+      <section class="plaza-dashboard-page plaza-local-marketing-page">
+        <div class="section-header plaza-dashboard-heading">
+          <div>
+            <h3>${sectionLabel}</h3>
+            <p class="muted">No hay plazas registradas para administrar ${sectionLabelLower}.</p>
+          </div>
+        </div>
+      </section>
+    `;
+    return;
+  }
+
+  const allSelected = view.localMarketingPropertyId === "all";
+  let activeIndex = properties.findIndex((property) => property.id === view.localMarketingPropertyId);
+  if (!allSelected && activeIndex < 0) {
+    const resolvedSelection = resolveCatalogPropertySelection(properties);
+    activeIndex = resolvedSelection.activeIndex;
+    view.localMarketingPropertyId = resolvedSelection.property?.id || "";
+  }
+
+  const property = allSelected ? null : properties[activeIndex];
+  if (property) {
+    rememberSelectedProperty(property.id);
+    view.propertyDetailId = property.id;
+  }
+  view.propertyFilter = allSelected ? "all" : property.id;
+
+  const selectionCopy = allSelected ? "de todas las plazas" : `de ${escapeAttribute(property.name)}`;
+  const screenScopeCopy = {
+    all: {
+      title: `${sectionLabel} ${selectionCopy}`,
+      description: `Consulta y administra ${sectionLabelLower} ${allSelected ? "del portafolio completo" : "de la plaza seleccionada"}.`,
+      empty: allSelected
+        ? `No hay ${sectionLabelLower} registradas en las plazas.`
+        : `No hay ${sectionLabelLower} registradas para esta plaza.`
+    },
+    level: {
+      title: `${sectionLabel} por nivel ${selectionCopy}`,
+      description: `Consulta ${sectionLabelLower} organizadas por nivel ${allSelected ? "en el portafolio completo" : "en la plaza seleccionada"}.`,
+      empty: allSelected
+        ? `No hay ${sectionLabelLower} organizadas por nivel en las plazas.`
+        : `No hay ${sectionLabelLower} organizadas por nivel para esta plaza.`
+    },
+    group: {
+      title: `${sectionLabel} por grupo ${selectionCopy}`,
+      description: `Consulta ${sectionLabelLower} organizadas por grupo ${allSelected ? "en el portafolio completo" : "en la plaza seleccionada"}.`,
+      empty: allSelected
+        ? `No hay ${sectionLabelLower} organizadas por grupo en las plazas.`
+        : `No hay ${sectionLabelLower} organizadas por grupo para esta plaza.`
+    }
+  };
+  const campaignScopeCopy = {
+    all: {
+      title: `Campañas ${selectionCopy}`,
+      description: `Consulta y administra campañas locales ${allSelected ? "del portafolio completo" : "de la plaza seleccionada"}.`,
+      empty: allSelected
+        ? "No hay campañas locales registradas en las plazas."
+        : "No hay campañas locales registradas para esta plaza."
+    },
+    generic: {
+      title: `Campañas genericas ${selectionCopy}`,
+      description: `Consulta las campañas genericas ${allSelected ? "del portafolio completo" : "de la plaza seleccionada"}.`,
+      empty: allSelected
+        ? "No hay campañas genericas registradas en las plazas."
+        : "No hay campañas genericas registradas para esta plaza."
+    },
+    category: {
+      title: `Campañas por categoria ${selectionCopy}`,
+      description: `Consulta las campañas organizadas por categoria ${allSelected ? "en el portafolio completo" : "en la plaza seleccionada"}.`,
+      empty: allSelected
+        ? "No hay campañas organizadas por categoria en las plazas."
+        : "No hay campañas organizadas por categoria para esta plaza."
+    },
+    season: {
+      title: `Campañas por temporada ${selectionCopy}`,
+      description: `Consulta las campañas de temporada ${allSelected ? "del portafolio completo" : "de la plaza seleccionada"}.`,
+      empty: allSelected
+        ? "No hay campañas de temporada registradas en las plazas."
+        : "No hay campañas de temporada registradas para esta plaza."
+    },
+    promotions: {
+      title: `Promociones ${selectionCopy}`,
+      description: `Consulta las campañas promocionales ${allSelected ? "del portafolio completo" : "de la plaza seleccionada"}.`,
+      empty: allSelected
+        ? "No hay promociones registradas en las plazas."
+        : "No hay promociones registradas para esta plaza."
+    },
+    drafts: {
+      title: `Borradores ${selectionCopy}`,
+      description: `Consulta las campañas que permanecen como borrador ${allSelected ? "en el portafolio completo" : "en la plaza seleccionada"}.`,
+      empty: allSelected
+        ? "No hay borradores registrados en las plazas."
+        : "No hay borradores registrados para esta plaza."
+    }
+  };
+  const scopeCopy = (isCampaignView ? campaignScopeCopy : screenScopeCopy)[activeScope];
+
+  els.contentArea.innerHTML = `
+    <section class="plaza-dashboard-page plaza-local-marketing-page">
+      ${plazaCatalogSelectorMarkup(properties, activeIndex, "Selector de plazas para marketing local", {
+        includeAll: true,
+        allSelected,
+        cardsClass: "plaza-local-marketing-selector-cards plaza-left-aligned-selector-cards"
+      })}
+      ${isCampaignView ? localMarketingCampaignMiniCarouselMarkup() : ""}
+      <section class="property-detail-section property-administration-panel local-marketing-panel" data-local-marketing-panel>
+        <nav class="property-administration-toolbar local-marketing-toolbar" aria-label="Organizacion de ${sectionLabelLower}">
+          ${scopeOptions.map((option) => `
+            <button
+              class="${activeScope === option.id ? "action-button" : "secondary-button"}"
+              type="button"
+              data-local-marketing-scope="${option.id}"
+              aria-pressed="${activeScope === option.id ? "true" : "false"}"
+            >
+              ${option.label}
+            </button>
+          `).join("")}
+        </nav>
+
+        <div class="property-administration-content local-marketing-content" data-local-marketing-content data-active-scope="${activeScope}" aria-live="polite">
+          ${isCampaignView ? `
+            <section class="property-administration-view" data-local-marketing-view-panel="${activeScope}">
+              <div class="section-header">
+                <div>
+                  <p class="eyebrow">Administracion de Plazas</p>
+                  <h3>${scopeCopy.title}</h3>
+                  <p class="muted">${scopeCopy.description}</p>
+                </div>
+              </div>
+              ${emptyState(scopeCopy.empty)}
+            </section>
+          ` : localMarketingScreensWorkspaceMarkup(properties, property, allSelected, activeScope, scopeCopy)}
+        </div>
+      </section>
+    </section>
+  `;
+
+  bindCatalogPlazaSelector(properties, activeIndex, (propertyId) => {
+    view.localMarketingPropertyId = propertyId;
+    if (propertyId !== "all") view.propertyDetailId = propertyId;
+    view.propertyFilter = propertyId;
+    view.localMarketingScreenColumnFilters = {};
+    view.localMarketingScreenColumnFilterOpen = "";
+    render();
+  }, {
+    includeAll: true,
+    allSelected
+  });
+
+  els.contentArea.querySelectorAll("[data-local-marketing-scope]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const nextScope = button.dataset.localMarketingScope;
+      if (!scopeOptions.some((option) => option.id === nextScope) || nextScope === view.localMarketingScope) return;
+
+      view.localMarketingScope = nextScope;
+      render();
+    });
+  });
+
+  if (isCampaignView) {
+    const selectCampaignSection = (sectionId) => {
+      if (!localMarketingCampaignCarouselOptions.some((option) => option.id === sectionId)) return;
+      if (sectionId === view.localMarketingCampaignSection) return;
+
+      view.localMarketingCampaignSection = sectionId;
+      render();
+      requestAnimationFrame(() => {
+        const option = els.contentArea.querySelector(`[data-local-marketing-campaign-section="${sectionId}"]`);
+        const viewport = option?.closest(".local-marketing-campaign-carousel-viewport");
+        if (!option || !viewport) return;
+        const left = option.offsetLeft - ((viewport.clientWidth - option.offsetWidth) / 2);
+        viewport.scrollTo({ left: Math.max(0, left), behavior: "smooth" });
+      });
+    };
+
+    els.contentArea.querySelectorAll("[data-local-marketing-campaign-section]").forEach((button) => {
+      button.addEventListener("click", () => selectCampaignSection(button.dataset.localMarketingCampaignSection));
+    });
+
+    els.contentArea.querySelectorAll("[data-local-marketing-campaign-carousel]").forEach((button) => {
+      button.addEventListener("click", () => {
+        const activeIndex = localMarketingCampaignCarouselOptions.findIndex((option) => option.id === view.localMarketingCampaignSection);
+        const direction = button.dataset.localMarketingCampaignCarousel === "previous" ? -1 : 1;
+        const nextIndex = (activeIndex + direction + localMarketingCampaignCarouselOptions.length)
+          % localMarketingCampaignCarouselOptions.length;
+        selectCampaignSection(localMarketingCampaignCarouselOptions[nextIndex].id);
+      });
+    });
+  }
+
+  if (!isCampaignView) bindLocalMarketingScreenActions();
+}
+
 function marketplaceUnitsTableMarkup(units, property) {
   const orderedUnits = [...units].sort((first, second) => {
     const availabilityDifference = Number(isUnitAvailable(second)) - Number(isUnitAvailable(first));
@@ -5019,18 +6838,24 @@ function marketplaceUnitsTableMarkup(units, property) {
             </tr>
           </thead>
           <tbody>
-            ${orderedUnits.map((unit) => `
+            ${orderedUnits.map((unit) => {
+              const unitProperty = property || getProperty(unit.propertyId);
+              return `
               <tr>
-                <td><strong>${escapeAttribute(unit.unit)}</strong></td>
+                <td class="primary-cell">
+                  <strong>${escapeAttribute(unit.unit)}</strong>
+                  ${property ? "" : `<small>${escapeAttribute(unitProperty?.name || "Sin plaza")}</small>`}
+                </td>
                 <td>${isUnitAvailable(unit) ? '<span class="availability-chip">Disponible</span>' : '<span class="role-badge">Ocupada</span>'}</td>
                 <td>${isUnitAvailable(unit) ? '<span class="muted-cell">Sin arrendatario</span>' : escapeAttribute(unit.tenant)}</td>
                 <td><strong>${formatCurrency(unit.monthlyRent)}</strong></td>
                 <td>${formatCurrency(unit.maintenance)}</td>
                 <td>${unitSquareMetersLabel(unit)}</td>
                 <td>${unitMeasurementsLabel(unit)}</td>
-                <td>${marketplaceUnitToggleMarkup(property, unit)}</td>
+                <td>${unitProperty ? marketplaceUnitToggleMarkup(unitProperty, unit) : '<span class="muted-cell">Sin plaza</span>'}</td>
               </tr>
-            `).join("")}
+            `;
+            }).join("")}
           </tbody>
         </table>
       </div>
@@ -5067,34 +6892,58 @@ function isUnitMarketplaceEnabled(property, unit) {
 
 function renderPropertiesCatalog() {
   const properties = visibleProperties();
-  const { activeIndex, property: selectedProperty } = resolveCatalogPropertySelection(properties);
+  const allSelected = view.propertiesCatalogPropertyId === "all";
+  let activeIndex = properties.findIndex((property) => property.id === view.propertiesCatalogPropertyId);
+  if (properties.length && !allSelected && activeIndex < 0) {
+    const resolvedSelection = resolveCatalogPropertySelection(properties);
+    activeIndex = resolvedSelection.activeIndex;
+    view.propertiesCatalogPropertyId = resolvedSelection.property?.id || "";
+  }
+
+  const selectedProperty = allSelected ? null : properties[activeIndex] || null;
+  if (selectedProperty) {
+    rememberSelectedProperty(selectedProperty.id);
+    view.propertyDetailId = selectedProperty.id;
+  }
+  view.propertyFilter = allSelected ? "all" : selectedProperty?.id || "all";
 
   els.contentArea.innerHTML = `
     <section class="plaza-dashboard-page plaza-catalog-page">
-      ${properties.length ? plazaCatalogSelectorMarkup(properties, activeIndex, "Selector de plazas del catalogo de unidades") : ""}
+      ${properties.length ? plazaCatalogSelectorMarkup(properties, activeIndex, "Selector de plazas del catalogo de locales", {
+        includeAll: true,
+        allSelected,
+        cardsClass: "plaza-properties-selector-cards plaza-left-aligned-selector-cards"
+      }) : ""}
 
       <section class="plaza-catalog-content">
-        ${selectedProperty
-          ? propertyUnitCatalogSectionMarkup(selectedProperty)
-          : emptyState("No hay plazas registradas para administrar unidades.")}
+        ${allSelected
+          ? allPropertiesUnitCatalogSectionMarkup(properties)
+          : selectedProperty
+            ? propertyUnitCatalogSectionMarkup(selectedProperty)
+            : emptyState("No hay plazas registradas para administrar unidades.")}
       </section>
     </section>
   `;
 
   if (properties.length) {
     bindCatalogPlazaSelector(properties, activeIndex, (propertyId) => {
-      view.propertyDetailId = propertyId;
+      view.propertiesCatalogPropertyId = propertyId;
+      if (propertyId !== "all") view.propertyDetailId = propertyId;
       view.propertyFilter = propertyId;
       render();
+    }, {
+      includeAll: true,
+      allSelected
     });
   }
 
-  if (selectedProperty) bindPropertyUnitCatalogActions(selectedProperty.id);
+  bindPropertyUnitCatalogActions(selectedProperty?.id || null);
 }
 
 function openPropertiesCatalogForProperty(propertyId) {
   if (!getProperty(propertyId)) return;
   view.propertyDetailId = propertyId;
+  view.propertiesCatalogPropertyId = propertyId;
   view.propertyFilter = propertyId;
   view.activeTab = "properties";
   window.location.hash = "propertyUnitCatalog";
@@ -5530,7 +7379,7 @@ function propertyUnitCatalogSectionMarkup(property) {
       <div class="section-header">
         <div>
           <p class="eyebrow">Unidades</p>
-          <h3>Catalogo de unidades de ${property.name}</h3>
+          <h3>Catalogo de locales de ${property.name}</h3>
           <p class="muted">${property.type} - ${property.location}. Consulta la informacion base y administra altas o bajas.</p>
         </div>
         <div class="section-actions">
@@ -5541,6 +7390,22 @@ function propertyUnitCatalogSectionMarkup(property) {
         </div>
       </div>
       ${units.length ? propertyUnitCatalogTableMarkup(units) : emptyState("Aun no hay unidades registradas para esta propiedad.")}
+    </section>
+  `;
+}
+
+function allPropertiesUnitCatalogSectionMarkup(properties) {
+  const units = properties.flatMap((property) => propertyUnits(property.id));
+  return `
+    <section id="propertyUnitCatalog" class="property-detail-section property-unit-catalog-section">
+      <div class="section-header">
+        <div>
+          <p class="eyebrow">Unidades</p>
+          <h3>Catalogo de locales de todas las plazas</h3>
+          <p class="muted">Consulta la informacion base de todo el portafolio. Selecciona una plaza para registrar una nueva unidad.</p>
+        </div>
+      </div>
+      ${units.length ? propertyUnitCatalogTableMarkup(units, { showProperty: true }) : emptyState("Aun no hay unidades registradas en las plazas.")}
     </section>
   `;
 }
@@ -6335,8 +8200,9 @@ function editPropertyUnitContractValidation(button) {
   toast("Validaciones listas para editar");
 }
 
-function propertyUnitCatalogTableMarkup(units) {
+function propertyUnitCatalogTableMarkup(units, options = {}) {
   const orderedUnits = sortedUnitsByNumber(units);
+  const showProperty = options.showProperty === true;
   return `
     <div class="table-panel property-unit-catalog-panel">
       <div class="table-scroll">
@@ -6344,6 +8210,7 @@ function propertyUnitCatalogTableMarkup(units) {
           <thead>
             <tr>
               <th>Unidad</th>
+              ${showProperty ? "<th>Plaza</th>" : ""}
               <th>Nombre del arrendatario</th>
               <th>Editar arrendatario</th>
               <th>Nivel</th>
@@ -6358,6 +8225,7 @@ function propertyUnitCatalogTableMarkup(units) {
             ${orderedUnits.map((unit) => `
               <tr>
                 <td><strong>${unit.unit}</strong></td>
+                ${showProperty ? `<td><strong>${escapeAttribute(getProperty(unit.propertyId)?.name || "Sin plaza")}</strong></td>` : ""}
                 <td class="unit-tenant-name-cell">${unitTenantNameLabel(unit)}</td>
                 <td class="unit-tenant-edit-cell">
                   <button class="secondary-button" type="button" data-edit-unit-tenant="${unit.id}">
@@ -6648,15 +8516,19 @@ function bindPropertyAdministrationContentActions(propertyId, root) {
 }
 
 function bindPropertyUnitCatalogActions(propertyId) {
-  els.contentArea.querySelector("[data-add-unit]")?.addEventListener("click", () => openUnitFormModal(propertyId));
+  const resolvePropertyId = (unitId) => propertyId || state.units.find((unit) => unit.id === unitId)?.propertyId;
+
+  els.contentArea.querySelectorAll("[data-add-unit]").forEach((button) => {
+    button.addEventListener("click", () => openUnitFormModal(button.dataset.addUnit));
+  });
   els.contentArea.querySelectorAll("[data-edit-unit-catalog]").forEach((button) => {
-    button.addEventListener("click", () => openUnitFormModal(propertyId, button.dataset.editUnitCatalog));
+    button.addEventListener("click", () => openUnitFormModal(resolvePropertyId(button.dataset.editUnitCatalog), button.dataset.editUnitCatalog));
   });
   els.contentArea.querySelectorAll("[data-edit-unit-tenant]").forEach((button) => {
-    button.addEventListener("click", () => openUnitTenantModal(propertyId, button.dataset.editUnitTenant));
+    button.addEventListener("click", () => openUnitTenantModal(resolvePropertyId(button.dataset.editUnitTenant), button.dataset.editUnitTenant));
   });
   els.contentArea.querySelectorAll("[data-delete-unit-catalog]").forEach((button) => {
-    button.addEventListener("click", () => openDeleteUnitModal(button.dataset.deleteUnitCatalog, propertyId, "properties_catalog"));
+    button.addEventListener("click", () => openDeleteUnitModal(button.dataset.deleteUnitCatalog, resolvePropertyId(button.dataset.deleteUnitCatalog), "properties_catalog"));
   });
 }
 
@@ -7371,7 +9243,7 @@ function paymentMethodAdvanceRowMarkup(unit, monthKey) {
       </td>
       <td class="payment-method-readonly-total payment-method-rent-section payment-method-section-start">
         <strong>${formatCurrency(rentTotal)}</strong>
-        <small>Catalogo de unidades</small>
+        <small>Catalogo de locales</small>
       </td>
       ${paymentMethodAdvanceAmountCellMarkup(unit, monthKey, "rent", rent1, isAvailable)}
       ${advancePaymentConceptValidationCellMarkup(unit, monthKey, "rent")}
@@ -7380,7 +9252,7 @@ function paymentMethodAdvanceRowMarkup(unit, monthKey) {
       <td class="payment-method-rent-section payment-method-section-end" data-advance-payment-sum="rent">${paymentMethodSumMarkup(rent1 + rent2, rentTotal)}</td>
       <td class="payment-method-readonly-total payment-method-maintenance-section payment-method-section-start">
         <strong>${formatCurrency(maintenanceTotal)}</strong>
-        <small>Catalogo de unidades</small>
+        <small>Catalogo de locales</small>
       </td>
       ${paymentMethodAdvanceAmountCellMarkup(unit, monthKey, "maintenance", maintenance1, isAvailable)}
       ${advancePaymentConceptValidationCellMarkup(unit, monthKey, "maintenance")}
@@ -7672,7 +9544,7 @@ function paymentMethodRowMarkup(unit, monthKey) {
       <td>${tenantCellMarkup(unit)}</td>
       <td class="payment-method-readonly-total payment-method-rent-section payment-method-section-start">
         <strong>${formatCurrency(rentTotal)}</strong>
-        <small>Catalogo de unidades</small>
+        <small>Catalogo de locales</small>
       </td>
       ${paymentMethodAmountCellMarkup(unit, monthKey, "rent", rent1)}
       ${paymentMethodConceptValidationCellMarkup(unit, monthKey, "rent")}
@@ -7683,7 +9555,7 @@ function paymentMethodRowMarkup(unit, monthKey) {
         : `<td class="payment-method-rent-section payment-method-section-end" data-payment-method-sum="rent">${paymentMethodSumMarkup(rent1 + rent2, rentTotal)}</td>`}
       <td class="payment-method-readonly-total payment-method-maintenance-section payment-method-section-start">
         <strong>${formatCurrency(maintenanceTotal)}</strong>
-        <small>Catalogo de unidades</small>
+        <small>Catalogo de locales</small>
       </td>
       ${paymentMethodAmountCellMarkup(unit, monthKey, "maintenance", maintenance1)}
       ${paymentMethodConceptValidationCellMarkup(unit, monthKey, "maintenance")}
@@ -8471,6 +10343,8 @@ function renderLegalWorkspace(propertyId) {
 }
 
 function bindPropertyLegalPanelActions(propertyId) {
+  const propertyIdForUnit = (unitId) => propertyId || state.units.find((item) => item.id === unitId)?.propertyId || "";
+
   els.contentArea.querySelector("[data-back-property-units]")?.addEventListener("click", () => {
     returnToPropertyUnits(propertyId);
   });
@@ -8480,23 +10354,23 @@ function bindPropertyLegalPanelActions(propertyId) {
   });
 
   els.contentArea.querySelectorAll("[data-upload-legal-template]").forEach((input) => {
-    input.addEventListener("change", () => saveLegalTemplateAttachment(input, propertyId));
+    input.addEventListener("change", () => saveLegalTemplateAttachment(input, propertyIdForUnit(input.dataset.uploadLegalTemplate)));
   });
 
   els.contentArea.querySelectorAll("[data-template-file-menu]").forEach((button) => {
-    button.addEventListener("click", () => openLegalTemplateFileMenu(button.dataset.templateFileMenu, propertyId));
+    button.addEventListener("click", () => openLegalTemplateFileMenu(button.dataset.templateFileMenu, propertyIdForUnit(button.dataset.templateFileMenu)));
   });
 
   els.contentArea.querySelectorAll("[data-generate-current-contract]").forEach((button) => {
-    button.addEventListener("click", () => generateCurrentContract(button.dataset.generateCurrentContract, propertyId));
+    button.addEventListener("click", () => generateCurrentContract(button.dataset.generateCurrentContract, propertyIdForUnit(button.dataset.generateCurrentContract)));
   });
 
   els.contentArea.querySelectorAll("[data-edit-contract-term]").forEach((button) => {
-    button.addEventListener("click", () => openContractTermModal(button.dataset.editContractTerm, propertyId));
+    button.addEventListener("click", () => openContractTermModal(button.dataset.editContractTerm, propertyIdForUnit(button.dataset.editContractTerm)));
   });
 
   els.contentArea.querySelectorAll("[data-generate-next-contract]").forEach((button) => {
-    button.addEventListener("click", () => openNextPeriodContractModal(button.dataset.generateNextContract, propertyId));
+    button.addEventListener("click", () => openNextPeriodContractModal(button.dataset.generateNextContract, propertyIdForUnit(button.dataset.generateNextContract)));
   });
 }
 
@@ -11206,14 +13080,29 @@ function renderTenantCatalog() {
     return;
   }
 
-  const { activeIndex, property } = resolveCatalogPropertySelection(properties, view.tenantCatalogPropertyId);
-  view.tenantCatalogPropertyId = property.id;
-  view.propertyFilter = property.id;
+  const allSelected = view.tenantCatalogPropertyId === "all";
+  let activeIndex = properties.findIndex((property) => property.id === view.tenantCatalogPropertyId);
+  if (!allSelected && activeIndex < 0) {
+    const resolvedSelection = resolveCatalogPropertySelection(properties, view.tenantCatalogPropertyId);
+    activeIndex = resolvedSelection.activeIndex;
+    view.tenantCatalogPropertyId = resolvedSelection.property?.id || "";
+  }
+
+  const property = allSelected ? null : properties[activeIndex];
+  if (property) {
+    rememberSelectedProperty(property.id);
+    view.propertyDetailId = property.id;
+  }
+  view.propertyFilter = allSelected ? "all" : property.id;
 
   els.contentArea.innerHTML = `
     <section class="plaza-dashboard-page plaza-catalog-page">
-      ${plazaCatalogSelectorMarkup(properties, activeIndex, "Selector de plazas del catalogo de arrendatarios")}
-      ${renderTenantCatalogForProperty(property, { markupOnly: true })}
+      ${plazaCatalogSelectorMarkup(properties, activeIndex, "Selector de plazas del catalogo de arrendatarios", {
+        includeAll: true,
+        allSelected,
+        cardsClass: "plaza-tenants-selector-cards plaza-left-aligned-selector-cards"
+      })}
+      ${allSelected ? renderTenantCatalogForAllProperties({ markupOnly: true }) : renderTenantCatalogForProperty(property, { markupOnly: true })}
     </section>
   `;
 
@@ -11221,6 +13110,9 @@ function renderTenantCatalog() {
     view.tenantCatalogPropertyId = propertyId;
     view.propertyFilter = propertyId;
     render();
+  }, {
+    includeAll: true,
+    allSelected
   });
   bindTenantCatalogForPropertyActions(property);
 }
@@ -11264,8 +13156,32 @@ function renderTenantCatalogForProperty(property, options = {}) {
   return markup;
 }
 
+function renderTenantCatalogForAllProperties(options = {}) {
+  view.propertyFilter = "all";
+  const tenants = visibleTenantRows();
+
+  const markup = `
+    <section class="plaza-catalog-content">
+      <div class="section-header">
+        <div>
+          <p class="eyebrow">Arrendatarios</p>
+          <h3>Todos los arrendatarios</h3>
+          <p class="muted">Consulta datos fiscales, contacto, unidades asignadas y acceso a plataforma de todas las plazas.</p>
+        </div>
+      </div>
+      ${tenants.length ? tenantCatalogTableMarkup(tenants) : emptyState("No hay arrendatarios registrados en las plazas.")}
+    </section>
+  `;
+
+  if (options.markupOnly) return markup;
+  els.contentArea.innerHTML = markup;
+  bindTenantCatalogForPropertyActions(null);
+  return markup;
+}
+
 function bindTenantCatalogForPropertyActions(property) {
   els.contentArea.querySelector("[data-action='new-tenant']")?.addEventListener("click", () => {
+    if (!property) return;
     view.propertyFilter = property.id;
     view.activeTab = "tenant_new";
     render();
@@ -12207,7 +14123,7 @@ function contractPreviewText({ isTemplate, isNextPeriod, templateAttachmentName,
 }
 
 function userPropertyAccessSectionMarkup(properties, property) {
-  if (!property) {
+  if (!property && !properties.length) {
     return `
       <section id="propertyUsers" class="property-detail-section user-property-access-section">
         ${emptyState("Aun no hay plazas registradas para administrar usuarios.")}
@@ -12215,35 +14131,41 @@ function userPropertyAccessSectionMarkup(properties, property) {
     `;
   }
 
-  const accessUsers = propertyAccessUsers(property.id);
+  const allSelected = !property;
+  const accessUsers = allSelected
+    ? [...new Map(properties.flatMap((item) => propertyAccessUsers(item.id)).map((user) => [user.id, user])).values()]
+    : propertyAccessUsers(property.id);
   return `
     <section id="propertyUsers" class="property-detail-section user-property-access-section">
       <div class="section-header">
         <div>
           <p class="eyebrow">Usuarios por plaza</p>
-          <h3>Usuarios vinculados</h3>
-          <p class="muted">${property.name} - ${property.type}, ${property.location}</p>
+          <h3>${allSelected ? "Usuarios vinculados a todas las plazas" : "Usuarios vinculados"}</h3>
+          <p class="muted">${allSelected ? "Consulta las cuentas con acceso asignado en todo el portafolio." : `${property.name} - ${property.type}, ${property.location}`}</p>
         </div>
         <div class="user-property-access-controls">
           <div class="field user-property-access-select">
             <label for="userPropertyAccessSelect">Plaza</label>
             <select id="userPropertyAccessSelect" data-user-property-select>
+              <option value="all" ${allSelected ? "selected" : ""}>Todas las plazas</option>
               ${properties.map((item) => `
-                <option value="${item.id}" ${item.id === property.id ? "selected" : ""}>${item.name}</option>
+                <option value="${item.id}" ${item.id === property?.id ? "selected" : ""}>${item.name}</option>
               `).join("")}
             </select>
           </div>
-          <button class="secondary-button" type="button" data-property-team="${property.id}">
-            <span data-icon="users" aria-hidden="true"></span>
-            Administrar usuarios
-          </button>
+          ${property ? `
+            <button class="secondary-button" type="button" data-property-team="${property.id}">
+              <span data-icon="users" aria-hidden="true"></span>
+              Administrar usuarios
+            </button>
+          ` : ""}
         </div>
       </div>
       ${accessUsers.length ? `
         <div class="access-list property-access-list">
           ${accessUsers.map((user) => `<span class="access-chip">${user.name} - ${roleNames[user.role] || user.role}</span>`).join("")}
         </div>
-      ` : emptyState("Aun no hay usuarios asignados a esta plaza.")}
+      ` : emptyState(allSelected ? "Aun no hay usuarios asignados a las plazas." : "Aun no hay usuarios asignados a esta plaza.")}
     </section>
   `;
 }
@@ -12255,26 +14177,44 @@ function renderUserNew() {
   }
 
   const properties = visibleProperties();
-  const selectedProperty = properties.find((property) => property.id === view.propertyDetailId) || properties[0] || null;
+  const allSelected = view.usersPropertyId === "all";
+  let activeIndex = properties.findIndex((property) => property.id === view.usersPropertyId);
+  if (properties.length && !allSelected && activeIndex < 0) {
+    const resolvedSelection = resolveCatalogPropertySelection(properties);
+    activeIndex = resolvedSelection.activeIndex;
+    view.usersPropertyId = resolvedSelection.property?.id || "";
+  }
+
+  const selectedProperty = allSelected ? null : properties[activeIndex] || null;
   if (selectedProperty) {
+    rememberSelectedProperty(selectedProperty.id);
     view.propertyDetailId = selectedProperty.id;
     view.propertyFilter = selectedProperty.id;
+  } else {
+    view.propertyFilter = "all";
   }
 
   els.contentArea.innerHTML = `
-    <div class="section-header">
-      <div>
-        <p class="eyebrow">Usuarios</p>
-        <h3>Alta de Usuarios</h3>
-        <p class="muted">Crea usuarios del sistema y asigna propiedades cuando el rol sea Gerente de Propiedad o Contabilidad local.</p>
+    <section class="plaza-dashboard-page plaza-users-page">
+      ${properties.length ? plazaCatalogSelectorMarkup(properties, activeIndex, "Selector de plazas para usuarios", {
+        includeAll: true,
+        allSelected,
+        cardsClass: "plaza-users-selector-cards plaza-left-aligned-selector-cards"
+      }) : ""}
+
+      <div class="section-header">
+        <div>
+          <p class="eyebrow">Usuarios</p>
+          <h3>Alta de Usuarios</h3>
+          <p class="muted">Crea usuarios del sistema y asigna propiedades cuando el rol sea Gerente de Propiedad o Contabilidad local.</p>
+        </div>
       </div>
-    </div>
 
-    ${userPropertyAccessSectionMarkup(properties, selectedProperty)}
+      ${userPropertyAccessSectionMarkup(properties, selectedProperty)}
 
-    <div class="user-module-layout">
-      <section class="form-panel">
-        <form id="platformUserForm">
+      <div class="user-module-layout">
+        <section class="form-panel">
+          <form id="platformUserForm">
           <div class="form-grid">
             <div class="field span-2">
               <label for="platformUserName">Nombre completo</label>
@@ -12316,18 +14256,18 @@ function renderUserNew() {
               Crear usuario
             </button>
           </div>
-        </form>
-      </section>
+          </form>
+        </section>
 
-      <section class="table-panel">
-        <div class="month-panel-header">
+        <section class="table-panel">
+          <div class="month-panel-header">
           <div>
             <p class="eyebrow">Usuarios generados</p>
             <h3>Cuentas activas</h3>
             <p class="muted">Credenciales demo y propiedades visibles por usuario.</p>
           </div>
-        </div>
-        <div class="table-scroll">
+          </div>
+          <div class="table-scroll">
           <table class="user-admin-table">
             <thead>
               <tr>
@@ -12342,9 +14282,10 @@ function renderUserNew() {
               ${state.users.map((user) => userCreationRowMarkup(user)).join("")}
             </tbody>
           </table>
-        </div>
-      </section>
-    </div>
+          </div>
+        </section>
+      </div>
+    </section>
   `;
 
   const roleSelect = els.contentArea.querySelector("#platformUserRole");
@@ -12355,10 +14296,22 @@ function renderUserNew() {
   roleSelect?.addEventListener("change", syncAccess);
   form?.addEventListener("reset", () => window.setTimeout(syncAccess, 0));
   form?.addEventListener("submit", createPlatformUserFromForm);
+  if (properties.length) {
+    bindCatalogPlazaSelector(properties, activeIndex, (propertyId) => {
+      view.usersPropertyId = propertyId;
+      if (propertyId !== "all") view.propertyDetailId = propertyId;
+      view.propertyFilter = propertyId;
+      render();
+    }, {
+      includeAll: true,
+      allSelected
+    });
+  }
   propertyAccessSelect?.addEventListener("change", () => {
     const propertyId = propertyAccessSelect.value;
-    if (!getProperty(propertyId)) return;
-    view.propertyDetailId = propertyId;
+    if (propertyId !== "all" && !getProperty(propertyId)) return;
+    view.usersPropertyId = propertyId;
+    if (propertyId !== "all") view.propertyDetailId = propertyId;
     view.propertyFilter = propertyId;
     render();
   });
