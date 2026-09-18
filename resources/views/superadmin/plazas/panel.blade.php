@@ -114,7 +114,8 @@
             html[data-selected-section="contracts"] .module-chrome,
             html[data-selected-section="marketplace"] .module-chrome,
             html[data-selected-section="tenants"] .module-chrome,
-            html[data-selected-section="properties"] .module-chrome {
+            html[data-selected-section="properties"] .module-chrome,
+            html[data-selected-section="local_marketing"] .module-chrome {
                 display: none;
             }
 
@@ -123,7 +124,8 @@
             html[data-selected-section="contracts"] .content-area,
             html[data-selected-section="marketplace"] .content-area,
             html[data-selected-section="tenants"] .content-area,
-            html[data-selected-section="properties"] .content-area {
+            html[data-selected-section="properties"] .content-area,
+            html[data-selected-section="local_marketing"] .content-area {
                 padding: 28px 30px 32px;
             }
 
@@ -195,7 +197,8 @@
                 html[data-selected-section="dashboard"] .content-area,
                 html[data-selected-section="administration"] .content-area,
                 html[data-selected-section="contracts"] .content-area,
-                html[data-selected-section="marketplace"] .content-area {
+                html[data-selected-section="marketplace"] .content-area,
+                html[data-selected-section="local_marketing"] .content-area {
                     padding: 14px;
                 }
 
@@ -256,7 +259,7 @@
                     <header class="topbar">
                         <div>
                             <p id="roleEyebrow" class="eyebrow"></p>
-                            <h2 id="viewTitle">Catalogo de unidades</h2>
+                            <h2 id="viewTitle">Catalogo de locales</h2>
                             <p id="viewSubtitle" class="muted"></p>
                         </div>
 
@@ -294,6 +297,7 @@
                 roleId: 'superadmin',
                 defaultTab: @json($defaultTab),
                 selectedSection: @json($selectedSection),
+                localMarketingView: @json($localMarketingView),
                 displayName: @json(e(auth()->user()->name))
             };
 

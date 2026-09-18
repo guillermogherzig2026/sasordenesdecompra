@@ -244,6 +244,11 @@ final class NavigationPermissionCatalog
                 'description' => 'Contratos, suministros, inventarios, catalogos y gobierno del modulo.',
                 'items' => GovernmentContractNavigation::permissionLabels(),
             ],
+            'marketing' => [
+                'label' => 'Marketing',
+                'description' => 'Panel y herramientas del area de marketing.',
+                'items' => MarketingNavigation::permissionLabels(),
+            ],
             'security' => [
                 'label' => 'Seguridad y Vigilancia',
                 'description' => 'Empresas, sucursales, camaras, alertas y configuracion de seguridad.',
@@ -547,6 +552,9 @@ final class NavigationPermissionCatalog
         }
         if (Str::startsWith($routeName, 'superadmin.government-contracts.')) {
             return [GovernmentContractNavigation::permissionForSection($request->query('section'))];
+        }
+        if (Str::startsWith($routeName, 'marketing.')) {
+            return [MarketingNavigation::permissionForRoute($routeName)];
         }
         if (Str::startsWith($routeName, 'security.companies.')) {
             return ['security.dashboard'];

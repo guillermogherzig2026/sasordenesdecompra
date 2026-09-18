@@ -34,6 +34,14 @@ class SuperAdminPlazaController extends Controller
         return $this->showSection('properties');
     }
 
+    public function localMarketing(Request $request): View
+    {
+        return $this->showSection(
+            'local_marketing',
+            PlazaNavigation::normalizeLocalMarketingView($request->query('view'))
+        );
+    }
+
     public function users(): View
     {
         return $this->showSection('users');
@@ -55,16 +63,18 @@ class SuperAdminPlazaController extends Controller
         return view('superadmin.plazas.panel', [
             'defaultTab' => $item['tab'],
             'selectedSection' => $section,
+            'localMarketingView' => PlazaNavigation::normalizeLocalMarketingView($request->query('view')),
         ]);
     }
 
-    private function showSection(string $section): View
+    private function showSection(string $section, ?string $localMarketingView = null): View
     {
         $section = PlazaNavigation::normalizeSection($section);
         $this->authorizePermission($section);
 
         return view('superadmin.plazas.index', [
             'selectedSection' => $section,
+            'localMarketingView' => PlazaNavigation::normalizeLocalMarketingView($localMarketingView),
         ]);
     }
 

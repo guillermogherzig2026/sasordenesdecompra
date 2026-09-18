@@ -104,13 +104,74 @@
         ->all();
 
     $plazaNavItems = collect(\App\Support\PlazaNavigation::items())
-        ->map(function (array $item) {
-            return [
+        ->map(function (array $item, string $section) {
+            $localMarketingView = \App\Support\PlazaNavigation::normalizeLocalMarketingView(request()->query('view'));
+            $menuBox = match ($section) {
+                'dashboard' => ['menu_box' => 'plazas', 'menu_box_start' => true],
+                'properties' => ['menu_box' => 'plazas', 'menu_box_end' => true],
+                'administration', 'contracts', 'tenants' => ['menu_box' => 'plazas'],
+                'marketplace' => ['menu_box' => 'plazas-marketplace', 'menu_box_start' => true, 'menu_box_end' => true],
+                'local_marketing' => [
+                    'menu_box' => 'plazas-marketing',
+                    'menu_box_start' => true,
+                    'menu_box_end' => true,
+                    'children_title' => false,
+                    'children' => collect(\App\Support\PlazaNavigation::localMarketingViews())
+                        ->map(fn (string $label, string $view) => [
+                            'label' => $label,
+                            'url' => $view === \App\Support\PlazaNavigation::defaultLocalMarketingView()
+                                ? route($item['route'])
+                                : route($item['route'], ['view' => $view]),
+                            'active' => request()->routeIs($item['route']) && $localMarketingView === $view,
+                        ])
+                        ->values()
+                        ->all(),
+                ],
+                default => [],
+            };
+
+            return array_merge([
                 'label' => $item['label'],
                 'url' => route($item['route']),
                 'active' => request()->routeIs($item['route']),
                 'permission' => $item['permission'],
+            ], $menuBox);
+        })
+        ->values();
+
+    $plazaNavItems = $plazaNavItems
+        ->flatMap(function (array $item) {
+            if ($item['label'] !== 'Alta de Usuarios') {
+                return [$item];
+            }
+
+            return [
+                [
+                    'label' => 'Centro de agentes',
+                    'url' => route('superadmin.plazas.agents.index'),
+                    'active' => request()->routeIs('superadmin.plazas.agents.*'),
+                ],
+                $item,
             ];
+        })
+        ->values()
+        ->all();
+
+    $marketingNavItems = collect(\App\Support\MarketingNavigation::items())
+        ->map(function (array $item, string $section) {
+            $menuBox = match ($section) {
+                'dashboard' => ['menu_box' => 'marketing-primary', 'menu_box_start' => true],
+                'companies', 'campaigns', 'leads' => ['menu_box' => 'marketing-primary'],
+                'conversations' => ['menu_box' => 'marketing-primary', 'menu_box_end' => true],
+                default => [],
+            };
+
+            return array_merge([
+                'label' => $item['label'],
+                'url' => route($item['route']),
+                'active' => request()->routeIs($item['route_prefix'].'*'),
+                'permission' => $item['permission'],
+            ], $menuBox);
         })
         ->values()
         ->all();
@@ -120,7 +181,7 @@
             ['label' => 'Panel de inicio', 'url' => route('dashboard'), 'active' => request()->routeIs('dashboard'), 'permission' => $homeDashboardPermission],
             ['label' => 'Usuarios y Roles', 'url' => route('superadmin.users.index'), 'active' => request()->routeIs('superadmin.users.*')],
             ['label' => 'Proveedores', 'url' => route('superadmin.provider-lines.index'), 'active' => request()->routeIs('superadmin.provider-lines.*')],
-            ['label' => 'Centro de agentes', 'url' => route('superadmin.agents.index'), 'active' => request()->routeIs('superadmin.agents.*')],
+            ['label' => 'Centro de agentes', 'url' => route('superadmin.agents.index'), 'active' => request()->routeIs('superadmin.agents.index')],
         ],
         'Finanzas' => [
             ['label' => 'OC Vigentes', 'url' => route('finance.orders.active'), 'active' => request()->routeIs('finance.orders.active') || request()->routeIs('finance.orders.payment'), 'pending_badge' => true, 'menu_box' => 'oc', 'menu_box_start' => true, 'menu_box_title' => 'Ordenes de compra'],
@@ -133,6 +194,7 @@
             ['label' => 'OS Historial', 'url' => route('finance.supply-orders.history'), 'active' => request()->routeIs('finance.supply-orders.history'), 'menu_box' => 'os', 'menu_box_end' => true],
             ['label' => 'OR Vigentes', 'url' => route('finance.reimbursement-orders.active'), 'active' => request()->routeIs('finance.reimbursement-orders.active'), 'badge_count' => $pendingReimbursementBadgeCount, 'menu_box' => 'or', 'menu_box_start' => true, 'menu_box_title' => 'Ordenes de reembolso'],
             ['label' => 'OR Historial', 'url' => route('finance.reimbursement-orders.history'), 'active' => request()->routeIs('finance.reimbursement-orders.history'), 'menu_box' => 'or', 'menu_box_end' => true],
+            ['label' => 'Centro de agentes', 'url' => route('finance.agents.index'), 'active' => request()->routeIs('finance.agents.*')],
             ['label' => 'Autorizaciones', 'url' => route('finance.admin.users'), 'active' => request()->routeIs('finance.admin.users')],
             ['label' => 'Alta Proveedores', 'url' => route('finance.admin.providers'), 'active' => request()->routeIs('finance.admin.providers')],
             ['label' => 'Alta Empresas', 'url' => route('finance.admin.companies'), 'active' => request()->routeIs('finance.admin.companies')],
@@ -188,6 +250,7 @@
         ],
         'Administracion de Plazas' => $plazaNavItems,
         'Contratos Gobierno' => $governmentContractNavItems,
+        'Marketing' => $marketingNavItems,
         'Seguridad y Vigilancia' => [
             ['label' => 'Empresas', 'url' => route('security.index'), 'active' => request()->routeIs('security.index') && in_array(request()->query('section'), [null, '', 'companies'], true)],
             ['label' => 'Sucursales', 'url' => route('security.index', ['section' => 'branches']), 'active' => request()->routeIs('security.index') && request()->query('section') === 'branches'],
@@ -276,9 +339,11 @@
             'Contratos' => 'plazas.contracts',
             'Marketplace' => 'plazas.marketplace',
             'Arrendatarios' => 'plazas.tenants',
-            'Catalogo de unidades' => 'plazas.properties',
+            'Catalogo de locales' => 'plazas.properties',
+            'Marketing local' => 'plazas.local_marketing',
             'Alta de Usuarios' => 'plazas.users',
         ],
+        'Marketing' => \App\Support\MarketingNavigation::permissionsByLabel(),
         'Seguridad y Vigilancia' => [
             'Empresas' => 'security.dashboard',
             'Sucursales' => 'security.branches',
@@ -352,7 +417,9 @@
                                 <a class="button nav-button sub-nav-button {{ $item['active'] ? 'active' : '' }}" href="{{ $item['url'] }}">{{ $item['label'] }}@if ($badgeCount !== null)<span class="nav-pending-badge {{ $badgeCount ? '' : 'is-empty' }}">{{ $badgeCount }}</span>@endif</a>
                                 @if (($item['children'] ?? []) && $item['active'])
                                     <div class="nav-inline-flow">
-                                        <span class="nav-box-title">{{ $item['children_title'] ?? 'Opciones' }}</span>
+                                        @if (($item['children_title'] ?? 'Opciones') !== false)
+                                            <span class="nav-box-title">{{ $item['children_title'] ?? 'Opciones' }}</span>
+                                        @endif
                                         @foreach ($item['children'] as $child)
                                             @php $childBadgeCount = $child['badge_count'] ?? (($child['pending_badge'] ?? false) ? $pendingOrderBadgeCount : null); @endphp
                                             <a class="button nav-button sub-nav-button {{ $child['active'] ? 'active' : '' }}" href="{{ $child['url'] }}">{{ $child['label'] }}@if ($childBadgeCount !== null)<span class="nav-pending-badge {{ $childBadgeCount ? '' : 'is-empty' }}">{{ $childBadgeCount }}</span>@endif</a>

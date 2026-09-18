@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AgentCenterController;
 use App\Http\Controllers\BuyerProviderController;
 use App\Http\Controllers\BuyerPurchaseOrderController;
 use App\Http\Controllers\BuyerReimbursementOrderController;
@@ -15,6 +16,14 @@ use App\Http\Controllers\FinanceSupplyOrderController;
 use App\Http\Controllers\HumanResourcesController;
 use App\Http\Controllers\InventoryReceiptController;
 use App\Http\Controllers\InventorySupplyOrderController;
+use App\Http\Controllers\Marketing\CampaignController as MarketingCampaignController;
+use App\Http\Controllers\Marketing\CompanyController as MarketingCompanyController;
+use App\Http\Controllers\Marketing\ConversationController as MarketingConversationController;
+use App\Http\Controllers\Marketing\DashboardController as MarketingDashboardController;
+use App\Http\Controllers\Marketing\LeadController as MarketingLeadController;
+use App\Http\Controllers\Marketing\ReportController as MarketingReportController;
+use App\Http\Controllers\Marketing\SettingsController as MarketingSettingsController;
+use App\Http\Controllers\Marketing\UserController as MarketingUserController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\SecurityCompanyController;
 use App\Http\Controllers\ServiceController;
@@ -66,6 +75,10 @@ Route::post('/login', function (Request $request) {
 
     return redirect()->intended(route('dashboard'));
 })->name('login.store');
+
+Route::get('/logout', function () {
+    return Auth::check() ? redirect()->route('dashboard') : redirect()->route('login');
+});
 
 Route::post('/logout', function (Request $request) {
     Auth::logout();
@@ -187,11 +200,16 @@ Route::middleware(['auth', EnforceNavigationPermission::class])->prefix('superad
     Route::get('/administracion-plazas/contratos', [SuperAdminPlazaController::class, 'contracts'])->name('plazas.contracts');
     Route::get('/administracion-plazas/marketplace', [SuperAdminPlazaController::class, 'marketplace'])->name('plazas.marketplace');
     Route::get('/administracion-plazas/catalogo-propiedades', [SuperAdminPlazaController::class, 'properties'])->name('plazas.properties');
+    Route::get('/administracion-plazas/marketing-local', [SuperAdminPlazaController::class, 'localMarketing'])->name('plazas.local-marketing');
+    Route::get('/administracion-plazas/centro-de-agentes', [AgentCenterController::class, 'index'])->name('plazas.agents.index');
     Route::get('/administracion-plazas/alta-usuarios', [SuperAdminPlazaController::class, 'users'])->name('plazas.users');
     Route::get('/administracion-plazas/catalogo-arrendatarios', [SuperAdminPlazaController::class, 'tenants'])->name('plazas.tenants');
     Route::get('/administracion-plazas/panel', [SuperAdminPlazaController::class, 'panel'])->name('plazas.panel');
     Route::get('/usuarios', [SuperAdminUserController::class, 'index'])->name('users.index');
-    Route::get('/centro-de-agentes', [SuperAdminUserController::class, 'agents'])->name('agents.index');
+    Route::get('/centro-de-agentes', [AgentCenterController::class, 'index'])->name('agents.index');
+    Route::post('/centro-de-agentes', [AgentCenterController::class, 'store'])->name('agents.store');
+    Route::put('/centro-de-agentes/{aiAgent}', [AgentCenterController::class, 'update'])->name('agents.update');
+    Route::patch('/centro-de-agentes/{aiAgent}/estado', [AgentCenterController::class, 'toggle'])->name('agents.toggle');
     Route::post('/usuarios', [SuperAdminUserController::class, 'store'])->name('users.store');
     Route::put('/usuarios/{user}', [SuperAdminUserController::class, 'update'])->name('users.update');
     Route::patch('/usuarios/{user}/estado', [SuperAdminUserController::class, 'toggle'])->name('users.toggle');
@@ -209,6 +227,35 @@ Route::middleware(['auth', EnforceNavigationPermission::class])->prefix('recurso
     Route::get('/', [HumanResourcesController::class, 'show'])->name('index');
     Route::get('/aplicacion/{section?}', [HumanResourcesController::class, 'embed'])->name('embed');
     Route::get('/{section?}', [HumanResourcesController::class, 'show'])->name('show');
+});
+
+Route::middleware(['auth', EnforceNavigationPermission::class])->prefix('marketing')->name('marketing.')->group(function (): void {
+    Route::get('/', [MarketingDashboardController::class, 'index'])->name('index');
+
+    Route::resource('companies', MarketingCompanyController::class)->except(['show', 'destroy']);
+    Route::patch('companies/{company}/estado', [MarketingCompanyController::class, 'toggle'])->name('companies.toggle');
+
+    Route::resource('campaigns', MarketingCampaignController::class)->except(['show', 'destroy']);
+    Route::patch('campaigns/{campaign}/estado', [MarketingCampaignController::class, 'toggle'])->name('campaigns.toggle');
+
+    Route::resource('leads', MarketingLeadController::class)->except(['show']);
+
+    Route::get('conversaciones', [MarketingConversationController::class, 'index'])->name('conversations.index');
+    Route::post('conversaciones/{conversation}/mensajes', [MarketingConversationController::class, 'storeMessage'])->name('conversations.messages.store');
+    Route::post('conversaciones/{conversation}/notas', [MarketingConversationController::class, 'storeNote'])->name('conversations.notes.store');
+    Route::patch('conversaciones/{conversation}/asignar', [MarketingConversationController::class, 'assign'])->name('conversations.assign');
+
+    Route::get('reportes', [MarketingReportController::class, 'index'])->name('reports.index');
+
+    Route::resource('users', MarketingUserController::class)->except(['show', 'destroy']);
+    Route::patch('users/{user}/estado', [MarketingUserController::class, 'toggle'])->name('users.toggle');
+
+    Route::get('configuracion', [MarketingSettingsController::class, 'index'])->name('settings.index');
+    Route::patch('configuracion/empresa', [MarketingSettingsController::class, 'updateCompany'])->name('settings.company.update');
+    Route::post('configuracion/whatsapp', [MarketingSettingsController::class, 'storeWhatsAppNumber'])->name('settings.whatsapp.store');
+    Route::post('configuracion/etiquetas', [MarketingSettingsController::class, 'storeTag'])->name('settings.tags.store');
+    Route::post('configuracion/automatizaciones', [MarketingSettingsController::class, 'storeAutomation'])->name('settings.automations.store');
+    Route::patch('configuracion/horarios', [MarketingSettingsController::class, 'updateOfficeHours'])->name('settings.hours.update');
 });
 
 Route::middleware(['auth', EnforceNavigationPermission::class])->prefix('seguridad-vigilancia')->name('security.')->group(function () {
@@ -286,6 +333,7 @@ Route::middleware(['auth', EnforceNavigationPermission::class])->prefix('comprad
 });
 
 Route::middleware(['auth', EnforceNavigationPermission::class])->prefix('finanzas')->name('finance.')->group(function () {
+    Route::get('/centro-de-agentes', [AgentCenterController::class, 'index'])->name('agents.index');
     Route::get('/ordenes-vigentes', [FinancePurchaseOrderController::class, 'active'])->name('orders.active');
     Route::patch('/ordenes/{purchaseOrder}/aprobar', [FinancePurchaseOrderController::class, 'approve'])->name('orders.approve');
     Route::patch('/ordenes/{purchaseOrder}/rechazar', [FinancePurchaseOrderController::class, 'reject'])->name('orders.reject');

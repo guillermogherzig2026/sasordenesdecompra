@@ -96,6 +96,10 @@
             .nav-box-construction-materiales .nav-inline-flow .nav-button.active { background: #3a5663; box-shadow: inset 3px 0 0 #78909b; }
             .nav-box-construction-finanzas { --nav-box-border: rgba(100, 149, 237, .58); --nav-box-bg: rgba(100, 149, 237, .10); --nav-box-active: rgba(100, 149, 237, .24); }
             .nav-box-construction-admin { --nav-box-border: rgba(191, 128, 255, .58); --nav-box-bg: rgba(191, 128, 255, .11); --nav-box-active: rgba(191, 128, 255, .25); }
+            .nav-box-plazas { --nav-box-border: rgba(63, 181, 194, .62); --nav-box-bg: rgba(63, 181, 194, .10); --nav-box-active: rgba(63, 181, 194, .24); }
+            .nav-box-plazas-marketplace { --nav-box-border: rgba(191, 128, 255, .62); --nav-box-bg: rgba(191, 128, 255, .11); --nav-box-active: rgba(191, 128, 255, .25); }
+            .nav-box-plazas-marketing { --nav-box-border: rgba(255, 183, 77, .68); --nav-box-bg: rgba(255, 183, 77, .11); --nav-box-active: rgba(255, 183, 77, .26); }
+            .nav-box-marketing-primary { --nav-box-border: rgba(63, 181, 194, .62); --nav-box-bg: rgba(63, 181, 194, .10); --nav-box-active: rgba(63, 181, 194, .24); }
             .content-shell { min-width: 0; min-height: 100vh; display: flex; flex-direction: column; }
             .topbar { min-height: 66px; padding: 12px clamp(18px, 3vw, 32px); display: flex; align-items: center; justify-content: space-between; gap: 20px; background: rgba(244, 247, 251, .9); border-bottom: 1px solid var(--line); position: sticky; top: 0; }
             .topbar-right { display: flex; align-items: center; gap: 10px; margin-left: auto; }
@@ -869,6 +873,7 @@
                 color:red;
             }
         </style>
+        @stack('styles')
     </head>
     <body>
         @yield('body')
@@ -1523,5 +1528,6 @@
                 addSortButtons();
             });
         </script>
+        @stack('scripts')
     </body>
 </html>

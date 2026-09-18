@@ -1,0 +1,465 @@
+.agent-center {
+    color: var(--text);
+    overflow: hidden;
+}
+
+.agent-center-heading,
+.agent-center-title,
+.agent-state-legend,
+.agent-carousel,
+.agent-information-heading,
+.agent-modal-header,
+.agent-modal-actions {
+    display: flex;
+    align-items: center;
+}
+
+.agent-center-heading,
+.agent-information-heading,
+.agent-modal-header {
+    justify-content: space-between;
+}
+
+.agent-center-heading {
+    gap: 16px;
+}
+
+.agent-center-title {
+    min-width: 0;
+    gap: 9px;
+}
+
+.agent-center-title h2,
+.agent-information-heading h3,
+.agent-modal-header h3 {
+    margin: 0;
+}
+
+.agent-center-title h2 {
+    font-size: 1.25rem;
+}
+
+.agent-count {
+    display: inline-grid;
+    min-width: 28px;
+    height: 26px;
+    padding: 0 7px;
+    place-items: center;
+    border-radius: 6px;
+    background: #e7f4f7;
+    color: var(--primary-strong);
+    font-size: .86rem;
+    font-weight: 800;
+}
+
+.agent-state-legend {
+    flex-wrap: wrap;
+    gap: 16px;
+    color: var(--muted);
+    font-size: .88rem;
+}
+
+.agent-state-legend > span {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.agent-state-dot {
+    display: inline-block;
+    flex: none;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #dc2626;
+}
+
+.agent-state-dot[data-active="true"] {
+    background: #16a34a;
+}
+
+.agent-carousel {
+    min-width: 0;
+    gap: 10px;
+}
+
+.agent-carousel-arrow,
+.agent-modal-close {
+    display: inline-grid;
+    flex: none;
+    place-items: center;
+    border: 1px solid var(--line);
+    background: #fff;
+    color: var(--primary-strong);
+    cursor: pointer;
+}
+
+.agent-carousel-arrow {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    font-size: 1.8rem;
+    line-height: 1;
+    box-shadow: 0 6px 14px rgba(35, 48, 73, .08);
+}
+
+.agent-carousel-arrow:disabled {
+    opacity: .35;
+    cursor: not-allowed;
+}
+
+.agent-carousel-track {
+    display: flex;
+    flex: 1;
+    min-width: 0;
+    gap: 10px;
+    overflow-x: auto;
+    padding: 5px 2px 12px;
+    scroll-behavior: smooth;
+    scroll-snap-type: x proximity;
+    scrollbar-color: #aebdce transparent;
+    scrollbar-width: thin;
+}
+
+.agent-choice {
+    position: relative;
+    display: grid;
+    flex: 0 0 132px;
+    width: 132px;
+    height: 118px;
+    grid-template-rows: 34px minmax(0, 1fr);
+    align-content: center;
+    align-items: center;
+    justify-items: center;
+    gap: 8px;
+    padding: 12px 10px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: #fff;
+    color: var(--text);
+    text-align: center;
+    font: inherit;
+    font-size: .9rem;
+    font-weight: 760;
+    line-height: 1.25;
+    cursor: pointer;
+    scroll-snap-align: start;
+}
+
+.agent-choice:hover {
+    border-color: #8eacbb;
+    background: #f8fbfc;
+}
+
+.agent-choice[aria-pressed="true"] {
+    border-color: #1595a9;
+    background: #edfafa;
+    box-shadow: inset 0 0 0 1px #1595a9;
+    color: var(--primary-strong);
+}
+
+.agent-choice[aria-pressed="true"]::after {
+    content: "\2713";
+    position: absolute;
+    top: 7px;
+    right: 7px;
+    display: grid;
+    width: 20px;
+    height: 20px;
+    place-items: center;
+    border-radius: 50%;
+    background: #1595a9;
+    color: #fff;
+    font-size: .78rem;
+}
+
+.agent-choice-icon {
+    display: inline-grid;
+    width: 34px;
+    height: 34px;
+    place-items: center;
+    border-radius: 50%;
+    background: #e7f4f7;
+    color: var(--primary-strong);
+    font-size: .78rem;
+    font-weight: 900;
+}
+
+.agent-choice-grid {
+    font-size: 1.15rem;
+}
+
+.agent-choice-name {
+    display: -webkit-box;
+    max-width: 100%;
+    overflow: hidden;
+    overflow-wrap: anywhere;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+}
+
+.agent-choice-state {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+}
+
+.agent-create {
+    border-color: var(--success);
+    background: var(--success);
+    color: #fff;
+}
+
+.agent-create:hover {
+    border-color: #0f5c39;
+    background: #0f5c39;
+}
+
+.agent-create .agent-choice-icon {
+    background: rgba(255, 255, 255, .18);
+    color: #fff;
+    font-size: 1.35rem;
+}
+
+.agent-information-list {
+    border-top: 1px solid var(--line);
+}
+
+.agent-information {
+    padding: 18px 2px;
+    border-bottom: 1px solid var(--line);
+}
+
+.agent-information-heading {
+    align-items: flex-start;
+    gap: 16px;
+    margin-bottom: 14px;
+}
+
+.agent-information-title {
+    min-width: 0;
+}
+
+.agent-information-heading h3 {
+    font-size: 1.06rem;
+    line-height: 1.45;
+    overflow-wrap: anywhere;
+}
+
+.agent-activation {
+    display: flex;
+    margin-top: 8px;
+}
+
+.agent-switch {
+    position: relative;
+    width: 72px;
+    height: 30px;
+    padding: 0;
+    border: 0;
+    border-radius: 15px;
+    background: #dc2626;
+    color: #fff;
+    cursor: pointer;
+}
+
+.agent-switch[aria-checked="true"] {
+    background: #16a34a;
+}
+
+.agent-switch-text {
+    position: absolute;
+    top: 0;
+    right: 6px;
+    width: 36px;
+    line-height: 30px;
+    text-align: center;
+    font-size: .8rem;
+    font-weight: 850;
+}
+
+.agent-switch[aria-checked="true"] .agent-switch-text {
+    right: auto;
+    left: 6px;
+}
+
+.agent-switch-thumb {
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: #fff;
+    transition: transform .15s ease;
+}
+
+.agent-switch[aria-checked="true"] .agent-switch-thumb {
+    transform: translateX(42px);
+}
+
+.agent-information-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+    gap: 20px 30px;
+    margin: 0;
+    line-height: 1.55;
+}
+
+.agent-information-grid dt {
+    margin-bottom: 6px;
+    color: var(--muted);
+    font-size: .86rem;
+    font-weight: 750;
+}
+
+.agent-information-grid dd {
+    margin: 0;
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
+}
+
+.agent-instructions {
+    max-height: 260px;
+    overflow-y: auto;
+}
+
+.agent-empty {
+    margin: 0;
+    padding: 24px 2px 10px;
+    color: var(--muted);
+    text-align: center;
+}
+
+.agent-modal {
+    width: min(620px, calc(100vw - 32px));
+    max-height: calc(100dvh - 32px);
+    padding: 0;
+    border: 0;
+    border-radius: 8px;
+    background: #fff;
+    color: var(--text);
+    box-shadow: 0 24px 70px rgba(16, 43, 58, .28);
+    overflow: hidden;
+}
+
+.agent-modal::backdrop {
+    background: rgba(16, 43, 58, .58);
+}
+
+.agent-modal form {
+    display: flex;
+    max-height: calc(100dvh - 32px);
+    flex-direction: column;
+}
+
+.agent-modal-header {
+    flex: none;
+    gap: 14px;
+    padding: 18px 20px;
+    border-bottom: 1px solid var(--line);
+}
+
+.agent-modal-header h3 {
+    font-size: 1.16rem;
+}
+
+.agent-modal-close {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    color: var(--danger);
+    font-size: 1.4rem;
+    line-height: 1;
+}
+
+.agent-form-fields {
+    display: grid;
+    min-height: 0;
+    gap: 14px;
+    padding: 18px 20px;
+    overflow-y: auto;
+}
+
+.agent-form-fields label {
+    gap: 6px;
+}
+
+.agent-form-fields input,
+.agent-form-fields textarea {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    border: 1px solid #c9d5e4;
+    border-radius: 6px;
+    background: #fff;
+    color: var(--text);
+    font: inherit;
+}
+
+.agent-form-fields textarea {
+    padding: 10px 12px;
+    resize: vertical;
+}
+
+.agent-form-fields :is(input, textarea):focus {
+    border-color: var(--primary);
+    outline: 2px solid rgba(23, 107, 135, .2);
+    outline-offset: 1px;
+}
+
+.agent-error {
+    margin: -8px 0 0;
+    color: var(--danger);
+    font-size: .86rem;
+}
+
+.agent-modal-actions {
+    flex: none;
+    justify-content: flex-end;
+    gap: 9px;
+    padding: 14px 20px;
+    border-top: 1px solid var(--line);
+}
+
+.agent-center button:focus-visible,
+.agent-modal button:focus-visible {
+    outline: 2px solid #2563eb;
+    outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .agent-carousel-track {
+        scroll-behavior: auto;
+    }
+
+    .agent-switch-thumb {
+        transition: none;
+    }
+}
+
+@media (max-width: 720px) {
+    .agent-center-heading {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .agent-state-legend {
+        gap: 12px;
+    }
+
+    .agent-carousel-arrow {
+        display: none;
+    }
+
+    .agent-information-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .agent-modal-header,
+    .agent-form-fields,
+    .agent-modal-actions {
+        padding-right: 14px;
+        padding-left: 14px;
+    }
+}

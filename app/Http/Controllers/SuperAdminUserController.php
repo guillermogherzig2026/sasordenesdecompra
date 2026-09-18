@@ -16,13 +16,6 @@ class SuperAdminUserController extends Controller
     private const ROLES = ['superadmin', 'finance', 'buyer', 'inventory', 'services', 'administrative_assistant'];
     private const BUYER_SUBROLES = ['purchases', 'supplies', 'reimbursements'];
 
-    public function agents()
-    {
-        $this->ensureSuperAdmin();
-
-        return view('superadmin.agent-center');
-    }
-
     public function index(Request $request)
     {
         $this->ensureSuperAdmin();
