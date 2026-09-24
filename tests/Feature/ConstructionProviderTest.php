@@ -117,13 +117,14 @@ class ConstructionProviderTest extends TestCase
             ->get(route('superadmin.provider-lines.index'))
             ->assertOk()
             ->assertSee('Alta de proveedor')
-            ->assertSee('href="'.route('finance.admin.providers').'"', false)
+            ->assertSee('href="'.route('finance.admin.providers', ['create' => 1]).'"', false)
             ->assertSee('data-provider-catalog-action', false);
 
         $this->actingAs($user)
-            ->get(route('finance.admin.providers'))
+            ->get(route('finance.admin.providers', ['create' => 1]))
             ->assertOk()
-            ->assertSee('Nuevo proveedor');
+            ->assertSee('Nuevo proveedor')
+            ->assertSee('data-auto-open', false);
     }
 
     public function test_provider_catalog_is_ordered_by_category_before_business_name(): void

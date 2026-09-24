@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
 @section('body')
-    <x-app-shell title="Editar empresa">
+    <x-app-shell title="Empresas y Negocios">
         @php
             $companyAddress = old('address', $company->address);
             $warehouseRows = old('warehouses', $company->warehouseObjects());
@@ -21,7 +21,7 @@
             <div class="panel-header">
                 <div>
                     <h2>Editar empresa</h2>
-                    <p class="fine-print">Actualiza datos fiscales, logotipo y compradores autorizados.</p>
+                    <p class="fine-print">Actualiza datos fiscales, giro, almacenes y compradores autorizados.</p>
                 </div>
                 <a class="button ghost" href="{{ route('finance.admin.companies') }}">Volver</a>
             </div>
@@ -35,6 +35,13 @@
                     RFC
                     <input name="rfc" value="{{ old('rfc', $company->rfc) }}" required>
                 </label>
+                <label>
+                    Giro de negocio
+                    <input name="business_line" value="{{ old('business_line', $company->business_line) }}" maxlength="120" placeholder="Ej. Servicios empresariales">
+                </label>
+            </div>
+
+            <div class="grid-3">
                 <label>
                     Logotipo
                     <input name="logo" type="file" accept="image/*">
@@ -54,7 +61,7 @@
                 <textarea id="company-address" name="address" required>{{ $companyAddress }}</textarea>
             </label>
 
-            <div>
+            <div id="almacenes">
                 <label>Almacenes</label>
                 <p class="fine-print">Cada empresa debe conservar al menos un almacen. La direccion del almacen puede editarse de forma independiente.</p>
                 <div id="warehouses-list" data-next-index="{{ count($warehouseRows) }}" style="display:flex;flex-direction:column;gap:8px;margin:6px 0">
@@ -67,6 +74,9 @@
                         <div class="warehouse-row" style="display:grid;grid-template-columns:minmax(180px,2fr) minmax(120px,1fr) minmax(260px,3fr) auto;gap:6px;align-items:center">
                             <input name="warehouses[{{ $loop->index }}][name]" value="{{ $warehouse['name'] ?? '' }}" placeholder="Nombre del almacen" required>
                             <input name="warehouses[{{ $loop->index }}][short_name]" value="{{ $warehouse['short_name'] ?? '' }}" placeholder="Nombre corto">
+                            @if (! empty($warehouse['branch_id']))
+                                <input type="hidden" name="warehouses[{{ $loop->index }}][branch_id]" value="{{ $warehouse['branch_id'] }}">
+                            @endif
                             <input
                                 name="warehouses[{{ $loop->index }}][address]"
                                 value="{{ $warehouseAddress }}"

@@ -195,6 +195,13 @@ class SuperAdminPlazaTest extends TestCase
         $this->assertStringContainsString('data-local-marketing-campaign-carousel', $moduleScript);
         $this->assertStringContainsString('data-local-marketing-campaign-section', $moduleScript);
         $this->assertStringContainsString('${isCampaignView ? localMarketingCampaignMiniCarouselMarkup() : ""}', $moduleScript);
+        $this->assertStringContainsString('localMarketingPlaylists: []', $moduleScript);
+        $this->assertStringContainsString('localMarketingPlaylists: mergeById(seed.localMarketingPlaylists, parsed.localMarketingPlaylists)', $moduleScript);
+        $this->assertStringContainsString('data-local-marketing-playlist-new', $moduleScript);
+        $this->assertStringContainsString('Nueva lista de reproducción', $moduleScript);
+        $this->assertStringContainsString('openLocalMarketingPlaylistForm', $moduleScript);
+        $this->assertStringContainsString('data-local-marketing-playlist-edit', $moduleScript);
+        $this->assertStringContainsString('localMarketingPlaylistsMarkup(properties, property, allSelected, activeScope, scopeCopy.empty)', $moduleScript);
         $this->assertStringContainsString('localMarketingScreens: [', $moduleScript);
         $this->assertStringContainsString('localMarketingScreens: mergeById(seed.localMarketingScreens, parsed.localMarketingScreens)', $moduleScript);
         $this->assertStringContainsString('localMarketingMaintenanceTickets: []', $moduleScript);

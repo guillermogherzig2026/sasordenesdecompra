@@ -88,6 +88,8 @@ const employeeTabs = [
   "Historial",
   "Notas"
 ];
+const biometricStatuses = ["Sin registrar", "Registrado"];
+const biometricMethods = ["Huella dactilar", "Reconocimiento facial", "Ambos"];
 
 const interviewRounds = [
   "Entrevista con Recursos Humanos",
@@ -101,6 +103,8 @@ const interviewRounds = [
 
 const portalTabs = ["Inicio", "Mis datos", "Mis contratos", "Mis recibos", "Mis vacaciones", "Mis incidencias", "Mis documentos", "Solicitudes"];
 const tableState = {};
+const biometricMediaByEmployee = new Map();
+let biometricPreviewUrls = [];
 let state = loadState();
 
 if (isEmbedded) {
@@ -811,6 +815,26 @@ function badge(value) {
   return `<span class="status ${statusClass(value)}">${safe(value)}</span>`;
 }
 
+function employeeBiometricStatus(employee) {
+  return employee.biometricStatus === "Registrado" || biometricMediaByEmployee.get(employee.number)?.length
+    ? "Registrado"
+    : "Sin registrar";
+}
+
+function renderEmployeeBiometricCell(employee) {
+  const status = employeeBiometricStatus(employee);
+  const method = biometricMethods.includes(employee.biometricMethod) ? employee.biometricMethod : "";
+  const mediaCount = biometricMediaByEmployee.get(employee.number)?.length || 0;
+  return `<div class="biometric-cell">
+    <div class="biometric-cell-details">
+      <span class="status ${status === "Registrado" ? "blue" : "gray"}">${safe(status)}</span>
+      ${status === "Registrado" && method ? `<span class="small muted">${safe(method)}</span>` : ""}
+    </div>
+    ${state.ui.role === "Superadministrador" && suiteConfig.biometricMediaUrl ? `<button class="btn secondary compact biometric-media-btn" type="button" data-action="open-employee-biometric-media" data-id="${safe(employee.id)}" aria-label="${status === "Registrado" ? "Ver fotos o video de" : "Registrar fotos o video de"} ${safe(employee.fullName)}">${status === "Registrado" ? `Archivos${mediaCount ? ` (${mediaCount})` : ""}` : "Registrar"}</button>` : ""}
+    ${state.ui.role === "Superadministrador" ? `<button class="icon-btn" type="button" data-action="edit-employee-biometrics" data-id="${safe(employee.id)}" data-tooltip="Editar datos biométricos" aria-label="Editar datos biométricos de ${safe(employee.fullName)}">${icon("edit")}</button>` : ""}
+  </div>`;
+}
+
 function candidateInterviewRound(candidate) {
   const round = Number(candidate?.interviewRound);
   return Number.isInteger(round) && round >= 1 && round <= interviewRounds.length ? round : 1;
@@ -1091,6 +1115,7 @@ function render() {
       ${renderModal()}
     </div>
   `;
+  positionEmployeeBiometricModal();
   requestAnimationFrame(() => {
     renderCharts();
     setupStickyHorizontalScrollbars();
@@ -2009,7 +2034,7 @@ function renderEmployees() {
   const scopedEmployeeIds = new Set(employeeSource.map((employee) => Number(employee.id)));
   const allRows = employeeSource.map((employee) => {
     const contractStatus = displayEmployeeContractStatus(employee);
-    return { ...employee, contractStatus, _search: `${employee.number} ${employee.fullName} ${employee.rfc} ${employee.company} ${employee.department} ${employee.position} ${employee.branch} ${employee.status} ${employee.contractType} ${contractStatus}` };
+    return { ...employee, contractStatus, _search: `${employee.number} ${employee.fullName} ${employee.rfc} ${employee.company} ${employee.department} ${employee.position} ${employee.branch} ${employee.status} ${employee.contractType} ${contractStatus} ${employeeBiometricStatus(employee)} ${employee.biometricMethod || ""}` };
   });
   const rows = allRows;
   const vacationRequests = state.data.vacations.filter((vacation) => scopedEmployeeIds.has(Number(vacation.employeeId)));
@@ -2028,7 +2053,8 @@ function renderEmployees() {
     { key: "nextPay", label: "Próximo pago", render: (row) => date(row.nextPay) },
     { key: "profileAction", label: "Perfil", sortable: false, className: "text-center", tdClassName: "action-column", render: (row) => `<button class="btn secondary compact employee-view-btn" data-action="view-employee" data-id="${row.id}" data-tooltip="Ver perfil">${icon("eye", "btn-icon")}Ver</button>` },
     { key: "documentsAction", label: "Expediente", sortable: false, className: "text-center", tdClassName: "action-column", render: (row) => `<button class="btn secondary compact employee-view-btn" data-action="select-employee-route" data-id="${row.id}" data-route-target="employee-documents" data-tooltip="Ver expediente">${icon("file", "btn-icon")}Ver</button>` },
-    { key: "contractAction", label: "Contrato", sortable: false, className: "text-center", tdClassName: "action-column", render: (row) => `<button class="btn secondary compact employee-view-btn" data-action="view-signed-contract" data-id="${row.id}" data-tooltip="Ver contrato firmado">${icon("file-signature", "btn-icon")}Ver</button>` }
+    { key: "contractAction", label: "Contrato", sortable: false, className: "text-center", tdClassName: "action-column", render: (row) => `<button class="btn secondary compact employee-view-btn" data-action="view-signed-contract" data-id="${row.id}" data-tooltip="Ver contrato firmado">${icon("file-signature", "btn-icon")}Ver</button>` },
+    { key: "biometricStatus", label: "Datos biométricos", render: renderEmployeeBiometricCell, filterValue: employeeBiometricStatus, sortValue: employeeBiometricStatus }
   ];
   if (state.ui.role === "Gerente de sucursal") {
     columns.push({ key: "vacationAction", label: "Vacaciones", sortable: false, className: "text-center", tdClassName: "action-column", render: (row) => `<button class="icon-btn" data-action="manager-vacation-request" data-id="${row.id}" data-tooltip="Crear solicitud de vacaciones">${icon("calendar-days")}</button>` });
@@ -5348,9 +5374,97 @@ function renderContractProcess(contract) {
   `;
 }
 
+function formatBiometricFileSize(bytes) {
+  return bytes >= 1048576 ? `${(bytes / 1048576).toFixed(1)} MB` : `${Math.ceil(bytes / 1024)} KB`;
+}
+
 function renderModal() {
   const modal = state.ui.modal;
   if (!modal) return "";
+  if (modal.type === "employee-biometric-media") {
+    const employee = state.data.employees.find((item) => Number(item.id) === modal.id);
+    if (!employee) return "";
+    const media = biometricMediaByEmployee.get(employee.number) || [];
+    const atLimit = media.length >= 10;
+    return `
+      <div class="modal-backdrop employee-biometric-backdrop" role="dialog" aria-modal="true" aria-labelledby="employee-biometric-media-title">
+        <form id="employee-biometric-media-form" class="modal biometric-media-modal" enctype="multipart/form-data">
+          <header>
+            <div>
+              <h3 id="employee-biometric-media-title">Fotos y video</h3>
+              <p class="modal-subtitle">${safe(employee.fullName)} · ${safe(employee.number)}</p>
+            </div>
+            <button class="icon-btn" type="button" data-action="close-modal" aria-label="Cerrar">${icon("x")}</button>
+          </header>
+          <div class="modal-body">
+            <p class="small muted biometric-form-note">Los archivos se guardan cifrados y solo están disponibles para superadministradores. No se generan plantillas de reconocimiento facial.</p>
+            <input type="hidden" name="employee_number" value="${safe(employee.number)}" />
+            <label class="form-field">
+              <span>Agregar fotos o video *</span>
+              <input class="input" type="file" name="files[]" accept="image/jpeg,image/png,image/webp,video/mp4,video/webm,video/quicktime" multiple required data-biometric-files ${atLimit ? "disabled" : ""} />
+            </label>
+            <p class="small muted biometric-file-hint">JPG, PNG, WebP, MP4, WebM o MOV. Hasta 5 archivos por carga, 25 MB por archivo y 10 por empleado.</p>
+            <div class="biometric-file-preview" data-biometric-preview aria-live="polite"></div>
+            <div class="biometric-media-heading"><strong>Archivos registrados (${media.length})</strong></div>
+            ${media.length ? `<ul class="biometric-media-list">
+              ${media.map((file) => `<li>
+                <span class="biometric-media-file-name">${safe(file.name)}</span>
+                <span class="small muted">${file.type === "video" ? "Video" : "Foto"} · ${formatBiometricFileSize(file.size)}</span>
+                <a class="btn secondary compact" href="${safe(file.url)}" target="_blank" rel="noopener">Ver</a>
+                <button class="btn secondary compact" type="button" data-action="remove-employee-biometric-file" data-id="${safe(file.id)}" data-employee-id="${safe(employee.id)}">Eliminar</button>
+              </li>`).join("")}
+            </ul>` : `<p class="small muted">Aún no hay fotos o videos registrados.</p>`}
+          </div>
+          <footer>
+            <button class="btn secondary" type="button" data-action="close-modal">Cerrar</button>
+            <button class="btn" type="submit" ${atLimit ? "disabled" : ""}>${icon("upload", "btn-icon")}Agregar archivos</button>
+          </footer>
+        </form>
+      </div>
+    `;
+  }
+  if (modal.type === "employee-biometrics") {
+    const employee = state.data.employees.find((item) => Number(item.id) === modal.id);
+    if (!employee) return "";
+    const status = employeeBiometricStatus(employee);
+    const registered = status === "Registrado";
+    const method = biometricMethods.includes(employee.biometricMethod) ? employee.biometricMethod : "";
+    return `
+      <div class="modal-backdrop employee-biometric-backdrop" role="dialog" aria-modal="true" aria-labelledby="employee-biometrics-title">
+        <form id="employee-biometric-form" class="modal">
+          <header>
+            <div>
+              <h3 id="employee-biometrics-title">Datos biométricos</h3>
+              <p class="modal-subtitle">${safe(employee.fullName)} · ${safe(employee.number)}</p>
+            </div>
+            <button class="icon-btn" type="button" data-action="close-modal" aria-label="Cerrar">${icon("x")}</button>
+          </header>
+          <div class="modal-body">
+            <p class="small muted biometric-form-note">Este registro administrativo no almacena huellas, fotografías ni plantillas biométricas.</p>
+            <input type="hidden" name="employeeId" value="${safe(employee.id)}" />
+            <div class="form-grid two">
+              ${selectField("Estado del registro", "status", biometricStatuses, status, true, "data-biometric-status")}
+              <label class="form-field">
+                <span data-biometric-label="method">Método${registered ? " *" : ""}</span>
+                <select class="select" name="biometricMethod" data-biometric-detail ${registered ? "required" : "disabled"}>
+                  <option value="">Seleccionar método</option>
+                  ${biometricMethods.map((option) => `<option value="${safe(option)}" ${option === method ? "selected" : ""}>${safe(option)}</option>`).join("")}
+                </select>
+              </label>
+              <label class="form-field">
+                <span data-biometric-label="registeredAt">Fecha de registro${registered ? " *" : ""}</span>
+                <input class="input" type="date" name="registeredAt" value="${safe(registered ? employee.biometricRegisteredAt || "" : "")}" data-biometric-detail max="${today()}" ${registered ? "required" : "disabled"} />
+              </label>
+            </div>
+          </div>
+          <footer>
+            <button class="btn secondary" type="button" data-action="close-modal">Cancelar</button>
+            <button class="btn" type="submit">${icon("check", "btn-icon")}Guardar cambios</button>
+          </footer>
+        </form>
+      </div>
+    `;
+  }
   if (modal.type === "confirm") {
     return `
       <div class="modal-backdrop" role="dialog" aria-modal="true">
@@ -5614,6 +5728,166 @@ function openConfirm(title, body, confirmAction, payload = {}, tone = "") {
   render();
 }
 
+function renderEmployeeTableWithScroll() {
+  const previous = document.querySelector(".table-wrap");
+  const scrollLeft = previous?.scrollLeft || 0;
+  const scrollTop = previous?.scrollTop || 0;
+  render();
+  const current = document.querySelector(".table-wrap");
+  if (current) {
+    current.scrollLeft = scrollLeft;
+    current.scrollTop = scrollTop;
+  }
+}
+
+function positionEmployeeBiometricModal() {
+  const backdrop = document.querySelector(".employee-biometric-backdrop");
+  if (!backdrop || !isEmbedded || !window.frameElement) return;
+  const frame = window.frameElement.getBoundingClientRect();
+  const visibleTop = Math.max(0, -frame.top);
+  const visibleBottom = Math.min(frame.height, window.parent.innerHeight - frame.top);
+  const visibleHeight = Math.max(0, visibleBottom - visibleTop);
+  const modal = backdrop.querySelector(".modal");
+  if (!modal) return;
+  modal.style.maxHeight = `${Math.max(220, visibleHeight - 32)}px`;
+  const modalTop = visibleTop + Math.max(16, (visibleHeight - modal.getBoundingClientRect().height) / 2);
+  backdrop.style.setProperty("--biometric-modal-top", `${modalTop}px`);
+}
+
+function setEmployeeBiometricMedia(employeeNumber, items) {
+  biometricMediaByEmployee.set(employeeNumber, items.filter((item) => item.employeeNumber === employeeNumber));
+}
+
+async function loadEmployeeBiometricMedia() {
+  if (!suiteConfig.biometricMediaUrl) return;
+  try {
+    const response = await fetch(suiteConfig.biometricMediaUrl, {
+      credentials: "same-origin",
+      headers: { Accept: "application/json" }
+    });
+    if (!response.ok) throw new Error("No se pudieron cargar los archivos biométricos.");
+    const payload = await response.json();
+    biometricMediaByEmployee.clear();
+    for (const item of payload.items || []) {
+      if (!biometricMediaByEmployee.has(item.employeeNumber)) biometricMediaByEmployee.set(item.employeeNumber, []);
+      biometricMediaByEmployee.get(item.employeeNumber).push(item);
+    }
+    if (state.ui.route === "employees") renderEmployeeTableWithScroll();
+  } catch {
+    toast("No se pudieron cargar los archivos biométricos.", "error");
+  }
+}
+
+function clearBiometricPreview() {
+  biometricPreviewUrls.forEach((url) => URL.revokeObjectURL(url));
+  biometricPreviewUrls = [];
+}
+
+function renderBiometricPreview(input) {
+  clearBiometricPreview();
+  const preview = input.form.querySelector("[data-biometric-preview]");
+  if (!preview) return;
+  const files = Array.from(input.files || []);
+  const employeeNumber = String(new FormData(input.form).get("employee_number") || "");
+  if (files.length > 5 || files.some((file) => file.size > 25 * 1024 * 1024)
+    || files.length + (biometricMediaByEmployee.get(employeeNumber)?.length || 0) > 10) {
+    input.value = "";
+    preview.innerHTML = "";
+    toast("Selecciona hasta 5 archivos de 25 MB cada uno; el límite es 10 por empleado.", "error");
+    return;
+  }
+  preview.innerHTML = files.map((file) => {
+    const url = URL.createObjectURL(file);
+    biometricPreviewUrls.push(url);
+    const media = file.type.startsWith("image/")
+      ? `<img src="${safe(url)}" alt="Vista previa de ${safe(file.name)}" />`
+      : `<video src="${safe(url)}" controls preload="metadata" aria-label="Vista previa de ${safe(file.name)}"></video>`;
+    return `<div class="biometric-preview-item">${media}<span class="small">${safe(file.name)} · ${formatBiometricFileSize(file.size)}</span></div>`;
+  }).join("");
+}
+
+async function uploadEmployeeBiometricMedia(form) {
+  const employeeNumber = String(new FormData(form).get("employee_number") || "");
+  const employee = state.data.employees.find((item) => item.number === employeeNumber);
+  if (state.ui.role !== "Superadministrador" || state.ui.modal?.type !== "employee-biometric-media" || state.ui.modal.id !== Number(employee?.id)) return;
+  const files = Array.from(form.querySelector("[data-biometric-files]")?.files || []);
+  if (!files.length) return toast("Selecciona al menos una foto o video.", "error");
+
+  const submit = form.querySelector('[type="submit"]');
+  submit.disabled = true;
+  try {
+    const response = await fetch(suiteConfig.biometricMediaUrl, {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { Accept: "application/json", "X-CSRF-TOKEN": suiteConfig.csrfToken },
+      body: new FormData(form)
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(response.status === 413 ? "El archivo supera el límite permitido." : payload.message || "No se pudieron guardar los archivos.");
+    setEmployeeBiometricMedia(employeeNumber, payload.items || []);
+    clearBiometricPreview();
+    renderEmployeeTableWithScroll();
+    toast(files.length === 1 ? "Archivo registrado." : "Archivos registrados.");
+  } catch (error) {
+    submit.disabled = false;
+    toast(error.message || "No se pudieron guardar los archivos.", "error");
+  }
+}
+
+async function removeEmployeeBiometricMedia(mediaId, employeeId) {
+  const employee = state.data.employees.find((item) => Number(item.id) === employeeId);
+  const media = biometricMediaByEmployee.get(employee?.number)?.find((item) => Number(item.id) === mediaId);
+  if (state.ui.role !== "Superadministrador" || state.ui.modal?.type !== "employee-biometric-media" || !media) return;
+  if (!window.confirm(`¿Eliminar definitivamente "${media.name}"?`)) return;
+  try {
+    const response = await fetch(media.url, {
+      method: "DELETE",
+      credentials: "same-origin",
+      headers: { Accept: "application/json", "X-CSRF-TOKEN": suiteConfig.csrfToken }
+    });
+    if (!response.ok) throw new Error("No se pudo eliminar el archivo.");
+    setEmployeeBiometricMedia(employee.number, biometricMediaByEmployee.get(employee.number).filter((item) => Number(item.id) !== mediaId));
+    clearBiometricPreview();
+    renderEmployeeTableWithScroll();
+    toast("Archivo eliminado.");
+  } catch (error) {
+    toast(error.message, "error");
+  }
+}
+
+function saveEmployeeBiometrics(form) {
+  const id = Number(form.get("employeeId"));
+  if (state.ui.role !== "Superadministrador" || state.ui.modal?.type !== "employee-biometrics" || state.ui.modal.id !== id) return;
+  const employee = state.data.employees.find((item) => Number(item.id) === id);
+  if (!employee) return toast("No se encontró al empleado.", "error");
+
+  const status = String(form.get("status") || "");
+  const method = status === "Registrado" ? String(form.get("biometricMethod") || "") : "";
+  const registeredAt = status === "Registrado" ? String(form.get("registeredAt") || "") : "";
+  if (!biometricStatuses.includes(status) || (status === "Registrado" && !biometricMethods.includes(method))) {
+    return toast("Selecciona un estado y método válidos.", "error");
+  }
+  if (status === "Registrado") {
+    const parsed = new Date(`${registeredAt}T12:00:00`);
+    if (!isIsoDateValue(registeredAt) || Number.isNaN(parsed.valueOf()) || parsed.toISOString().slice(0, 10) !== registeredAt || registeredAt > today()) {
+      return toast("Selecciona una fecha de registro válida.", "error");
+    }
+  }
+
+  const previous = [employeeBiometricStatus(employee), employee.biometricMethod || "", employee.biometricRegisteredAt || ""].join(" · ");
+  const next = [status, method, registeredAt].join(" · ");
+  if (previous !== next) {
+    employee.biometricStatus = status;
+    employee.biometricMethod = method;
+    employee.biometricRegisteredAt = registeredAt;
+    addAudit("Actualizó datos biométricos", "Empleados", employee.number, previous, next);
+    saveState();
+  }
+  state.ui.modal = null;
+  renderEmployeeTableWithScroll();
+  toast(previous === next ? "Sin cambios en el registro biométrico." : "Registro biométrico actualizado.", "success");
+}
+
 function saveInterviewRound(form) {
   const index = Number(form.get("index"));
   const description = String(form.get("description") || "").trim();
@@ -5720,6 +5994,25 @@ document.addEventListener("input", (event) => {
 });
 
 document.addEventListener("change", (event) => {
+  const biometricFiles = event.target.closest("[data-biometric-files]");
+  if (biometricFiles) {
+    renderBiometricPreview(biometricFiles);
+    return;
+  }
+
+  const biometricStatus = event.target.closest("[data-biometric-status]");
+  if (biometricStatus) {
+    const registered = biometricStatus.value === "Registrado";
+    biometricStatus.form.querySelectorAll("[data-biometric-detail]").forEach((control) => {
+      control.disabled = !registered;
+      control.required = registered;
+      if (!registered) control.value = "";
+    });
+    biometricStatus.form.querySelector('[data-biometric-label="method"]').textContent = `Método${registered ? " *" : ""}`;
+    biometricStatus.form.querySelector('[data-biometric-label="registeredAt"]').textContent = `Fecha de registro${registered ? " *" : ""}`;
+    return;
+  }
+
   const selectAllExcelFilter = event.target.closest("[data-excel-filter-select-all]");
   if (selectAllExcelFilter) {
     const panel = selectAllExcelFilter.closest(".excel-filter-panel");
@@ -5837,6 +6130,16 @@ document.addEventListener("submit", (event) => {
   if (event.target.id === "employee-form") {
     event.preventDefault();
     createEmployee(new FormData(event.target));
+  }
+
+  if (event.target.id === "employee-biometric-form") {
+    event.preventDefault();
+    saveEmployeeBiometrics(new FormData(event.target));
+  }
+
+  if (event.target.id === "employee-biometric-media-form") {
+    event.preventDefault();
+    uploadEmployeeBiometricMedia(event.target);
   }
 
   if (event.target.id === "payroll-period-form") {
@@ -6098,6 +6401,30 @@ function handleAction(action, target) {
       state.ui.selectedEmployeeId = Number(data.id);
       state.ui.selectedPayrollEmployeeId = Number(data.id);
       navigate("employee-profile");
+      break;
+    case "edit-employee-biometrics": {
+      if (state.ui.role !== "Superadministrador") break;
+      const id = Number(data.id);
+      if (!state.data.employees.some((employee) => Number(employee.id) === id)) {
+        toast("No se encontró al empleado.", "error");
+        break;
+      }
+      state.ui.modal = { type: "employee-biometrics", id };
+      renderEmployeeTableWithScroll();
+      document.querySelector("[data-biometric-status]")?.focus();
+      break;
+    }
+    case "open-employee-biometric-media": {
+      if (state.ui.role !== "Superadministrador" || !suiteConfig.biometricMediaUrl) break;
+      const id = Number(data.id);
+      if (!state.data.employees.some((employee) => Number(employee.id) === id)) break;
+      state.ui.modal = { type: "employee-biometric-media", id };
+      renderEmployeeTableWithScroll();
+      document.querySelector("[data-biometric-files]")?.focus();
+      break;
+    }
+    case "remove-employee-biometric-file":
+      removeEmployeeBiometricMedia(Number(data.id), Number(data.employeeId));
       break;
     case "select-employee-route":
       state.ui.selectedEmployeeId = Number(data.id);
@@ -6383,10 +6710,19 @@ function handleAction(action, target) {
     case "confirm-termination":
       confirmTermination(data.payload || target.dataset.payload);
       break;
-    case "close-modal":
+    case "close-modal": {
+      const biometricEmployeeId = ["employee-biometrics", "employee-biometric-media"].includes(state.ui.modal?.type) ? state.ui.modal.id : null;
+      const wasMediaModal = state.ui.modal?.type === "employee-biometric-media";
       state.ui.modal = null;
-      render();
+      if (biometricEmployeeId !== null) {
+        if (wasMediaModal) clearBiometricPreview();
+        renderEmployeeTableWithScroll();
+        document.querySelector(`[data-action="${wasMediaModal ? "open-employee-biometric-media" : "edit-employee-biometrics"}"][data-id="${biometricEmployeeId}"]`)?.focus();
+      } else {
+        render();
+      }
       break;
+    }
     case "portal-sign-contract":
       if (state.data.contracts.find((c) => c.employeeId === state.ui.selectedEmployeeId)) {
         const contract = state.data.contracts.find((c) => c.employeeId === state.ui.selectedEmployeeId);
@@ -8205,4 +8541,10 @@ function roundedRect(ctx, x, y, width, height, radius) {
   ctx.fill();
 }
 
+if (isEmbedded && window.frameElement) {
+  window.parent.addEventListener("scroll", positionEmployeeBiometricModal, { passive: true });
+  window.parent.addEventListener("resize", positionEmployeeBiometricModal, { passive: true });
+}
+
 render();
+if (state.ui.route === "employees") loadEmployeeBiometricMedia();

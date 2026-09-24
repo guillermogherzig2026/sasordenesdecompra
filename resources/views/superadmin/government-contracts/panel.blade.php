@@ -1,5 +1,10 @@
 <!doctype html>
-<html class="government-contracts-parent-navigation" lang="es" data-selected-module="{{ $selectedModule }}">
+<html
+    class="government-contracts-parent-navigation"
+    lang="es"
+    data-selected-module="{{ $selectedModule }}"
+    data-selected-section="{{ $selectedSection }}"
+>
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -7,6 +12,7 @@
         <link rel="icon" href="{{ asset('modules/contratos-gobierno/favicon.svg') }}">
         <link rel="stylesheet" href="{{ asset('modules/contratos-gobierno/app.css') }}?v={{ filemtime(public_path('modules/contratos-gobierno/app.css')) }}">
         <link rel="stylesheet" href="{{ asset('modules/contratos-gobierno/contract-carousel.css') }}?v={{ filemtime(public_path('modules/contratos-gobierno/contract-carousel.css')) }}">
+        <link rel="stylesheet" href="{{ asset('modules/contratos-gobierno/remission-approval.css') }}?v={{ filemtime(public_path('modules/contratos-gobierno/remission-approval.css')) }}">
         <style>
             .government-contracts-parent-navigation .app-shell {
                 grid-template-columns: minmax(0, 1fr) !important;
@@ -58,5 +64,6 @@
         </script>
         <script type="module" src="{{ asset('modules/contratos-gobierno/app.js') }}?v={{ filemtime(public_path('modules/contratos-gobierno/app.js')) }}"></script>
         <script src="{{ asset('modules/contratos-gobierno/contract-carousel.js') }}?v={{ filemtime(public_path('modules/contratos-gobierno/contract-carousel.js')) }}" defer></script>
+        <script src="{{ asset('modules/contratos-gobierno/remission-approval.js') }}?v={{ filemtime(public_path('modules/contratos-gobierno/remission-approval.js')) }}" defer></script>
     </body>
 </html>

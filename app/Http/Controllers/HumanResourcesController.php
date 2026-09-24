@@ -19,6 +19,7 @@ class HumanResourcesController extends Controller
         'reportes' => ['title' => 'Reportes', 'route' => 'reports'],
         'configuracion' => ['title' => 'Configuración', 'route' => 'config'],
         'gerentes' => ['title' => 'Gerentes', 'route' => 'managers'],
+        'capacitacion' => ['title' => 'Personal y capacitación', 'route' => 'training'],
     ];
 
     public function show(?string $section = null): View
@@ -37,7 +38,7 @@ class HumanResourcesController extends Controller
         $this->ensureSuperAdmin();
         [, $screen] = $this->resolveSection($section);
 
-        return view('human-resources.embed', [
+        return view($screen['route'] === 'training' ? 'human-resources.training' : 'human-resources.embed', [
             'appRoute' => $screen['route'],
             'title' => $screen['title'],
             'registeredCompanies' => Company::query()

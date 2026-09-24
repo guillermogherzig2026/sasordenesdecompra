@@ -45,10 +45,15 @@ class SecurityAnalyticsTest extends TestCase
             ->assertSee('Distribución por tipo de cámara')
             ->assertSee('Top 5 sucursales por entradas')
             ->assertSee('Sin datos para la fecha seleccionada')
+            ->assertSee('data-security-personnel-analytics', false)
+            ->assertSee('data-branch-id="'.$branch->id.'"', false)
+            ->assertSee('Personal detectado')
             ->assertSee('data-security-analytics-results', false)
             ->assertSee('Centro Comercial Norte')
             ->assertSee('Sucursal Monterrey')
-            ->assertSee('20 parámetros');
+            ->assertSee('name="company_id" value="'.$company->id.'"', false)
+            ->assertDontSee('security-analytics-selected-company', false)
+            ->assertSee('21 parámetros');
 
         foreach (SecurityAnalyticsCatalog::parameters() as $parameter) {
             $response->assertSee($parameter['name']);

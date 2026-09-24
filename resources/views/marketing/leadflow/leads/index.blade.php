@@ -1,6 +1,9 @@
 @extends('marketing.leadflow.layout', ['title' => 'Leads | LeadFlow'])
 
 @section('content')
+@include('marketing.leadflow.partials.company-selection')
+@include('marketing.leadflow.partials.campaign-selection', ['selectionRoute' => 'marketing.leads.index'])
+
 <div class="page-head">
     <div>
         <h1>Leads</h1>
@@ -8,10 +11,6 @@
     </div>
     <a class="btn primary" href="{{ route('marketing.leads.create') }}">+ Nuevo lead</a>
 </div>
-
-@include('marketing.leadflow.partials.workspace-selection', [
-    'selectionRoute' => 'marketing.leads.index',
-])
 
 <div class="grid cols-4" style="margin-bottom:16px">
     <div class="panel metric"><span class="metric-icon">♙</span><div><span>Nuevos leads</span><strong>{{ number_format($stats['new']) }}</strong><span class="trend">↑ 18.6%</span></div></div>

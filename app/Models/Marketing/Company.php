@@ -19,6 +19,7 @@ class Company extends Model
         'logo_initials',
         'brand_color',
         'active',
+        'is_favorite',
         'status',
         'api_token',
         'settings',
@@ -26,6 +27,7 @@ class Company extends Model
 
     protected $casts = [
         'active' => 'boolean',
+        'is_favorite' => 'boolean',
         'settings' => 'array',
     ];
 

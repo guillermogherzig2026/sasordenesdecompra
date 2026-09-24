@@ -1,9 +1,8 @@
 @extends('marketing.leadflow.layout', ['title' => 'Campañas | LeadFlow'])
 
 @section('content')
-@include('marketing.leadflow.partials.workspace-selection', [
-    'selectionRoute' => 'marketing.campaigns.index',
-])
+@include('marketing.leadflow.partials.company-selection')
+@include('marketing.leadflow.partials.campaign-selection', ['selectionRoute' => 'marketing.campaigns.index'])
 
 <div class="grid cols-4" style="margin-bottom:16px">
     <div class="panel metric"><span class="metric-icon">$</span><div><span>Inversión</span><strong>${{ number_format($summary['spent'], 2) }}</strong><span class="trend">↑ 18.6%</span></div></div>

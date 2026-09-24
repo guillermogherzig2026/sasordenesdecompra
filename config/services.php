@@ -35,4 +35,11 @@ return [
         ],
     ],
 
+    'camera_recorder' => [
+        'api_url' => env('CAMERA_RECORDER_API_URL', 'http://127.0.0.1:9997'),
+        'hls_url' => env('CAMERA_RECORDER_HLS_URL', 'http://127.0.0.1:8888'),
+        'config_path' => env('CAMERA_RECORDER_CONFIG_PATH', storage_path('app/camera-recorder/mediamtx.local.yml')),
+        'ready_attempts' => (int) env('CAMERA_RECORDER_READY_ATTEMPTS', 20),
+    ],
+
 ];

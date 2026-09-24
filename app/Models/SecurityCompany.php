@@ -19,7 +19,13 @@ class SecurityCompany extends Model
         'contact_phone',
         'contact_email',
         'finance_company_id',
+        'is_favorite',
     ];
+
+    protected function casts(): array
+    {
+        return ['is_favorite' => 'boolean'];
+    }
 
     public function financeCompany(): BelongsTo
     {
@@ -34,6 +40,11 @@ class SecurityCompany extends Model
     public function cameras(): HasManyThrough
     {
         return $this->hasManyThrough(SecurityCamera::class, SecurityBranch::class);
+    }
+
+    public function incidents(): HasMany
+    {
+        return $this->hasMany(SecurityIncident::class);
     }
 
     public function initials(): string

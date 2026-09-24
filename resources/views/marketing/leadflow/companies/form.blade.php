@@ -36,6 +36,10 @@
             <input type="checkbox" name="active" value="1" {{ old('active', $company->active ?? true) ? 'checked' : '' }}>
             Empresa activa
         </label>
+        <label class="field" style="display:flex;align-items:center;gap:10px;margin-top:28px">
+            <input type="checkbox" name="is_favorite" value="1" {{ old('is_favorite', $company->is_favorite ?? false) ? 'checked' : '' }}>
+            Favorita
+        </label>
     </div>
     <div class="toolbar" style="justify-content:flex-end">
         <a class="btn" href="{{ route('marketing.companies.index') }}">Cancelar</a>

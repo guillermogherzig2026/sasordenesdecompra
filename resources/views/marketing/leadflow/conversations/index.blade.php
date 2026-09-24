@@ -1,9 +1,8 @@
 @extends('marketing.leadflow.layout', ['title' => 'Conversaciones | LeadFlow'])
 
 @section('content')
-@include('marketing.leadflow.partials.workspace-selection', [
-    'selectionRoute' => 'marketing.conversations.index',
-])
+@include('marketing.leadflow.partials.company-selection')
+@include('marketing.leadflow.partials.campaign-selection', ['selectionRoute' => 'marketing.conversations.index'])
 
 <div class="toolbar" style="justify-content:flex-end">
     <a class="btn" href="{{ route('marketing.campaigns.index') }}">Ver detalles de campaña</a>

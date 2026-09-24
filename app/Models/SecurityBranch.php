@@ -18,10 +18,12 @@ class SecurityBranch extends Model
         'state',
         'city',
         'postal_code',
+        'contact_name',
         'phone',
         'email',
         'timezone',
         'status',
+        'is_primary',
         'analytics_enabled',
         'alerts_enabled',
     ];
@@ -31,6 +33,7 @@ class SecurityBranch extends Model
         return [
             'analytics_enabled' => 'boolean',
             'alerts_enabled' => 'boolean',
+            'is_primary' => 'boolean',
         ];
     }
 

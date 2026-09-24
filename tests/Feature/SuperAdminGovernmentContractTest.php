@@ -41,9 +41,12 @@ class SuperAdminGovernmentContractTest extends TestCase
         $panelResponse->assertSee('id="root"', false);
         $panelResponse->assertSee('government-contracts-parent-navigation');
         $panelResponse->assertSee('data-selected-module="Contratos"', false);
+        $panelResponse->assertSee('data-selected-section="contracts"', false);
         $panelResponse->assertSee('modules/contratos-gobierno/app.js', false);
         $panelResponse->assertSee('modules/contratos-gobierno/contract-carousel.css', false);
         $panelResponse->assertSee('modules/contratos-gobierno/contract-carousel.js', false);
+        $panelResponse->assertSee('modules/contratos-gobierno/remission-approval.css', false);
+        $panelResponse->assertSee('modules/contratos-gobierno/remission-approval.js', false);
     }
 
     public function test_government_contract_submenu_opens_the_selected_embedded_module(): void
@@ -67,7 +70,8 @@ class SuperAdminGovernmentContractTest extends TestCase
         $this->actingAs($user)
             ->get(route('superadmin.government-contracts.panel', ['section' => $section]))
             ->assertOk()
-            ->assertSee('data-selected-module="OS Facturacion"', false);
+            ->assertSee('data-selected-module="OS Facturacion"', false)
+            ->assertSee('data-selected-section="supply-billing"', false);
     }
 
     public function test_user_can_only_open_the_authorized_government_contract_submenu(): void

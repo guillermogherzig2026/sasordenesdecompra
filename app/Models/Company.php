@@ -3,11 +3,13 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Company extends Model
 {
     protected $fillable = [
         'name',
+        'business_line',
         'rfc',
         'address',
         'purchase_order_notes',
@@ -25,6 +27,11 @@ class Company extends Model
     public function purchaseOrders()
     {
         return $this->hasMany(PurchaseOrder::class);
+    }
+
+    public function securityCompanies(): HasMany
+    {
+        return $this->hasMany(SecurityCompany::class, 'finance_company_id');
     }
 
     public function supplyOrders()
@@ -64,6 +71,7 @@ class Company extends Model
                     'name' => trim($warehouse['name'] ?? ''),
                     'short_name' => trim($warehouse['short_name'] ?? ''),
                     'address' => trim($warehouse['address'] ?? '') ?: trim((string) $this->address),
+                    ...(! empty($warehouse['branch_id']) ? ['branch_id' => (int) $warehouse['branch_id']] : []),
                 ]
                 : [
                     'name' => trim((string) $warehouse),

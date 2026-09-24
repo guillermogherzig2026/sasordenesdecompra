@@ -11,7 +11,7 @@
                 <div class="provider-catalog-summary-actions">
                     <a
                         class="button primary small"
-                        href="{{ route('finance.admin.providers') }}"
+                        href="{{ route('finance.admin.providers', ['create' => 1]) }}"
                         data-provider-catalog-action
                     >Alta de proveedor</a>
                     <span class="button ghost provider-catalog-toggle" aria-hidden="true"></span>

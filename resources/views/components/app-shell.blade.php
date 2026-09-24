@@ -194,12 +194,11 @@
             ['label' => 'OS Historial', 'url' => route('finance.supply-orders.history'), 'active' => request()->routeIs('finance.supply-orders.history'), 'menu_box' => 'os', 'menu_box_end' => true],
             ['label' => 'OR Vigentes', 'url' => route('finance.reimbursement-orders.active'), 'active' => request()->routeIs('finance.reimbursement-orders.active'), 'badge_count' => $pendingReimbursementBadgeCount, 'menu_box' => 'or', 'menu_box_start' => true, 'menu_box_title' => 'Ordenes de reembolso'],
             ['label' => 'OR Historial', 'url' => route('finance.reimbursement-orders.history'), 'active' => request()->routeIs('finance.reimbursement-orders.history'), 'menu_box' => 'or', 'menu_box_end' => true],
-            ['label' => 'Centro de agentes', 'url' => route('finance.agents.index'), 'active' => request()->routeIs('finance.agents.*')],
+            ['label' => 'Proveedores', 'url' => route('finance.admin.providers'), 'active' => request()->routeIs('finance.admin.providers*')],
+            ['label' => 'Empresas y Negocios', 'url' => route('finance.admin.companies'), 'active' => request()->routeIs('finance.admin.companies*')],
+            ['label' => 'Servicios', 'url' => route('services.catalog'), 'active' => request()->routeIs('services.catalog', 'services.create', 'services.edit', 'services.update')],
             ['label' => 'Autorizaciones', 'url' => route('finance.admin.users'), 'active' => request()->routeIs('finance.admin.users')],
-            ['label' => 'Alta Proveedores', 'url' => route('finance.admin.providers'), 'active' => request()->routeIs('finance.admin.providers')],
-            ['label' => 'Alta Empresas', 'url' => route('finance.admin.companies'), 'active' => request()->routeIs('finance.admin.companies')],
-            ['label' => 'Alta Servicio', 'url' => route('services.create'), 'active' => request()->routeIs('services.create')],
-            ['label' => 'Catalogo Servicios', 'url' => route('services.catalog'), 'active' => request()->routeIs('services.catalog') || request()->routeIs('services.edit') || request()->routeIs('services.update')],
+            ['label' => 'Centro de agentes', 'url' => route('finance.agents.index'), 'active' => request()->routeIs('finance.agents.*')],
         ],
         'Compras y Suministros' => array_merge(
             $purchaseNavItems,
@@ -215,8 +214,7 @@
             ['label' => 'Almacenes', 'url' => route('inventory.warehouses.index'), 'active' => request()->routeIs('inventory.warehouses.*')],
         ],
         'Servicios' => [
-            ['label' => 'Alta Servicio', 'url' => route('services.create'), 'active' => request()->routeIs('services.create')],
-            ['label' => 'Catalogo Servicios', 'url' => route('services.catalog'), 'active' => request()->routeIs('services.catalog')],
+            ['label' => 'Servicios', 'url' => route('services.catalog'), 'active' => request()->routeIs('services.catalog', 'services.create', 'services.edit', 'services.update')],
             ['label' => 'Vista por Mes', 'url' => route('services.months'), 'active' => request()->routeIs('services.months') || request()->routeIs('services.receipt')],
             ['label' => 'Historial de Servicios', 'url' => route('services.history'), 'active' => request()->routeIs('services.history')],
         ],
@@ -231,6 +229,7 @@
             ['label' => 'Reportes', 'url' => route('human-resources.show', 'reportes'), 'active' => request()->routeIs('human-resources.show') && request()->route('section') === 'reportes'],
             ['label' => 'Configuración', 'url' => route('human-resources.show', 'configuracion'), 'active' => request()->routeIs('human-resources.show') && request()->route('section') === 'configuracion'],
             ['label' => 'Gerentes y Sucursales', 'url' => route('human-resources.show', 'gerentes'), 'active' => request()->routeIs('human-resources.show') && request()->route('section') === 'gerentes'],
+            ['label' => 'Personal y capacitación', 'url' => route('human-resources.show', 'capacitacion'), 'active' => request()->routeIs('human-resources.show') && request()->route('section') === 'capacitacion'],
         ],
         'Administracion de obra' => [
             ['label' => 'Panel general', 'url' => route('construction.dashboard'), 'active' => request()->routeIs('construction.dashboard'), 'menu_box' => 'construction-obras', 'menu_box_start' => true, 'menu_box_title' => 'Obras'],
@@ -252,13 +251,13 @@
         'Contratos Gobierno' => $governmentContractNavItems,
         'Marketing' => $marketingNavItems,
         'Seguridad y Vigilancia' => [
-            ['label' => 'Empresas', 'url' => route('security.index'), 'active' => request()->routeIs('security.index') && in_array(request()->query('section'), [null, '', 'companies'], true)],
-            ['label' => 'Sucursales', 'url' => route('security.index', ['section' => 'branches']), 'active' => request()->routeIs('security.index') && request()->query('section') === 'branches'],
-            ['label' => 'Analíticos', 'url' => route('security.index', ['section' => 'analytics']), 'active' => request()->routeIs('security.index') && request()->query('section') === 'analytics'],
-            ['label' => 'Alertas', 'url' => route('security.index', ['section' => 'alerts']), 'active' => request()->routeIs('security.index') && request()->query('section') === 'alerts'],
+            ['label' => 'Empresas', 'url' => route('security.index'), 'active' => request()->routeIs('security.index') && in_array(request()->query('section'), [null, '', 'companies'], true), 'menu_box' => 'security-primary', 'menu_box_start' => true],
+            ['label' => 'Sucursales', 'url' => route('security.index', ['section' => 'branches']), 'active' => request()->routeIs('security.index') && request()->query('section') === 'branches', 'menu_box' => 'security-primary'],
+            ['label' => 'Analíticos', 'url' => route('security.index', ['section' => 'analytics']), 'active' => request()->routeIs('security.index') && request()->query('section') === 'analytics', 'menu_box' => 'security-primary'],
+            ['label' => 'Alertas', 'url' => route('security.index', ['section' => 'alerts']), 'active' => request()->routeIs('security.index') && request()->query('section') === 'alerts', 'menu_box' => 'security-primary'],
+            ['label' => 'Reportes', 'url' => route('security.index', ['section' => 'reports']), 'active' => request()->routeIs('security.index') && request()->query('section') === 'reports', 'menu_box' => 'security-primary'],
+            ['label' => 'Cámaras', 'url' => route('security.index', ['section' => 'cameras']), 'active' => request()->routeIs('security.index') && request()->query('section') === 'cameras', 'menu_box' => 'security-primary', 'menu_box_end' => true],
             ['label' => 'Usuarios', 'url' => route('security.index', ['section' => 'users']), 'active' => request()->routeIs('security.index') && request()->query('section') === 'users'],
-            ['label' => 'Reportes', 'url' => route('security.index', ['section' => 'reports']), 'active' => request()->routeIs('security.index') && request()->query('section') === 'reports'],
-            ['label' => 'Cámaras', 'url' => route('security.index', ['section' => 'cameras']), 'active' => request()->routeIs('security.index') && request()->query('section') === 'cameras'],
             ['label' => 'Configuración', 'url' => route('security.index', ['section' => 'configuration']), 'active' => request()->routeIs('security.index') && request()->query('section') === 'configuration'],
         ],
     ];
@@ -276,10 +275,9 @@
             'OR Vigentes' => 'finance.reimbursements.active',
             'OR Historial' => 'finance.reimbursements.history',
             'Autorizaciones' => 'finance.authorizations',
-            'Alta Proveedores' => 'finance.providers',
-            'Alta Empresas' => 'finance.companies',
-            'Alta Servicio' => 'finance.services.create',
-            'Catalogo Servicios' => 'finance.services.catalog',
+            'Proveedores' => 'finance.providers',
+            'Empresas y Negocios' => 'finance.companies',
+            'Servicios' => 'finance.services.catalog',
         ],
         'Compras y Suministros' => [
             'Nueva OC' => 'procurement.orders.create',
@@ -303,8 +301,7 @@
             'Almacenes' => 'inventory.warehouses',
         ],
         'Servicios' => [
-            'Alta Servicio' => 'services.create',
-            'Catalogo Servicios' => 'services.catalog',
+            'Servicios' => 'services.catalog',
             'Vista por Mes' => 'services.months',
             'Historial de Servicios' => 'services.history',
         ],
@@ -319,6 +316,7 @@
             'Reportes' => 'human_resources.reports',
             'Configuración' => 'human_resources.configuration',
             'Gerentes y Sucursales' => 'human_resources.managers_branches',
+            'Personal y capacitación' => 'human_resources.training',
         ],
         'Administracion de obra' => [
             'Panel general' => 'construction.dashboard',
@@ -384,9 +382,12 @@
             ->all();
     $suppressGlobalMessages = request()->routeIs('security.index')
         && request()->query('section') === 'branches';
+    $isSecurityFavoriteDashboard = request()->routeIs('security.index')
+        && request()->query('section', 'companies') === 'companies';
+    $isMarketingWorkspace = request()->routeIs('marketing.index', 'marketing.companies.index', 'marketing.campaigns.index', 'marketing.leads.index', 'marketing.conversations.index');
 @endphp
 
-<div class="app-shell">
+<div class="app-shell {{ $isSecurityFavoriteDashboard ? 'security-favorite-shell' : '' }} {{ $isMarketingWorkspace ? 'marketing-workspace-shell' : '' }}">
     <aside class="sidebar">
         <div class="sidebar-brand">
             <div class="brand-mark">OC</div>
@@ -438,6 +439,11 @@
 
     <main class="content-shell">
         <header class="topbar">
+            @if ($isSecurityFavoriteDashboard)
+                <button class="security-mobile-menu-button" type="button" aria-label="Abrir menú" aria-expanded="false" data-security-mobile-menu>&#9776;</button>
+            @elseif ($isMarketingWorkspace)
+                <button class="marketing-mobile-menu-button" type="button" aria-label="Abrir menú" aria-expanded="false" data-marketing-mobile-menu>&#9776;</button>
+            @endif
             <div>
                 <p class="eyebrow">{{ auth()->user()->role === 'buyer' ? auth()->user()->buyerSubroleLabel() : ($roleLabels[auth()->user()->role] ?? 'Usuario') }}</p>
                 <h1>{{ $title }}</h1>

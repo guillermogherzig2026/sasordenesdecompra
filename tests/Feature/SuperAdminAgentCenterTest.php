@@ -48,8 +48,11 @@ class SuperAdminAgentCenterTest extends TestCase
             ->assertSee('href="'.$financeAgentCenterUrl.'"', false)
             ->assertSeeInOrder([
                 'OR Historial',
-                'Centro de agentes',
+                'Proveedores',
+                'Empresas y Negocios',
+                'Servicios',
                 'Autorizaciones',
+                'Centro de agentes',
             ]);
     }
 

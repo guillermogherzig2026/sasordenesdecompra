@@ -101,6 +101,78 @@
     display: none !important;
 }
 
+.supply-contract-carousel-section {
+    min-width: 0;
+    display: grid;
+    grid-template-columns: 42px minmax(0, 1fr) 42px;
+    align-items: center;
+    gap: 10px;
+}
+
+.supply-contract-carousel-section > .section-heading {
+    grid-column: 1 / -1;
+}
+
+.supply-contract-carousel-track {
+    min-width: 0;
+    grid-column: 2;
+    grid-row: 2;
+    grid-template-columns: none !important;
+    grid-auto-flow: column;
+    grid-auto-columns: calc((100% - 20px) / 3);
+    align-items: stretch;
+    gap: 10px;
+    padding: 2px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-inline: contain;
+    scroll-behavior: smooth;
+    scroll-snap-type: inline proximity;
+    scrollbar-width: thin;
+}
+
+.supply-contract-carousel-track > .contract-card {
+    width: 100%;
+    height: 100%;
+    scroll-snap-align: start;
+}
+
+.supply-contract-carousel-track > .contract-selector-card-filtered {
+    display: none !important;
+}
+
+.supply-contract-carousel-arrow {
+    width: 42px;
+    height: 42px;
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    background: var(--surface);
+    color: var(--text);
+    box-shadow: 0 8px 18px #142c4014;
+    font-size: 20px;
+    font-weight: 900;
+    line-height: 1;
+}
+
+.supply-contract-carousel-previous {
+    grid-column: 1;
+    grid-row: 2;
+}
+
+.supply-contract-carousel-next {
+    grid-column: 3;
+    grid-row: 2;
+}
+
+.supply-contract-carousel-arrow:hover:not(:disabled) {
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+.supply-contract-carousel-arrow:disabled {
+    opacity: 0.35;
+}
+
 @media (width <= 960px) {
     .contract-carousel-shell {
         grid-template-columns: 38px minmax(0, 1fr) 38px;
@@ -112,6 +184,20 @@
     }
 
     .contract-carousel-arrow {
+        width: 38px;
+        height: 38px;
+    }
+
+    .supply-contract-carousel-section {
+        grid-template-columns: 38px minmax(0, 1fr) 38px;
+        gap: 7px;
+    }
+
+    .supply-contract-carousel-track {
+        grid-auto-columns: minmax(250px, 82vw);
+    }
+
+    .supply-contract-carousel-arrow {
         width: 38px;
         height: 38px;
     }

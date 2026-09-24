@@ -27,6 +27,7 @@ class SecurityAnalyticsCatalog
             ['number' => 18, 'name' => 'Detección de aglomeraciones', 'description' => 'Identifica concentraciones anormalmente altas de personas.'],
             ['number' => 19, 'name' => 'Zona restringida / intrusión', 'description' => 'Detecta cuando una persona entra a un área definida como restringida.'],
             ['number' => 20, 'name' => 'Permanencia inusual', 'description' => 'Detecta personas que permanecen más tiempo del establecido en determinada zona.'],
+            ['number' => 21, 'name' => 'Personal detectado', 'description' => 'Personal registrado en Recursos Humanos identificado en cada sucursal.'],
         ];
     }
 }

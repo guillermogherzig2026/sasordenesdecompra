@@ -22,7 +22,9 @@
     @endphp
 
     <x-app-shell title="Seguridad y Vigilancia">
-        @if ($securitySectionKey !== 'companies')
+        @if (in_array($securitySectionKey, ['branches', 'analytics', 'alerts', 'reports', 'cameras'], true))
+            @include('security.partials.favorite-dashboard')
+        @elseif ($securitySectionKey !== 'companies')
             @include('security.partials.company-selector')
         @endif
 
@@ -41,84 +43,11 @@
                 ];
             @endphp
 
-            <section class="security-companies-dashboard" data-security-carousel>
-                <div class="security-carousel-shell">
-                    <button class="security-carousel-nav" type="button" data-security-carousel-prev aria-label="Ver registros anteriores">&lsaquo;</button>
+            <section class="security-companies-dashboard">
+                @include('security.partials.favorite-dashboard')
 
-                    <div class="security-carousel-track" data-security-carousel-track>
-                        <a
-                            class="security-company-card security-company-card-all {{ $selectedSecurityCompany ? '' : 'is-active' }}"
-                            href="{{ route('security.index', ['from_date' => $companyDashboardDateFrom, 'to_date' => $companyDashboardDateTo, 'compare' => $companyDashboardComparison]) }}"
-                            data-security-carousel-item
-                            @if (!$selectedSecurityCompany) aria-current="true" @endif
-                        >
-                            <span class="security-company-avatar" aria-hidden="true">&#9638;</span>
-                            <span class="security-company-card-copy">
-                                <strong>Todas</strong>
-                                <small>Ver todas las empresas</small>
-                            </span>
-                        </a>
-
-                        @foreach ($securityCompanies as $securityCompany)
-                            <a
-                                class="security-company-card is-tone-{{ ($loop->index % 5) + 1 }} {{ $selectedSecurityCompany?->is($securityCompany) ? 'is-active' : '' }}"
-                                href="{{ route('security.index', ['company' => $securityCompany->id, 'from_date' => $companyDashboardDateFrom, 'to_date' => $companyDashboardDateTo, 'compare' => $companyDashboardComparison]) }}"
-                                data-security-carousel-item
-                                @if ($selectedSecurityCompany?->is($securityCompany)) aria-current="true" @endif
-                            >
-                                <span class="security-company-avatar" aria-hidden="true">{{ $securityCompany->initials() }}</span>
-                                <span class="security-company-card-copy">
-                                    <strong>{{ $securityCompany->name }}</strong>
-                                    <small>{{ $securityCompany->branches_count }} {{ $securityCompany->branches_count === 1 ? 'sucursal' : 'sucursales' }}</small>
-                                </span>
-                            </a>
-                        @endforeach
-
-                        <button
-                            class="security-company-card security-company-card-new"
-                            type="button"
-                            data-security-carousel-item
-                            data-security-company-open
-                        >
-                            <span class="security-company-avatar" aria-hidden="true">+</span>
-                            <span class="security-company-card-copy">
-                                <strong>Nueva empresa</strong>
-                                <small>Alta de Vigilancia</small>
-                            </span>
-                        </button>
-                    </div>
-
-                    <button class="security-carousel-nav" type="button" data-security-carousel-next aria-label="Ver registros siguientes">&rsaquo;</button>
-                </div>
-
-                <form class="security-company-dashboard-filters" method="GET" action="{{ route('security.index') }}">
-                    @if ($selectedSecurityCompany)
-                        <input type="hidden" name="company" value="{{ $selectedSecurityCompany->id }}">
-                    @endif
-                    <fieldset>
-                        <legend>Periodo de consulta</legend>
-                        <div class="security-company-date-range">
-                            <label>
-                                <span>Desde</span>
-                                <input type="date" name="from_date" value="{{ $companyDashboardDateFrom }}">
-                            </label>
-                            <span aria-hidden="true">a</span>
-                            <label>
-                                <span>Hasta</span>
-                                <input type="date" name="to_date" value="{{ $companyDashboardDateTo }}">
-                            </label>
-                        </div>
-                    </fieldset>
-                    <label>
-                        Comparar con
-                        <select name="compare">
-                            @foreach ($comparisonLabels as $value => $label)
-                                <option value="{{ $value }}" @selected($companyDashboardComparison === $value)>{{ $label }}</option>
-                            @endforeach
-                        </select>
-                    </label>
-                    <button class="button ghost security-company-refresh" type="submit">Actualizar datos</button>
-                </form>
+                <details class="security-legacy-overview">
+                    <summary>Indicadores del catálogo</summary>
 
                 <div class="security-company-metrics" aria-label="Indicadores generales">
                     <article class="security-company-metric-card">
@@ -143,8 +72,8 @@
                     </article>
                     <article class="security-company-metric-card">
                         <span>Alertas activas</span>
-                        <div><strong>0</strong><i class="is-red" aria-hidden="true">A</i></div>
-                        <small>Sin alertas registradas</small>
+                        <div><strong>{{ $dashboardIncidents->where('status', 'pending')->count() }}</strong><i class="is-red" aria-hidden="true">A</i></div>
+                        <small>Incidencias pendientes</small>
                     </article>
                 </div>
 
@@ -236,7 +165,7 @@
                         <span>{{ $dashboardScopeLabel }}</span>
                     </header>
                     <div class="table-scroll security-company-summary-scroll">
-                        <table class="security-company-summary-table" data-no-column-tools>
+                        <table class="security-company-summary-table">
                             <thead>
                                 <tr>
                                     <th>Empresa o negocio</th>
@@ -259,7 +188,7 @@
                                         <td><span class="security-company-data-empty">Sin datos</span></td>
                                         <td><span class="security-company-data-empty">Sin datos</span></td>
                                         <td><span class="security-company-data-empty">Sin datos</span></td>
-                                        <td>0</td>
+                                        <td>{{ $dashboardIncidents->where('security_company_id', $securityCompany->id)->where('status', 'pending')->count() }}</td>
                                         <td><span class="status success">Registrada</span></td>
                                         <td>
                                             <a
@@ -280,6 +209,7 @@
                         Mostrando {{ $dashboardCompanies->count() }} de {{ $securityCompanies->count() }} empresas o negocios
                     </footer>
                 </section>
+                </details>
             </section>
 
             @if ($selectedSecurityCompany)
@@ -332,7 +262,7 @@
                 </section>
             @endif
 
-            <dialog class="security-company-dialog" id="security-company-dialog" @if ($errors->any()) data-auto-open @endif>
+            <dialog class="security-company-dialog" id="security-company-dialog" @if ($errors->any() || request()->boolean('create_company')) data-auto-open @endif>
                 <form class="security-company-form" method="POST" action="{{ route('security.companies.store') }}">
                     @csrf
                     <header class="security-company-form-heading">
@@ -346,7 +276,7 @@
                     <div class="security-company-form-grid">
                         <label>
                             Nombre comercial *
-                            <input name="name" value="{{ old('name') }}" maxlength="255" required autofocus>
+                            <input name="name" value="{{ old('name', $prefillFinanceCompany?->name) }}" maxlength="255" required autofocus>
                         </label>
                         <label>
                             Tipo de registro *
@@ -357,15 +287,15 @@
                         </label>
                         <label>
                             Razón social
-                            <input name="legal_name" value="{{ old('legal_name') }}" maxlength="255">
+                            <input name="legal_name" value="{{ old('legal_name', $prefillFinanceCompany?->name) }}" maxlength="255">
                         </label>
                         <label>
                             RFC
-                            <input name="rfc" value="{{ old('rfc') }}" maxlength="20" autocomplete="off">
+                            <input name="rfc" value="{{ old('rfc', $prefillFinanceCompany?->rfc) }}" maxlength="20" autocomplete="off">
                         </label>
                         <label class="security-company-form-wide">
                             Dirección
-                            <textarea name="address" maxlength="1000" rows="2">{{ old('address') }}</textarea>
+                            <textarea name="address" maxlength="1000" rows="2">{{ old('address', $prefillFinanceCompany?->address) }}</textarea>
                         </label>
                         <label>
                             Responsable de vigilancia
@@ -384,7 +314,7 @@
                             <select name="finance_company_id">
                                 <option value="">Sin relación</option>
                                 @foreach ($financeCompanies as $financeCompany)
-                                    <option value="{{ $financeCompany->id }}" @selected((string) old('finance_company_id') === (string) $financeCompany->id)>
+                                    <option value="{{ $financeCompany->id }}" @selected((string) old('finance_company_id', $prefillFinanceCompany?->id) === (string) $financeCompany->id)>
                                         {{ $financeCompany->name }} · {{ $financeCompany->rfc }}
                                     </option>
                                 @endforeach
@@ -403,17 +333,17 @@
                 <div class="security-branch-toolbar">
                     <form class="security-branch-camera-filter" method="GET" action="{{ route('security.index') }}" data-security-branch-camera-filter>
                         <input type="hidden" name="section" value="branches">
-                        <input type="hidden" name="company_id" value="{{ $selectedSectionCompany?->id }}">
+                        <input type="hidden" name="company_id" value="{{ $selectedSectionCompany?->id ?? 'all' }}">
 
                         <label>
                             Filtrar por sucursal
-                            <select name="branch_id" required data-security-branch-select @disabled(!$selectedSectionCompany || $securityBranches->isEmpty())>
+                            <select name="branch_id" required data-security-branch-select @disabled($securityBranches->isEmpty())>
                                 @if ($securityBranches->isEmpty())
                                     <option value="">Sin sucursales disponibles</option>
                                 @endif
                                 @foreach ($securityBranches as $securityBranch)
                                     <option value="{{ $securityBranch->id }}" @selected($selectedCameraBranch?->is($securityBranch))>
-                                        {{ $securityBranch->name }}{{ $securityBranch->code ? ' · '.$securityBranch->code : '' }} · {{ (int) $securityBranch->cameras_count }} {{ (int) $securityBranch->cameras_count === 1 ? 'cámara' : 'cámaras' }}
+                                        {{ $selectedSectionCompany ? '' : $securityBranch->securityCompany->name.' · ' }}{{ $securityBranch->name }}{{ $securityBranch->code ? ' · '.$securityBranch->code : '' }} · {{ (int) $securityBranch->cameras_count }} {{ (int) $securityBranch->cameras_count === 1 ? 'cámara' : 'cámaras' }}
                                     </option>
                                 @endforeach
                             </select>
@@ -421,10 +351,10 @@
                     </form>
 
                     <div class="security-branch-toolbar-actions">
-                        <button class="button ghost security-branch-catalog-button" type="button" data-security-branch-catalog-open @disabled(!$selectedSectionCompany)>
+                        <button class="button ghost security-branch-catalog-button" type="button" data-security-branch-catalog-open @disabled($securityBranches->isEmpty())>
                             Catálogo de sucursales
                         </button>
-                        <button class="button primary security-branch-add-button" type="button" data-security-branch-open @disabled($securityCompanies->isEmpty())>
+                        <button class="button primary security-branch-add-button" type="button" data-security-branch-open @disabled(!$selectedSectionCompany)>
                             <span aria-hidden="true">+</span>
                             Agregar sucursal
                         </button>
@@ -438,61 +368,105 @@
                             $cameraPreviewTiles = $selectedCameraBranch->cameras
                                 ->values()
                                 ->map(fn ($camera, $cameraIndex) => [
+                                    'id' => $camera->id,
                                     'code' => 'CAM-'.str_pad((string) ($cameraIndex + 1), 2, '0', STR_PAD_LEFT),
                                     'name' => $camera->name,
-                                    'zone' => parse_url($camera->stream_url, PHP_URL_HOST) ?: 'URL configurada',
+                                    'connection' => $camera->recorder_path !== null
+                                        ? (($cameraSourceDetails[$camera->id]['ip'] ?? null) ? 'IP '.$cameraSourceDetails[$camera->id]['ip'] : 'Grabador local')
+                                        : 'URL configurada',
                                     'scene' => $cameraPreviewScenes[$cameraIndex % count($cameraPreviewScenes)],
+                                    'playback_url' => $cameraPlaybackUrls[$camera->id] ?? null,
                                 ])
                                 ->all();
                             $cameraPreviewCount = count($cameraPreviewTiles);
+                            $cameraOnlineCount = collect($cameraPreviewTiles)->whereNotNull('playback_url')->count();
                         @endphp
 
                         <div class="security-camera-preview" data-security-camera-preview>
-                            <div class="security-camera-preview-summary">
-                                <span class="security-carousel-total">
-                                    {{ $cameraPreviewCount }}
-                                    {{ $cameraPreviewCount === 1 ? 'cámara' : 'cámaras' }}
-                                </span>
+                            <header class="security-camera-catalog-heading">
+                                <h2>Catálogo de cámaras</h2>
+                                <p>Administra la información y conexión de tus cámaras.</p>
+                            </header>
+
+                            @if (session('camera_registered') || session('camera_updated'))
+                                <span class="security-camera-registered">{{ session('camera_registered') ? 'Cámara conectada' : (session('camera_connection_saved') ? 'Cambios guardados. La señal RTSP aún no se ha verificado.' : 'Cámara actualizada') }}</span>
+                            @endif
+
+                            <div class="security-camera-catalog-toolbar">
+                                <input type="search" placeholder="Buscar cámara por nombre o identificador..." aria-label="Buscar cámara por nombre o identificador" data-security-camera-search>
+                                <select aria-label="Filtrar cámaras por estado" data-security-camera-status-filter>
+                                    <option value="all">Todos los estados</option>
+                                    <option value="online">Conectadas</option>
+                                    <option value="offline">Desconectadas</option>
+                                </select>
+                                <div class="security-camera-view-switch" role="group" aria-label="Vista de cámaras">
+                                    <button type="button" aria-pressed="true" data-security-camera-view-switch="catalog">☷&nbsp; Catálogo</button>
+                                    <button type="button" aria-pressed="false" data-security-camera-view-switch="grid">▦&nbsp; Cuadrícula</button>
+                                </div>
+                                <button class="button ghost security-camera-fullscreen-open" type="button" data-security-camera-fullscreen-open aria-haspopup="dialog" aria-controls="security-camera-fullscreen" @disabled($cameraPreviewCount === 0)>
+                                    <span aria-hidden="true">⛶</span> Pantalla completa
+                                </button>
+                                <button class="button primary" type="button" data-security-camera-open>
+                                    <span aria-hidden="true">+</span>
+                                    Agregar cámara IP
+                                </button>
+                            </div>
+
+                            <div class="security-camera-catalog-totals" aria-label="Estado de las cámaras">
+                                <span class="security-camera-total-pill">{{ $cameraPreviewCount }} {{ $cameraPreviewCount === 1 ? 'cámara' : 'cámaras' }}</span>
+                                <span class="security-camera-total-pill is-online">{{ $cameraOnlineCount }} conectadas</span>
+                                <span class="security-camera-total-pill is-offline">{{ $cameraPreviewCount - $cameraOnlineCount }} desconectadas</span>
                             </div>
 
                             @if ($cameraPreviewCount > 0)
-                                <div class="security-camera-preview-grid" data-security-camera-preview-grid>
+                                <div class="security-camera-preview-grid" data-security-camera-preview-grid data-view="catalog">
                                     @foreach ($cameraPreviewTiles as $cameraPreview)
-                                        <article class="security-camera-tile">
-                                            <div class="security-camera-screen is-{{ $cameraPreview['scene'] }} is-offline">
+                                        <article class="security-camera-tile" data-security-camera-entry data-camera-search="{{ $cameraPreview['name'].' '.$cameraPreview['code'] }}" data-camera-status="{{ $cameraPreview['playback_url'] ? 'online' : 'offline' }}">
+                                            <div class="security-camera-screen is-{{ $cameraPreview['scene'] }} {{ $cameraPreview['playback_url'] ? 'is-live' : 'is-offline' }}">
+                                                @if ($cameraPreview['playback_url'])
+                                                    <iframe src="{{ $cameraPreview['playback_url'] }}" title="Video en vivo de {{ $cameraPreview['name'] }}" loading="lazy" allow="autoplay; fullscreen"></iframe>
+                                                @endif
                                                 <div class="security-camera-screen-top">
                                                     <span class="security-camera-live-state">
                                                         <i aria-hidden="true"></i>
-                                                        DESCONECTADA
+                                                        {{ $cameraPreview['playback_url'] ? 'EN VIVO' : 'DESCONECTADA' }}
                                                     </span>
                                                     <span>{{ $cameraPreview['code'] }}</span>
                                                 </div>
 
-                                                <div class="security-camera-scene" aria-hidden="true">
-                                                    <span class="is-one"></span>
-                                                    <span class="is-two"></span>
-                                                    <span class="is-three"></span>
-                                                    <span class="is-four"></span>
-                                                </div>
+                                                @unless ($cameraPreview['playback_url'])
+                                                    <div class="security-camera-scene" aria-hidden="true">
+                                                        <span class="is-one"></span>
+                                                        <span class="is-two"></span>
+                                                        <span class="is-three"></span>
+                                                        <span class="is-four"></span>
+                                                    </div>
 
-                                                <div class="security-camera-no-signal">
-                                                    <span aria-hidden="true">!</span>
-                                                    <strong>Sin conexión</strong>
-                                                </div>
+                                                    <div class="security-camera-no-signal">
+                                                        <span aria-hidden="true">!</span>
+                                                        <strong>Sin conexión</strong>
+                                                    </div>
+                                                @endunless
 
+                                                <strong class="security-camera-screen-name">{{ $cameraPreview['name'] }}</strong>
                                                 <time datetime="{{ now()->toIso8601String() }}">{{ now()->format('d/m/Y H:i:s') }}</time>
                                             </div>
 
-                                            <footer>
-                                                <div>
-                                                    <strong>{{ $cameraPreview['name'] }}</strong>
-                                                    <small>{{ $cameraPreview['zone'] }}</small>
-                                                </div>
-                                                <span>Sin conexión</span>
-                                            </footer>
+                                            <dl class="security-camera-tile-details">
+                                                <div><dt>Nombre</dt><dd><strong>{{ $cameraPreview['name'] }}</strong></dd></div>
+                                                <div><dt>Identificador</dt><dd>{{ $cameraPreview['code'] }}</dd></div>
+                                                <div><dt>Sucursal</dt><dd>{{ $selectedCameraBranch->name }}</dd></div>
+                                                <div><dt>Conexión</dt><dd>{{ $cameraPreview['connection'] }}</dd></div>
+                                            </dl>
+                                            <div class="security-camera-tile-actions">
+                                                <button class="button primary" type="button" data-security-camera-edit-open="{{ $cameraPreview['id'] }}" data-security-camera-edit-mode="details" aria-controls="security-camera-edit-{{ $cameraPreview['id'] }}" aria-label="Editar cámara {{ $cameraPreview['name'] }}"><span aria-hidden="true">✎</span> Editar información</button>
+                                                <button class="button ghost" type="button" data-security-camera-edit-open="{{ $cameraPreview['id'] }}" data-security-camera-edit-mode="connection" aria-controls="security-camera-edit-{{ $cameraPreview['id'] }}"><span aria-hidden="true">⚙</span> Configurar conexión</button>
+                                                <button class="button ghost" type="button" data-security-camera-view-open="{{ $cameraPreview['id'] }}" aria-controls="security-camera-view-{{ $cameraPreview['id'] }}"><span aria-hidden="true">▶</span> Ver cámara</button>
+                                            </div>
                                         </article>
                                     @endforeach
                                 </div>
+                                <p class="security-camera-preview-empty" data-security-camera-filter-empty hidden>No hay cámaras que coincidan con el filtro.</p>
                             @else
                                 <p class="security-camera-preview-empty" data-security-camera-preview-empty>
                                     No hay cámaras de vigilancia registradas para esta sucursal.
@@ -500,12 +474,245 @@
                             @endif
                         </div>
                     </div>
+
+                    <dialog class="security-camera-fullscreen" id="security-camera-fullscreen" data-security-camera-fullscreen data-branch-id="{{ $selectedCameraBranch->id }}" aria-labelledby="security-camera-fullscreen-title">
+                        <div class="security-camera-fullscreen-shell">
+                            <div class="security-camera-fullscreen-stage" data-security-wall-stage aria-label="Cámaras seleccionadas"></div>
+                            <header class="security-camera-fullscreen-controls" data-security-wall-controls>
+                                <div class="security-camera-fullscreen-title">
+                                    <strong id="security-camera-fullscreen-title">Monitoreo en pantalla completa</strong>
+                                    <span>{{ $selectedSectionCompany?->name }} / {{ $selectedCameraBranch->name }}</span>
+                                </div>
+                                <div class="security-camera-fullscreen-actions">
+                                    <span class="security-camera-fullscreen-count" data-security-wall-visible-count></span>
+                                    <button type="button" data-security-wall-select-open>Seleccionar cámaras</button>
+                                    <button type="button" data-security-wall-controls-toggle>Ocultar controles</button>
+                                    <button type="button" data-security-wall-exit>Salir</button>
+                                </div>
+                            </header>
+                            <aside class="security-camera-fullscreen-selector" data-security-wall-selector aria-label="Seleccionar cámaras">
+                                <div class="security-camera-fullscreen-selector-heading">
+                                    <h2>Seleccionar cámaras</h2>
+                                    <button type="button" data-security-wall-select-close aria-label="Cerrar selección">&times;</button>
+                                </div>
+                                <div class="security-camera-fullscreen-selector-body">
+                                    <fieldset class="security-camera-fullscreen-quantity">
+                                        <legend>Cantidad</legend>
+                                        <div class="security-camera-fullscreen-presets">
+                                            @foreach ([1, 2, 3, 4, 6, 9, 16] as $quantity)
+                                                <button type="button" data-security-wall-count="{{ $quantity }}" aria-pressed="false" @disabled($quantity > $cameraPreviewCount)>{{ $quantity }}</button>
+                                            @endforeach
+                                        </div>
+                                        <button class="security-camera-fullscreen-custom-trigger" type="button" data-security-wall-custom-trigger aria-pressed="false">Personalizar</button>
+                                        <label class="security-camera-fullscreen-custom-field" data-security-wall-custom-field hidden>
+                                            Cámaras a mostrar
+                                            <input type="number" min="1" max="{{ $cameraPreviewCount }}" value="{{ min(4, $cameraPreviewCount) }}" data-security-wall-custom-input>
+                                        </label>
+                                    </fieldset>
+                                    <p class="security-camera-fullscreen-selection-count" data-security-wall-selection-count role="status" aria-live="polite"></p>
+                                    <input class="security-camera-fullscreen-search" type="search" placeholder="Buscar cámara..." aria-label="Buscar cámara" data-security-wall-search>
+                                    <div class="security-camera-fullscreen-camera-list" data-security-wall-camera-list>
+                                        @foreach ($cameraPreviewTiles as $cameraPreview)
+                                            <label class="security-camera-fullscreen-option" data-security-wall-option data-search="{{ $cameraPreview['name'].' '.$cameraPreview['code'].' '.$selectedCameraBranch->name }}">
+                                                <input type="checkbox" value="{{ $cameraPreview['id'] }}" data-security-wall-camera data-code="{{ $cameraPreview['code'] }}" data-name="{{ $cameraPreview['name'] }}" data-location="{{ $selectedCameraBranch->name }}" data-playback-url="{{ $cameraPreview['playback_url'] }}">
+                                                <span class="security-camera-fullscreen-option-copy">
+                                                    <strong>{{ $cameraPreview['code'] }} · {{ $cameraPreview['name'] }}</strong>
+                                                    <small>{{ $selectedCameraBranch->name }}</small>
+                                                </span>
+                                                <span class="security-camera-fullscreen-status {{ $cameraPreview['playback_url'] ? 'is-online' : 'is-offline' }}">{{ $cameraPreview['playback_url'] ? 'En vivo' : 'Desconectada' }}</span>
+                                            </label>
+                                        @endforeach
+                                    </div>
+                                    <label class="security-camera-fullscreen-featured" data-security-wall-featured-field hidden>
+                                        Cámara principal
+                                        <select data-security-wall-featured></select>
+                                    </label>
+                                </div>
+                                <div class="security-camera-fullscreen-selector-footer">
+                                    <button type="button" data-security-wall-apply disabled>Aplicar selección</button>
+                                </div>
+                            </aside>
+                        </div>
+                    </dialog>
                 @elseif ($securityBranches->isNotEmpty())
                     <p class="security-branch-camera-hint">Selecciona una sucursal para consultar sus cámaras.</p>
                 @elseif ($selectedSectionCompany)
                     <p class="security-branch-camera-hint">No hay sucursales disponibles para {{ $selectedSectionCompany->name }}.</p>
                 @else
                     <p class="security-branch-camera-hint">Selecciona primero una empresa o negocio.</p>
+                @endif
+
+                @if ($selectedCameraBranch)
+                    <dialog class="security-camera-dialog" id="security-camera-dialog" @if ($errors->getBag('camera')->any()) data-auto-open @endif>
+                        <form class="security-camera-form" method="POST" action="{{ route('security.branches.cameras.store', $selectedCameraBranch) }}" autocomplete="off" data-security-camera-form>
+                            @csrf
+                            <input type="hidden" name="camera_form" value="1">
+                            <header class="security-branch-dialog-heading">
+                                <span class="security-branch-dialog-icon" aria-hidden="true">+</span>
+                                <div>
+                                    <h2>Nueva cámara IP</h2>
+                                    <p>{{ $selectedCameraBranch->name }}</p>
+                                </div>
+                                <button class="security-dialog-close" type="button" data-security-camera-close aria-label="Cerrar formulario">&times;</button>
+                            </header>
+
+                            <div class="security-camera-form-fields">
+                                @if ($errors->getBag('camera')->any())
+                                    <div class="security-camera-form-errors" role="alert">
+                                        @foreach ($errors->getBag('camera')->all() as $error)
+                                            <p>{{ $error }}</p>
+                                        @endforeach
+                                    </div>
+                                @endif
+                                <label>
+                                    Nombre *
+                                    <input name="name" value="{{ old('name') }}" placeholder="Ej. Entrada principal" maxlength="120" required autofocus>
+                                </label>
+                                <label>
+                                    Dirección IP *
+                                    <input name="ip" value="{{ old('ip') }}" placeholder="192.168.100.3" inputmode="decimal" required>
+                                </label>
+                                <label>
+                                    Puerto RTSP *
+                                    <input name="rtsp_port" type="number" value="{{ old('rtsp_port', 554) }}" min="1" max="65535" required>
+                                </label>
+                                <label>
+                                    Ruta RTSP *
+                                    <input name="rtsp_path" value="{{ old('rtsp_path', 'Streaming/Channels/101') }}" placeholder="Streaming/Channels/101" maxlength="255" required>
+                                </label>
+                                <label>
+                                    Usuario RTSP *
+                                    <input name="rtsp_username" value="{{ old('rtsp_username', 'admin') }}" maxlength="120" autocomplete="username" required>
+                                </label>
+                                <label>
+                                    Contraseña RTSP *
+                                    <input name="rtsp_password" type="text" maxlength="255" autocomplete="new-password" spellcheck="false" autocapitalize="off" required>
+                                </label>
+                            </div>
+
+                            <footer class="security-branch-form-actions">
+                                <button class="button ghost" type="button" data-security-camera-close>Cancelar</button>
+                                <button class="button primary" type="submit" data-security-camera-submit>Conectar cámara</button>
+                            </footer>
+                        </form>
+                    </dialog>
+
+                    @foreach ($selectedCameraBranch->cameras as $camera)
+                        @php
+                            $cameraEditHasErrors = $errors->getBag('camera_edit')->any()
+                                && (int) old('editing_camera_id') === $camera->id;
+                            $cameraSource = $cameraSourceDetails[$camera->id] ?? null;
+                            $cameraPreview = collect($cameraPreviewTiles)->firstWhere('id', $camera->id);
+                        @endphp
+                        <dialog class="security-camera-dialog" id="security-camera-edit-{{ $camera->id }}" data-security-camera-edit-dialog data-edit-mode="{{ $cameraEditHasErrors ? old('editing_camera_mode', 'details') : 'details' }}" @if ($camera->recorder_path === null) data-source-type="{{ $cameraEditHasErrors && old('connection_type') === 'ip' ? 'ip' : 'url' }}" @endif @if ($cameraEditHasErrors) data-auto-open @endif>
+                            <form class="security-camera-form" method="POST" action="{{ route('security.branches.cameras.update', [$selectedCameraBranch, $camera]) }}" autocomplete="off" data-security-camera-edit-form>
+                                @csrf
+                                @method('PATCH')
+                                <input type="hidden" name="editing_camera_id" value="{{ $camera->id }}">
+                                <input type="hidden" name="editing_camera_mode" value="details" data-security-camera-edit-mode-input>
+                                <header class="security-branch-dialog-heading">
+                                    <span class="security-branch-dialog-icon" aria-hidden="true">✎</span>
+                                    <div>
+                                        <h2 data-security-camera-edit-title>Editar información</h2>
+                                        <p>{{ $selectedCameraBranch->name }}</p>
+                                    </div>
+                                    <button class="security-dialog-close" type="button" data-security-camera-edit-close aria-label="Cerrar formulario">&times;</button>
+                                </header>
+
+                                <div class="security-camera-form-fields">
+                                    @if ($cameraEditHasErrors)
+                                        <div class="security-camera-form-errors" role="alert">
+                                            @foreach ($errors->getBag('camera_edit')->all() as $error)
+                                                <p>{{ $error }}</p>
+                                            @endforeach
+                                        </div>
+                                    @endif
+                                    <label data-security-camera-edit-section="details">
+                                        Nombre *
+                                        <input name="name" value="{{ $cameraEditHasErrors ? old('name') : $camera->name }}" maxlength="120" required>
+                                    </label>
+                                    @if ($camera->recorder_path !== null)
+                                        <label data-security-camera-edit-section="connection">
+                                            Dirección IP
+                                            <input name="ip" value="{{ $cameraEditHasErrors ? old('ip') : ($cameraSource['ip'] ?? '') }}" inputmode="decimal">
+                                        </label>
+                                        <label data-security-camera-edit-section="connection">
+                                            Puerto RTSP
+                                            <input name="rtsp_port" type="number" value="{{ $cameraEditHasErrors ? old('rtsp_port') : ($cameraSource['port'] ?? '') }}" min="1" max="65535">
+                                        </label>
+                                        <label data-security-camera-edit-section="connection">
+                                            Ruta RTSP
+                                            <input name="rtsp_path" value="{{ $cameraEditHasErrors ? old('rtsp_path') : ($cameraSource['path'] ?? '') }}" maxlength="255">
+                                        </label>
+                                        <label data-security-camera-edit-section="connection">
+                                            Usuario RTSP
+                                            <input name="rtsp_username" value="{{ $cameraEditHasErrors ? old('rtsp_username') : ($cameraSource['username'] ?? '') }}" maxlength="120" autocomplete="username">
+                                        </label>
+                                        <label data-security-camera-edit-section="connection">
+                                            Contraseña RTSP
+                                            <input name="rtsp_password" type="text" value="{{ $cameraSource['password'] ?? '' }}" maxlength="255" autocomplete="off" spellcheck="false" autocapitalize="off">
+                                        </label>
+                                    @else
+                                        <div class="security-camera-source-switch" data-security-camera-edit-section="connection" role="group" aria-label="Tipo de conexión">
+                                            <input type="hidden" name="connection_type" value="url" data-security-camera-source-input>
+                                            <button type="button" data-security-camera-source-choice="url" aria-pressed="true">URL manual</button>
+                                            <button type="button" data-security-camera-source-choice="ip" aria-pressed="false">Cámara IP</button>
+                                        </div>
+                                        <label data-security-camera-edit-section="connection" data-security-camera-source-fields="url">
+                                            URL de la cámara *
+                                            <input name="stream_url" value="{{ $cameraEditHasErrors ? old('stream_url', $camera->stream_url) : $camera->stream_url }}" maxlength="2048" data-security-camera-url-field required>
+                                        </label>
+                                        <label data-security-camera-edit-section="connection" data-security-camera-source-fields="ip">
+                                            Dirección IP *
+                                            <input name="ip" value="{{ $cameraEditHasErrors ? old('ip') : '' }}" inputmode="decimal" data-security-camera-ip-field>
+                                        </label>
+                                        <label data-security-camera-edit-section="connection" data-security-camera-source-fields="ip">
+                                            Puerto RTSP *
+                                            <input name="rtsp_port" type="number" value="{{ $cameraEditHasErrors ? old('rtsp_port', 554) : 554 }}" min="1" max="65535" data-security-camera-ip-field>
+                                        </label>
+                                        <label data-security-camera-edit-section="connection" data-security-camera-source-fields="ip">
+                                            Ruta RTSP *
+                                            <input name="rtsp_path" value="{{ $cameraEditHasErrors ? old('rtsp_path', 'Streaming/Channels/101') : 'Streaming/Channels/101' }}" maxlength="255" data-security-camera-ip-field>
+                                        </label>
+                                        <label data-security-camera-edit-section="connection" data-security-camera-source-fields="ip">
+                                            Usuario RTSP *
+                                            <input name="rtsp_username" value="{{ $cameraEditHasErrors ? old('rtsp_username', 'admin') : 'admin' }}" maxlength="120" autocomplete="username" data-security-camera-ip-field>
+                                        </label>
+                                        <label data-security-camera-edit-section="connection" data-security-camera-source-fields="ip">
+                                            Contraseña RTSP *
+                                            <input name="rtsp_password" type="text" maxlength="255" autocomplete="new-password" spellcheck="false" autocapitalize="off" data-security-camera-ip-field>
+                                        </label>
+                                    @endif
+                                </div>
+
+                                <footer class="security-branch-form-actions">
+                                    <button class="button ghost" type="button" data-security-camera-edit-close>Cancelar</button>
+                                    <button class="button primary" type="submit" data-security-camera-edit-submit>Guardar cambios</button>
+                                </footer>
+                            </form>
+                        </dialog>
+
+                        <dialog class="security-camera-view-dialog" id="security-camera-view-{{ $camera->id }}" data-security-camera-view-dialog>
+                            <header class="security-camera-view-heading">
+                                <div>
+                                    <h2>{{ $camera->name }}</h2>
+                                    <p>{{ $cameraPreview['code'] }} · {{ $selectedCameraBranch->name }}</p>
+                                </div>
+                                <button class="security-dialog-close" type="button" data-security-camera-view-close aria-label="Cerrar cámara">&times;</button>
+                            </header>
+                            <div class="security-camera-view-screen {{ $cameraPreview['playback_url'] ? 'is-live' : 'is-offline' }}">
+                                @if ($cameraPreview['playback_url'])
+                                    <iframe data-security-camera-view-frame data-src="{{ $cameraPreview['playback_url'] }}" title="Video en vivo de {{ $camera->name }}" allow="autoplay; fullscreen"></iframe>
+                                @else
+                                    <div><span aria-hidden="true">!</span><strong>Sin conexión</strong></div>
+                                @endif
+                            </div>
+                            <footer class="security-camera-view-footer">
+                                <span>{{ $cameraPreview['playback_url'] ? 'En vivo' : 'Desconectada' }}</span>
+                                <button class="button ghost" type="button" data-security-camera-view-close>Cerrar</button>
+                            </footer>
+                        </dialog>
+                    @endforeach
                 @endif
 
                 @php
@@ -516,19 +723,22 @@
                     $branchCameraUrlRows = old('camera_urls_submitted')
                         ? old('camera_urls', [])
                         : ($branchFormEditing?->cameras
+                            ->whereNull('recorder_path')
                             ->map(fn ($camera) => ['name' => $camera->name, 'url' => $camera->stream_url])
                             ->values()
                             ->all() ?? []);
                     $branchCameraUrlRows = $branchCameraUrlRows ?: [['name' => '', 'url' => '']];
                 @endphp
 
-                <dialog class="security-branch-dialog" id="security-branch-dialog" @if ($errors->any()) data-auto-open @endif>
+                <dialog class="security-branch-dialog" id="security-branch-dialog" @if ($errors->getBag('default')->any() || (request()->boolean('create_branch') && $selectedSectionCompany)) data-auto-open @endif>
                     <form
                         class="security-branch-create-form"
                         method="POST"
                         action="{{ $branchFormIsEditing ? route('security.branches.update', $branchFormEditing) : route('security.branches.store') }}"
                         data-security-branch-form
                         data-security-branch-create-action="{{ route('security.branches.store') }}"
+                        data-security-selected-company-id="{{ $selectedSectionCompany?->id }}"
+                        data-security-selected-company-name="{{ $selectedSectionCompany?->name }}"
                     >
                         @csrf
                         <input type="hidden" name="_method" value="PATCH" data-security-branch-method @disabled(!$branchFormIsEditing)>
@@ -559,9 +769,9 @@
                                     </label>
                                     <label>
                                         Empresa *
-                                        <input type="hidden" name="security_company_id" value="{{ $selectedSectionCompany?->id }}">
-                                        <span class="security-branch-selected-company" aria-readonly="true">
-                                            {{ $selectedSectionCompany?->name ?? 'Sin empresa seleccionada' }}
+                                        <input type="hidden" name="security_company_id" value="{{ old('security_company_id', $branchFormEditing?->security_company_id ?? $selectedSectionCompany?->id) }}">
+                                        <span class="security-branch-selected-company" aria-readonly="true" data-security-branch-selected-company>
+                                            {{ $branchFormEditing?->securityCompany?->name ?? $selectedSectionCompany?->name ?? 'Sin empresa seleccionada' }}
                                         </span>
                                     </label>
                                     <label>
@@ -621,6 +831,10 @@
                                         <span class="security-branch-step-number is-green">3</span>
                                         <h3>Información de contacto</h3>
                                     </header>
+                                    <label>
+                                        Responsable
+                                        <input name="contact_name" value="{{ old('contact_name', $branchFormEditing?->contact_name) }}" maxlength="255">
+                                    </label>
                                     <label>
                                         Teléfono
                                         <input name="phone" value="{{ old('phone', $branchFormEditing?->phone) }}" placeholder="Ej. 81 1234 5678" maxlength="40" inputmode="tel">
@@ -683,13 +897,13 @@
                                     <div class="security-branch-camera-urls-title">
                                         <span class="security-branch-step-number is-cyan">6</span>
                                         <div>
-                                            <h3>URLs de cámaras de vigilancia</h3>
-                                            <p>Agrega enlaces HTTPS, RTSP o RTSPS para esta sucursal.</p>
+                                            <h3>URLs manuales de cámaras</h3>
+                                            <p>Las cámaras IP se agregan desde la vista de la sucursal.</p>
                                         </div>
                                     </div>
                                     <button class="button ghost" type="button" data-security-camera-url-add>
                                         <span aria-hidden="true">+</span>
-                                        Agregar cámara
+                                        Agregar URL manual
                                     </button>
                                 </header>
 
@@ -710,7 +924,7 @@
                                                 <input
                                                     name="camera_urls[{{ $cameraUrlIndex }}][url]"
                                                     value="{{ $cameraUrlRow['url'] ?? '' }}"
-                                                    placeholder="https://... o rtsp://..."
+                                                    placeholder="http://127.0.0.1:8888/camara1"
                                                     maxlength="2048"
                                                     inputmode="url"
                                                     autocomplete="off"
@@ -741,7 +955,7 @@
                                             URL de transmisión
                                             <input
                                                 name="camera_urls[__INDEX__][url]"
-                                                placeholder="https://... o rtsp://..."
+                                                placeholder="http://127.0.0.1:8888/camara1"
                                                 maxlength="2048"
                                                 inputmode="url"
                                                 autocomplete="off"
@@ -794,7 +1008,7 @@
                             <span class="security-branch-dialog-icon" aria-hidden="true">S</span>
                             <div>
                                 <h2>Catálogo de sucursales</h2>
-                                <p>{{ $selectedSectionCompany?->name ?? 'Sin empresa seleccionada' }}</p>
+                                <p>{{ $selectedSectionCompany?->name ?? 'Todas las empresas' }}</p>
                             </div>
                             <button class="security-dialog-close" type="button" data-security-branch-catalog-close aria-label="Cerrar catálogo">&times;</button>
                         </header>
@@ -802,10 +1016,11 @@
                         <div class="security-branch-catalog-content">
                             @if ($securityBranches->isNotEmpty())
                                 <div class="table-scroll security-branch-catalog-table-scroll">
-                                    <table class="security-branch-catalog-table" data-no-column-tools>
+                                    <table class="security-branch-catalog-table">
                                         <thead>
                                             <tr>
                                                 <th>Sucursal</th>
+                                                @if (!$selectedSectionCompany)<th>Empresa</th>@endif
                                                 <th>Clave</th>
                                                 <th>Ubicación</th>
                                                 <th>Contacto</th>
@@ -817,8 +1032,13 @@
                                         <tbody>
                                             @foreach ($securityBranches as $securityBranch)
                                                 @php
+                                                    $activeCameraCount = $securityBranch->cameras
+                                                        ->filter(fn ($camera) => isset($cameraPlaybackUrls[$camera->id]))
+                                                        ->count();
                                                     $securityBranchEditPayload = [
                                                         'id' => $securityBranch->id,
+                                                        'security_company_id' => $securityBranch->security_company_id,
+                                                        'security_company_name' => $securityBranch->securityCompany->name,
                                                         'name' => $securityBranch->name,
                                                         'code' => $securityBranch->code,
                                                         'description' => $securityBranch->description,
@@ -827,6 +1047,7 @@
                                                         'state' => $securityBranch->state,
                                                         'city' => $securityBranch->city,
                                                         'postal_code' => $securityBranch->postal_code,
+                                                        'contact_name' => $securityBranch->contact_name,
                                                         'phone' => $securityBranch->phone,
                                                         'email' => $securityBranch->email,
                                                         'timezone' => $securityBranch->timezone,
@@ -834,6 +1055,7 @@
                                                         'analytics_enabled' => (bool) $securityBranch->analytics_enabled,
                                                         'alerts_enabled' => (bool) $securityBranch->alerts_enabled,
                                                         'cameras' => $securityBranch->cameras
+                                                            ->whereNull('recorder_path')
                                                             ->map(fn ($camera) => ['name' => $camera->name, 'url' => $camera->stream_url])
                                                             ->values()
                                                             ->all(),
@@ -846,6 +1068,7 @@
                                                             <small>{{ $securityBranch->description }}</small>
                                                         @endif
                                                     </td>
+                                                    @if (!$selectedSectionCompany)<td>{{ $securityBranch->securityCompany->name }}</td>@endif
                                                     <td>{{ $securityBranch->code ?: 'Sin clave' }}</td>
                                                     <td>
                                                         {{ collect([$securityBranch->city, $securityBranch->state])->filter()->implode(', ') ?: ($securityBranch->address ?: 'Sin ubicación') }}
@@ -860,18 +1083,18 @@
                                                     </td>
                                                     <td>
                                                         <span
-                                                            class="security-branch-active-cameras"
-                                                            data-security-active-cameras="0/{{ $securityBranch->cameras_count }}"
-                                                            aria-label="0 de {{ $securityBranch->cameras_count }} cámaras activas"
+                                                            class="security-branch-active-cameras {{ $activeCameraCount > 0 ? 'is-live' : '' }}"
+                                                            data-security-active-cameras="{{ $activeCameraCount }}/{{ $securityBranch->cameras_count }}"
+                                                            aria-label="{{ $activeCameraCount }} de {{ $securityBranch->cameras_count }} cámaras activas"
                                                         >
                                                             <i aria-hidden="true"></i>
-                                                            <strong>0</strong>
+                                                            <strong>{{ $activeCameraCount }}</strong>
                                                             <small>de {{ $securityBranch->cameras_count }}</small>
                                                         </span>
                                                     </td>
                                                     <td>
                                                         <div class="security-branch-row-actions">
-                                                            <a class="button ghost small" href="{{ route('security.index', ['section' => 'branches', 'company_id' => $selectedSectionCompany?->id, 'branch_id' => $securityBranch->id]) }}">
+                                                            <a class="button ghost small" href="{{ route('security.index', ['section' => 'branches', 'company_id' => $selectedSectionCompany?->id ?? 'all', 'branch_id' => $securityBranch->id]) }}">
                                                                 Ver cámaras
                                                             </a>
                                                             <button
@@ -892,7 +1115,7 @@
                             @else
                                 <div class="empty-state security-company-empty">
                                     <strong>Sin sucursales registradas</strong>
-                                    <p>Agrega la primera sucursal para esta empresa.</p>
+                                    <p>{{ $selectedSectionCompany ? 'Agrega la primera sucursal para esta empresa.' : 'Selecciona una empresa para agregar su primera sucursal.' }}</p>
                                 </div>
                             @endif
                         </div>
@@ -907,7 +1130,8 @@
             @php
                 $analyticsCameraCount = $selectedAnalyticsBranch
                     ? (int) $selectedAnalyticsBranch->cameras_count
-                    : (int) ($selectedAnalyticsCompany?->branches->sum('cameras_count') ?? 0);
+                    : (int) ($selectedAnalyticsCompany?->branches ?? $securityBranches)->sum('cameras_count');
+                $analyticsRankingBranches = $selectedAnalyticsCompany?->branches ?? $securityBranches;
             @endphp
 
             <section class="panel security-analytics-overview" data-security-analytics-filter data-analytics-today="{{ now()->toDateString() }}">
@@ -918,7 +1142,7 @@
                         <p class="security-analytics-breadcrumb">
                             Empresas
                             <span aria-hidden="true">&rsaquo;</span>
-                            <strong>{{ $selectedAnalyticsCompany?->name ?? 'Sin selección' }}</strong>
+                            <strong>{{ $selectedAnalyticsCompany?->name ?? 'Todas las empresas' }}</strong>
                         </p>
                     </div>
                     <div class="security-analytics-date-controls">
@@ -941,12 +1165,6 @@
                     <input type="hidden" name="show_analytics" value="1">
                     <input type="hidden" name="company_id" value="{{ $selectedAnalyticsCompany?->id }}">
                     <label>
-                        Empresa o negocio
-                        <span class="security-analytics-selected-company">
-                            {{ $selectedAnalyticsCompany?->name ?? 'Sin empresas registradas' }}
-                        </span>
-                    </label>
-                    <label>
                         Sucursal
                         <select name="branch_id" data-security-analytics-branch required @disabled(!$selectedAnalyticsCompany || $selectedAnalyticsCompany->branches->isEmpty())>
                             <option value="">Selecciona una sucursal</option>
@@ -961,6 +1179,34 @@
                         VER Analíticas
                     </button>
                 </form>
+            </section>
+
+            <section class="panel security-personnel-analytics" data-security-personnel-analytics data-branch-id="{{ $analyticsRequested ? $selectedAnalyticsBranch?->id : '' }}" data-analytics-date="{{ $analyticsDate }}">
+                <header class="security-personnel-analytics-heading">
+                    <div>
+                        <p class="eyebrow">PERSONAL</p>
+                        <h2>Personal detectado</h2>
+                        <p>{{ $selectedAnalyticsBranch?->name ?? 'Selecciona una sucursal' }}</p>
+                    </div>
+                    <span class="security-analytics-count"><strong data-security-personnel-count>0</strong> personas</span>
+                </header>
+                <div class="security-personnel-empty" data-security-personnel-empty>
+                    {{ $selectedAnalyticsBranch ? 'Presiona VER Analíticas para consultar las detecciones.' : 'Selecciona una sucursal para consultar las detecciones.' }}
+                </div>
+                <div class="table-scroll security-personnel-table-scroll" data-security-personnel-list hidden>
+                    <table class="security-personnel-table">
+                        <thead>
+                            <tr>
+                                <th>Personal</th>
+                                <th>Puesto</th>
+                                <th>Cámara</th>
+                                <th>Última detección</th>
+                                <th>Detecciones</th>
+                            </tr>
+                        </thead>
+                        <tbody data-security-personnel-rows></tbody>
+                    </table>
+                </div>
             </section>
 
             <section class="security-analytics-dashboard" aria-label="Resumen visual de analíticas">
@@ -1057,9 +1303,9 @@
                         </div>
                         <span class="security-analytics-widget-date">{{ $analyticsDate }}</span>
                     </header>
-                    @if ($selectedAnalyticsCompany && $selectedAnalyticsCompany->branches->isNotEmpty())
+                    @if ($analyticsRankingBranches->isNotEmpty())
                         <ol class="security-analytics-ranking">
-                            @foreach ($selectedAnalyticsCompany->branches->take(5) as $securityBranch)
+                            @foreach ($analyticsRankingBranches->take(5) as $securityBranch)
                                 <li>
                                     <span class="security-ranking-position">{{ $loop->iteration }}</span>
                                     <strong>{{ $securityBranch->name }}</strong>
@@ -1089,7 +1335,7 @@
                     </header>
 
                     <div class="table-scroll security-analytics-table-scroll">
-                        <table class="security-analytics-table" data-no-column-tools>
+                        <table class="security-analytics-table">
                             <colgroup>
                                 <col class="security-analytics-number-column">
                                 <col class="security-analytics-name-column">
@@ -1120,13 +1366,19 @@
                         @if ($securityCompanies->isEmpty())
                             <strong>Sin empresas o negocios registrados</strong>
                             <p>Registra una empresa en el catálogo de Vigilancia.</p>
-                        @elseif (!$selectedAnalyticsCompany || $selectedAnalyticsCompany->branches->isEmpty())
+                        @elseif ($securityBranches->isEmpty())
+                            <strong>Sin sucursales registradas</strong>
+                            <p>Registra las sucursales que se utilizarán en el filtro.</p>
+                        @elseif (!$selectedAnalyticsCompany)
+                            <strong>Selecciona una empresa para consultar una sucursal</strong>
+                            <p>El resumen superior incluye todas las empresas.</p>
+                        @elseif ($selectedAnalyticsCompany->branches->isEmpty())
                             <strong>Sin sucursales registradas</strong>
                             <p>Registra las sucursales que se utilizarán en el filtro.</p>
                         @elseif ($analyticsRequested)
-                            <strong>Selecciona una empresa o negocio y una sucursal válidos</strong>
+                            <strong>Selecciona una sucursal válida</strong>
                         @else
-                            <strong>Selecciona una empresa o negocio y una sucursal</strong>
+                            <strong>Selecciona una sucursal</strong>
                             <p>Presiona VER Analíticas para consultar sus parámetros.</p>
                         @endif
                     </div>
@@ -1138,7 +1390,7 @@
                     <p class="eyebrow">SEGURIDAD Y VIGILANCIA</p>
                     <h2>{{ $securitySection['label'] }}</h2>
                     <p class="security-section-company-context">
-                        {{ $selectedSectionCompany?->name ?? 'Sin empresa o negocio seleccionado' }}
+                        {{ $selectedSectionCompany?->name ?? 'Todas las empresas' }}
                     </p>
                 </div>
 
@@ -1296,20 +1548,64 @@
             .security-branch-add-button > span { font-size: 1.12rem; line-height: 1; }
             .security-branch-camera-results { min-width: 0; }
             .security-branch-camera-hint { margin: 0; color: var(--muted); font-size: .82rem; font-weight: 750; }
-            .security-camera-preview { min-width: 0; display: grid; gap: 12px; }
-            .security-camera-preview-summary { min-width: 0; display: flex; justify-content: flex-end; }
+            .security-camera-preview { min-width: 0; display: grid; gap: 14px; }
+            .security-camera-catalog-heading h2,
+            .security-camera-catalog-heading p { margin: 0; }
+            .security-camera-catalog-heading h2 { font-size: 1.4rem; }
+            .security-camera-catalog-heading p { margin-top: 4px; color: var(--muted); font-size: .8rem; }
+            .security-camera-catalog-toolbar { min-width: 0; display: grid; grid-template-columns: minmax(180px, 1.25fr) minmax(150px, .7fr) auto auto auto; align-items: center; gap: 9px; }
+            .security-camera-catalog-toolbar > input,
+            .security-camera-catalog-toolbar > select { width: 100%; min-width: 0; min-height: 40px; }
+            .security-camera-catalog-toolbar > .button { white-space: nowrap; }
+            .security-camera-view-switch { min-width: 0; display: flex; align-items: center; border: 1px solid #cbd9e7; border-radius: 7px; overflow: hidden; background: #fff; }
+            .security-camera-view-switch button { min-height: 38px; padding: 6px 11px; border: 0; background: #fff; color: var(--text); font-size: .76rem; font-weight: 800; white-space: nowrap; cursor: pointer; }
+            .security-camera-view-switch button + button { border-left: 1px solid #cbd9e7; }
+            .security-camera-view-switch button[aria-pressed="true"] { background: #e1f1f7; color: var(--primary-strong); }
+            .security-camera-view-switch button:hover { background: #edf7fa; }
+            .security-camera-catalog-totals { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+            .security-camera-total-pill { min-height: 27px; padding: 5px 11px; border: 1px solid #d4e0ec; border-radius: 999px; background: #f3f8fb; display: inline-flex; align-items: center; gap: 7px; font-size: .73rem; font-weight: 800; white-space: nowrap; }
+            .security-camera-total-pill::before { content: ''; width: 7px; height: 7px; border-radius: 999px; background: var(--primary-strong); }
+            .security-camera-total-pill.is-online::before { background: #31b467; }
+            .security-camera-total-pill.is-offline::before { background: #e34b58; }
+            .security-camera-registered { color: var(--success); font-size: .78rem; font-weight: 800; }
+            .security-camera-dialog { width: min(650px, calc(100vw - 32px)); max-height: calc(100vh - 32px); padding: 0; border: 0; border-radius: 8px; color: var(--text); box-shadow: 0 24px 70px rgba(24, 34, 53, .28); overflow: hidden; }
+            .security-camera-dialog::backdrop { background: rgba(16, 43, 58, .58); }
+            .security-camera-form { max-height: calc(100vh - 32px); display: grid; grid-template-rows: auto minmax(0, 1fr) auto; background: #fff; }
+            .security-camera-form-fields { min-height: 0; padding: 22px 24px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 15px; overflow-y: auto; }
+            .security-camera-form-fields label { min-width: 0; display: grid; gap: 5px; font-size: .78rem; font-weight: 750; }
+            .security-camera-form-fields input { width: 100%; min-width: 0; }
+            .security-camera-form-errors { grid-column: 1 / -1; padding: 10px 12px; border: 1px solid #e8b7b7; border-radius: 7px; background: #fff4f4; color: #a52222; font-size: .76rem; }
+            .security-camera-form-errors p { margin: 0; }
+            .security-camera-form-errors p + p { margin-top: 5px; }
             .security-camera-preview-empty { min-height: 92px; margin: 0; padding: 20px; border: 1px dashed #cbd9e7; border-radius: 8px; color: var(--muted); display: grid; place-items: center; text-align: center; font-size: .8rem; font-weight: 750; }
-            .security-camera-preview-grid { min-width: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+            .security-camera-preview-grid { min-width: 0; display: grid; gap: 10px; }
+            .security-camera-preview-grid[data-view="catalog"] { grid-template-columns: minmax(0, 1fr); }
+            .security-camera-preview-grid[data-view="grid"] { grid-template-columns: repeat(auto-fit, minmax(245px, 1fr)); }
             .security-camera-tile { min-width: 0; border: 1px solid #cbd9e7; border-radius: 8px; background: #fff; overflow: hidden; box-shadow: 0 5px 16px rgba(18, 46, 61, .06); }
+            .security-camera-preview-grid[data-view="catalog"] .security-camera-tile { padding: 12px; display: grid; grid-template-columns: minmax(215px, 26%) minmax(0, 1fr) minmax(190px, 22%); align-items: stretch; gap: 18px; }
+            .security-camera-preview-grid[data-view="grid"] .security-camera-tile { display: grid; grid-template-rows: auto 1fr auto; }
             .security-camera-screen { aspect-ratio: 16 / 9; min-height: 128px; position: relative; overflow: hidden; background: #1b303a; color: #f4fafb; isolation: isolate; }
+            .security-camera-preview-grid[data-view="catalog"] .security-camera-screen { border-radius: 5px; }
+            .security-camera-preview-grid[data-view="catalog"] .security-camera-screen::before,
+            .security-camera-preview-grid[data-view="catalog"] .security-camera-screen::after,
+            .security-camera-preview-grid[data-view="catalog"] .security-camera-scene { display: none; }
+            .security-camera-preview-grid[data-view="catalog"] .security-camera-screen.is-offline { background: #182831; }
+            .security-camera-preview-grid[data-view="catalog"] .security-camera-no-signal { background: none; }
             .security-camera-screen::before { content: ''; position: absolute; z-index: 3; inset: 0; pointer-events: none; opacity: .11; background: repeating-linear-gradient(0deg, transparent 0 3px, #fff 4px); }
             .security-camera-screen::after { content: ''; position: absolute; z-index: 1; right: -8%; bottom: -32%; left: -8%; height: 62%; border-top: 1px solid rgba(188, 222, 229, .55); background: #29444d; transform: perspective(180px) rotateX(58deg); transform-origin: bottom; }
+            .security-camera-screen.is-live::before,
+            .security-camera-screen.is-live::after { display: none; }
+            .security-camera-screen.is-live iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: #0c171c; }
             .security-camera-screen-top { position: absolute; z-index: 5; top: 9px; right: 10px; left: 10px; display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: .62rem; font-weight: 900; }
             .security-camera-live-state { display: inline-flex; align-items: center; gap: 5px; }
             .security-camera-live-state i { width: 6px; height: 6px; border-radius: 999px; background: #ff5a5a; box-shadow: 0 0 0 3px rgba(255, 90, 90, .14); }
             .security-camera-screen.is-offline .security-camera-live-state i { background: #aeb9bd; box-shadow: none; }
             .security-camera-screen.is-configured .security-camera-live-state i { background: #58a6ff; box-shadow: 0 0 0 3px rgba(88, 166, 255, .14); }
+            .security-camera-screen.is-live .security-camera-live-state i { background: #27c784; box-shadow: 0 0 0 3px rgba(39, 199, 132, .2); }
             .security-camera-screen time { position: absolute; z-index: 5; right: 10px; bottom: 8px; font-size: .58rem; font-variant-numeric: tabular-nums; font-weight: 800; }
+            .security-camera-screen-name { position: absolute; z-index: 6; left: 10px; bottom: 8px; max-width: calc(100% - 20px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .72rem; }
+            .security-camera-preview-grid[data-view="catalog"] .security-camera-screen time { display: none; }
+            .security-camera-preview-grid[data-view="grid"] .security-camera-screen-name { display: none; }
             .security-camera-scene { position: absolute; z-index: 2; inset: 24% 8% 19%; overflow: hidden; }
             .security-camera-scene span { position: absolute; display: block; border: 1px solid rgba(188, 222, 229, .62); background: rgba(109, 157, 166, .2); }
             .security-camera-screen.is-entrance { background: #18313b; }
@@ -1339,13 +1635,40 @@
             .security-camera-no-signal { position: absolute; z-index: 4; inset: 0; display: grid; place-content: center; justify-items: center; gap: 6px; background: rgba(17, 28, 33, .72); }
             .security-camera-no-signal span { width: 26px; height: 26px; display: grid; place-items: center; border: 1px solid rgba(255, 255, 255, .45); border-radius: 999px; font-size: .82rem; font-weight: 900; }
             .security-camera-no-signal strong { font-size: .72rem; }
-            .security-camera-tile footer { min-width: 0; min-height: 58px; padding: 10px 11px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-            .security-camera-tile footer > div { min-width: 0; display: grid; gap: 2px; }
-            .security-camera-tile footer strong,
-            .security-camera-tile footer small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-            .security-camera-tile footer strong { font-size: .78rem; }
-            .security-camera-tile footer small { color: var(--muted); font-size: .65rem; font-weight: 700; }
-            .security-camera-tile footer > span { flex: 0 0 auto; color: var(--muted); font-size: .62rem; font-weight: 800; white-space: nowrap; }
+            .security-camera-tile-details { min-width: 0; margin: 0; padding: 0 18px 0 0; border-right: 1px solid var(--line); display: grid; align-content: center; gap: 9px; }
+            .security-camera-tile-details > div { min-width: 0; display: grid; grid-template-columns: 98px minmax(0, 1fr); gap: 7px; align-items: baseline; }
+            .security-camera-tile-details dt { color: var(--muted); font-size: .76rem; }
+            .security-camera-tile-details dd { min-width: 0; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .78rem; }
+            .security-camera-tile-actions { min-width: 0; display: grid; align-content: center; gap: 7px; }
+            .security-camera-tile-actions .button { width: 100%; min-width: 0; min-height: 33px; padding: 6px 9px; display: flex; align-items: center; justify-content: center; gap: 7px; font-size: .76rem; white-space: nowrap; }
+            .security-camera-tile-actions .button span { font-size: .93rem; }
+            .security-camera-preview-grid[data-view="grid"] .security-camera-tile-details { padding: 12px; border-right: 0; }
+            .security-camera-preview-grid[data-view="grid"] .security-camera-tile-details > div { grid-template-columns: 87px minmax(0, 1fr); }
+            .security-camera-preview-grid[data-view="grid"] .security-camera-tile-actions { padding: 0 12px 12px; }
+            .security-camera-preview-grid [hidden],
+            .security-camera-preview-empty[hidden] { display: none !important; }
+            .security-camera-view-dialog { width: min(820px, calc(100vw - 32px)); max-height: calc(100vh - 32px); padding: 0; border: 0; border-radius: 8px; color: var(--text); box-shadow: 0 24px 70px rgba(24, 34, 53, .28); overflow: hidden; }
+            .security-camera-view-dialog::backdrop { background: rgba(16, 43, 58, .65); }
+            .security-camera-view-heading { padding: 17px 55px 17px 20px; border-bottom: 1px solid var(--line); position: relative; }
+            .security-camera-view-heading h2,
+            .security-camera-view-heading p { margin: 0; }
+            .security-camera-view-heading h2 { font-size: 1.18rem; }
+            .security-camera-view-heading p { margin-top: 3px; color: var(--muted); font-size: .78rem; }
+            .security-camera-view-heading .security-dialog-close { top: 12px; right: 12px; }
+            .security-camera-view-screen { width: 100%; aspect-ratio: 16 / 9; min-height: 250px; background: #17262e; color: #fff; display: grid; place-items: center; }
+            .security-camera-view-screen iframe { width: 100%; height: 100%; border: 0; }
+            .security-camera-view-screen > div { display: grid; justify-items: center; gap: 9px; }
+            .security-camera-view-screen > div span { width: 32px; height: 32px; border: 1px solid #8da3af; border-radius: 999px; display: grid; place-items: center; }
+            .security-camera-view-footer { padding: 12px 20px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+            .security-camera-view-footer > span { color: var(--muted); font-size: .78rem; font-weight: 800; }
+            .security-camera-source-switch { grid-column: 1 / -1; width: fit-content; border: 1px solid #cbd9e7; border-radius: 7px; display: flex; overflow: hidden; }
+            .security-camera-source-switch button { min-height: 34px; padding: 6px 12px; border: 0; background: #fff; color: var(--text); font-size: .76rem; font-weight: 800; cursor: pointer; }
+            .security-camera-source-switch button + button { border-left: 1px solid #cbd9e7; }
+            .security-camera-source-switch button[aria-pressed="true"] { background: #e1f1f7; color: var(--primary-strong); }
+            [data-security-camera-edit-dialog][data-edit-mode="details"] [data-security-camera-edit-section="connection"],
+            [data-security-camera-edit-dialog][data-edit-mode="connection"] [data-security-camera-edit-section="details"],
+            [data-security-camera-edit-dialog][data-source-type="url"] [data-security-camera-source-fields="ip"],
+            [data-security-camera-edit-dialog][data-source-type="ip"] [data-security-camera-source-fields="url"] { display: none; }
             .security-branch-dialog { width: min(1180px, calc(100vw - 32px)); max-height: calc(100vh - 28px); padding: 0; border: 0; border-radius: 8px; color: var(--text); box-shadow: 0 24px 70px rgba(24, 34, 53, .28); overflow: hidden; }
             .security-branch-dialog::backdrop { background: rgba(16, 43, 58, .58); }
             .security-branch-success-dialog { width: min(470px, calc(100vw - 32px)); padding: 0; border: 0; border-radius: 8px; color: var(--text); box-shadow: 0 24px 70px rgba(24, 34, 53, .3); }
@@ -1432,6 +1755,7 @@
             .security-branch-catalog-table td:first-child small { max-width: 230px; margin-top: 3px; overflow: hidden; color: var(--muted); text-overflow: ellipsis; white-space: nowrap; }
             .security-branch-active-cameras { display: inline-flex; align-items: baseline; gap: 4px; white-space: nowrap; font-variant-numeric: tabular-nums; }
             .security-branch-active-cameras i { width: 7px; height: 7px; align-self: center; border-radius: 999px; background: #e04f4f; box-shadow: 0 0 0 3px rgba(224, 79, 79, .12); }
+            .security-branch-active-cameras.is-live i { background: #1ea979; box-shadow: 0 0 0 3px rgba(30, 169, 121, .12); }
             .security-branch-active-cameras strong { font-size: .82rem; }
             .security-branch-active-cameras small { color: var(--muted); font-size: .7rem; font-weight: 750; }
             .security-branch-row-actions { display: flex; align-items: center; gap: 7px; white-space: nowrap; }
@@ -1447,11 +1771,19 @@
             .security-analytics-date-controls > label > span { color: var(--muted); font-size: .68rem; font-weight: 900; text-transform: uppercase; }
             .security-analytics-date-controls input { min-height: 36px; padding: 7px 9px; }
             .security-analytics-date-controls .button { min-height: 36px; }
-            .security-analytics-filters { display: grid; grid-template-columns: minmax(220px, .9fr) minmax(240px, 1.1fr) auto; align-items: end; gap: 12px; padding-top: 14px; border-top: 1px solid var(--line); }
+            .security-analytics-filters { display: grid; grid-template-columns: minmax(220px, 280px) auto; justify-content: start; align-items: end; gap: 12px; padding-top: 14px; border-top: 1px solid var(--line); }
             .security-analytics-filters > label { min-width: 0; }
-            .security-analytics-selected-company { min-height: 40px; padding: 9px 11px; border: 1px solid var(--line); border-radius: 8px; background: #f5f8fb; display: flex; align-items: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 750; }
             .security-analytics-submit { min-width: 150px; white-space: nowrap; }
             .security-analytics-submit:disabled { cursor: not-allowed; opacity: .48; }
+            .security-personnel-analytics { min-width: 0; padding: 16px; display: grid; gap: 12px; }
+            .security-personnel-analytics-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+            .security-personnel-analytics-heading h2 { margin: 0; font-size: 1.15rem; }
+            .security-personnel-analytics-heading p:last-child { margin: 4px 0 0; color: var(--muted); font-size: .82rem; }
+            .security-personnel-empty { padding: 20px 12px; border: 1px dashed var(--line); border-radius: 6px; color: var(--muted); text-align: center; }
+            .security-personnel-table-scroll { max-height: 340px; border: 1px solid var(--line); border-radius: 6px; }
+            .security-personnel-table { min-width: 680px; }
+            .security-personnel-table th, .security-personnel-table td { padding: 10px 12px; }
+            .security-personnel-table td small { display: block; margin-top: 3px; color: var(--muted); }
             .security-analytics-dashboard { min-width: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
             .security-analytics-widget { min-width: 0; min-height: 292px !important; padding: 16px; gap: 12px; overflow: hidden; }
             .security-analytics-widget-heading { min-height: 46px; display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }
@@ -1514,13 +1846,21 @@
                 .security-company-dashboard-filters { grid-template-columns: minmax(330px, 1fr) minmax(190px, .65fr); }
                 .security-company-refresh { grid-column: 1 / -1; justify-self: start; }
                 .security-analytics-dashboard { grid-template-columns: 1fr; }
-                .security-camera-preview-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+                .security-camera-catalog-toolbar { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+                .security-camera-catalog-toolbar > .button { justify-self: start; }
                 .security-branch-primary-grid { grid-template-columns: 1fr; }
                 .security-branch-primary-grid > .security-branch-form-section { padding-right: 0; padding-left: 0; }
                 .security-branch-primary-grid > .security-branch-form-section + .security-branch-form-section { padding-top: 20px; border-top: 1px solid var(--line); border-left: 0; }
             }
 
+            @media (max-width: 900px) {
+                .security-camera-preview-grid[data-view="catalog"] .security-camera-tile { grid-template-columns: minmax(190px, 37%) minmax(0, 1fr); gap: 12px; }
+                .security-camera-preview-grid[data-view="catalog"] .security-camera-tile-details { border-right: 0; padding-right: 0; }
+                .security-camera-preview-grid[data-view="catalog"] .security-camera-tile-actions { grid-column: 1 / -1; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+            }
+
             @media (max-width: 760px) {
+                .security-personnel-analytics-heading { flex-direction: column; }
                 .security-detail-heading,
                 .security-section-heading,
                 .security-analytics-results-heading,
@@ -1549,7 +1889,16 @@
                 .security-branch-toolbar { align-items: stretch; flex-direction: column; }
                 .security-branch-camera-filter { width: 100%; }
                 .security-branch-toolbar-actions { width: 100%; align-items: stretch; flex-direction: column; }
-                .security-camera-preview-grid { grid-template-columns: 1fr; }
+                .security-camera-catalog-toolbar { grid-template-columns: minmax(0, 1fr); }
+                .security-camera-catalog-toolbar > .button,
+                .security-camera-view-switch { width: 100%; }
+                .security-camera-view-switch button { flex: 1; }
+                .security-camera-preview-grid[data-view="catalog"] .security-camera-tile { grid-template-columns: minmax(0, 1fr); }
+                .security-camera-preview-grid[data-view="catalog"] .security-camera-tile-actions { grid-column: auto; grid-template-columns: minmax(0, 1fr); }
+                .security-camera-preview-grid[data-view="catalog"] .security-camera-tile-details { padding: 0; }
+                .security-camera-preview-grid[data-view="grid"] { grid-template-columns: minmax(0, 1fr); }
+                .security-camera-view-screen { min-height: 180px; }
+                .security-camera-form-fields { grid-template-columns: minmax(0, 1fr); }
                 .security-branch-catalog-button,
                 .security-branch-add-button { width: 100%; }
                 .security-branch-dialog { width: calc(100vw - 16px); max-height: calc(100vh - 16px); }
@@ -1619,7 +1968,7 @@
             });
         </script>
 
-        @if ($securitySectionKey === 'companies')
+        @if (in_array($securitySectionKey, ['companies', 'branches', 'analytics', 'alerts', 'reports', 'cameras'], true))
             <script>
                 document.addEventListener('DOMContentLoaded', () => {
                     const carousel = document.querySelector('[data-security-carousel]');
@@ -1647,7 +1996,7 @@
                         track.addEventListener('scroll', updateState, { passive: true });
                         window.addEventListener('resize', updateState);
 
-                        const activeItem = track.querySelector('.security-company-card.is-active');
+                        const activeItem = track.querySelector('[data-security-carousel-item].is-active');
                         if (activeItem) track.scrollLeft = Math.max(0, activeItem.offsetLeft - track.offsetLeft - 8);
 
                         updateState();
@@ -1692,6 +2041,153 @@
                         else cameraFilter.submit();
                     });
 
+                    const cameraList = document.querySelector('[data-security-camera-preview-grid]');
+                    const cameraSearch = document.querySelector('[data-security-camera-search]');
+                    const cameraStatusFilter = document.querySelector('[data-security-camera-status-filter]');
+                    const normalizeCameraText = (value) => String(value ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+                    const applyCameraFilters = () => {
+                        if (!cameraList) return;
+
+                        const query = normalizeCameraText(cameraSearch?.value.trim());
+                        const status = cameraStatusFilter?.value ?? 'all';
+                        let visible = 0;
+
+                        cameraList.querySelectorAll('[data-security-camera-entry]').forEach((entry) => {
+                            const matches = normalizeCameraText(entry.dataset.cameraSearch).includes(query)
+                                && (status === 'all' || entry.dataset.cameraStatus === status);
+                            entry.hidden = !matches;
+                            if (matches) visible++;
+                        });
+
+                        const empty = document.querySelector('[data-security-camera-filter-empty]');
+                        if (empty) empty.hidden = visible > 0;
+                    };
+
+                    cameraSearch?.addEventListener('input', applyCameraFilters);
+                    cameraStatusFilter?.addEventListener('change', applyCameraFilters);
+                    document.querySelectorAll('[data-security-camera-view-switch]').forEach((button) => {
+                        button.addEventListener('click', () => {
+                            if (!cameraList) return;
+                            cameraList.dataset.view = button.dataset.securityCameraViewSwitch;
+                            document.querySelectorAll('[data-security-camera-view-switch]').forEach((option) => {
+                                option.setAttribute('aria-pressed', String(option === button));
+                            });
+                        });
+                    });
+
+                    const cameraDialog = document.getElementById('security-camera-dialog');
+                    if (cameraDialog) {
+                        const openCameraDialog = () => {
+                            if (typeof cameraDialog.showModal === 'function') cameraDialog.showModal();
+                            else cameraDialog.setAttribute('open', 'open');
+                        };
+                        const closeCameraDialog = () => {
+                            if (typeof cameraDialog.close === 'function') cameraDialog.close();
+                            else cameraDialog.removeAttribute('open');
+                        };
+
+                        document.querySelector('[data-security-camera-open]')?.addEventListener('click', openCameraDialog);
+                        cameraDialog.querySelectorAll('[data-security-camera-close]').forEach((button) => button.addEventListener('click', closeCameraDialog));
+                        cameraDialog.addEventListener('click', (event) => {
+                            if (event.target === cameraDialog) closeCameraDialog();
+                        });
+                        cameraDialog.querySelector('[data-security-camera-form]')?.addEventListener('submit', () => {
+                            const submit = cameraDialog.querySelector('[data-security-camera-submit]');
+                            if (submit) {
+                                submit.disabled = true;
+                                submit.textContent = 'Conectando...';
+                            }
+                        });
+                        if (cameraDialog.hasAttribute('data-auto-open')) openCameraDialog();
+                    }
+
+                    document.querySelectorAll('[data-security-camera-edit-dialog]').forEach((editDialog) => {
+                        const cameraId = editDialog.id.replace('security-camera-edit-', '');
+                        const setEditMode = (mode) => {
+                            const selectedMode = mode === 'connection' ? 'connection' : 'details';
+                            editDialog.dataset.editMode = selectedMode;
+                            const input = editDialog.querySelector('[data-security-camera-edit-mode-input]');
+                            const title = editDialog.querySelector('[data-security-camera-edit-title]');
+                            if (input) input.value = selectedMode;
+                            if (title) title.textContent = selectedMode === 'connection' ? 'Configurar conexión' : 'Editar información';
+                        };
+                        const setSourceType = (type) => {
+                            if (!editDialog.hasAttribute('data-source-type')) return;
+                            const selectedType = type === 'ip' ? 'ip' : 'url';
+                            editDialog.dataset.sourceType = selectedType;
+                            const input = editDialog.querySelector('[data-security-camera-source-input]');
+                            if (input) input.value = selectedType;
+                            editDialog.querySelectorAll('[data-security-camera-source-choice]').forEach((button) => {
+                                button.setAttribute('aria-pressed', String(button.dataset.securityCameraSourceChoice === selectedType));
+                            });
+                            const urlField = editDialog.querySelector('[data-security-camera-url-field]');
+                            if (urlField) urlField.required = selectedType === 'url';
+                            editDialog.querySelectorAll('[data-security-camera-ip-field]').forEach((field) => {
+                                field.required = selectedType === 'ip';
+                            });
+                        };
+                        const closeEditDialog = () => {
+                            if (typeof editDialog.close === 'function') editDialog.close();
+                            else editDialog.removeAttribute('open');
+                            editDialog.querySelector('[data-security-camera-edit-form]')?.reset();
+                        };
+                        const openEditDialog = () => {
+                            if (typeof editDialog.showModal === 'function') editDialog.showModal();
+                            else editDialog.setAttribute('open', 'open');
+                        };
+
+                        document.querySelectorAll(`[data-security-camera-edit-open="${cameraId}"]`).forEach((button) => {
+                            button.addEventListener('click', () => {
+                                setSourceType('url');
+                                setEditMode(button.dataset.securityCameraEditMode);
+                                openEditDialog();
+                            });
+                        });
+                        editDialog.querySelectorAll('[data-security-camera-source-choice]').forEach((button) => {
+                            button.addEventListener('click', () => setSourceType(button.dataset.securityCameraSourceChoice));
+                        });
+                        editDialog.querySelectorAll('[data-security-camera-edit-close]')
+                            .forEach((button) => button.addEventListener('click', closeEditDialog));
+                        editDialog.addEventListener('click', (event) => {
+                            if (event.target === editDialog) closeEditDialog();
+                        });
+                        editDialog.addEventListener('close', () => {
+                            editDialog.querySelector('[data-security-camera-edit-form]')?.reset();
+                        });
+                        editDialog.querySelector('[data-security-camera-edit-form]')?.addEventListener('submit', () => {
+                            const submit = editDialog.querySelector('[data-security-camera-edit-submit]');
+                            if (submit) {
+                                submit.disabled = true;
+                                submit.textContent = 'Guardando...';
+                            }
+                        });
+                        setEditMode(editDialog.dataset.editMode);
+                        setSourceType(editDialog.dataset.sourceType);
+                        if (editDialog.hasAttribute('data-auto-open')) openEditDialog();
+                    });
+
+                    document.querySelectorAll('[data-security-camera-view-dialog]').forEach((viewDialog) => {
+                        const cameraId = viewDialog.id.replace('security-camera-view-', '');
+                        const frame = viewDialog.querySelector('[data-security-camera-view-frame]');
+                        const closeViewDialog = () => {
+                            if (typeof viewDialog.close === 'function') viewDialog.close();
+                            else viewDialog.removeAttribute('open');
+                            frame?.removeAttribute('src');
+                        };
+
+                        document.querySelector(`[data-security-camera-view-open="${cameraId}"]`)?.addEventListener('click', () => {
+                            if (frame) frame.src = frame.dataset.src;
+                            if (typeof viewDialog.showModal === 'function') viewDialog.showModal();
+                            else viewDialog.setAttribute('open', 'open');
+                        });
+                        viewDialog.querySelectorAll('[data-security-camera-view-close]')
+                            .forEach((button) => button.addEventListener('click', closeViewDialog));
+                        viewDialog.addEventListener('click', (event) => {
+                            if (event.target === viewDialog) closeViewDialog();
+                        });
+                        viewDialog.addEventListener('close', () => frame?.removeAttribute('src'));
+                    });
+
                     const dialog = document.getElementById('security-branch-dialog');
                     if (!dialog) return;
 
@@ -1734,6 +2230,8 @@
                     }
 
                     const branchForm = dialog.querySelector('[data-security-branch-form]');
+                    const companyIdInput = branchForm?.querySelector('input[name="security_company_id"]');
+                    const companyName = branchForm?.querySelector('[data-security-branch-selected-company]');
                     const methodInput = branchForm?.querySelector('[data-security-branch-method]');
                     const formModeInput = branchForm?.querySelector('[data-security-branch-form-mode]');
                     const editingIdInput = branchForm?.querySelector('[data-security-branch-editing-id]');
@@ -1750,6 +2248,7 @@
                         'state',
                         'city',
                         'postal_code',
+                        'contact_name',
                         'phone',
                         'email',
                         'timezone',
@@ -1849,6 +2348,8 @@
                             editingIdInput.disabled = !isEditing;
                             editingIdInput.value = isEditing ? branch.id : '';
                         }
+                        if (companyIdInput) companyIdInput.value = isEditing ? branch.security_company_id : branchForm.dataset.securitySelectedCompanyId;
+                        if (companyName) companyName.textContent = isEditing ? branch.security_company_name : (branchForm.dataset.securitySelectedCompanyName || 'Sin empresa seleccionada');
 
                         const values = isEditing ? branch : {
                             name: '',
@@ -1859,6 +2360,7 @@
                             state: '',
                             city: '',
                             postal_code: '',
+                            contact_name: '',
                             phone: '',
                             email: '',
                             timezone: 'America/Mexico_City',
@@ -1961,7 +2463,20 @@
                         });
                     }
 
-                    if (dialog.hasAttribute('data-auto-open')) openDialog();
+                    const requestedBranchId = new URLSearchParams(window.location.search).get('edit_branch');
+                    if (requestedBranchId) {
+                        const editButton = [...document.querySelectorAll('[data-security-branch-edit]')]
+                            .find((button) => {
+                                try {
+                                    return String(JSON.parse(button.dataset.securityBranchEdit || '{}').id) === requestedBranchId;
+                                } catch {
+                                    return false;
+                                }
+                            });
+                        editButton?.click();
+                    } else if (dialog.hasAttribute('data-auto-open')) {
+                        openDialog();
+                    }
                 });
             </script>
         @endif
@@ -2007,4 +2522,28 @@
             </script>
         @endif
     </x-app-shell>
+
+    @if ($securitySectionKey === 'branches')
+        @push('styles')
+            <link rel="stylesheet" href="{{ asset('modules/security/camera-fullscreen.css') }}">
+        @endpush
+        @push('scripts')
+            <script src="{{ asset('modules/security/camera-fullscreen.js') }}" defer></script>
+        @endpush
+    @endif
+
+    @if (in_array($securitySectionKey, ['companies', 'branches', 'analytics', 'alerts', 'reports', 'cameras'], true))
+        @push('styles')
+            <link rel="stylesheet" href="{{ asset('modules/security/favorite-dashboard.css') }}">
+        @endpush
+        @push('scripts')
+            <script src="{{ asset('modules/security/favorite-dashboard.js') }}" defer></script>
+        @endpush
+    @endif
+
+    @if ($securitySectionKey === 'analytics')
+        @push('scripts')
+            <script type="module" src="{{ asset('modules/security/personnel-analytics.js') }}"></script>
+        @endpush
+    @endif
 @endsection

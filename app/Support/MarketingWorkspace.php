@@ -5,6 +5,7 @@ namespace App\Support;
 use App\Models\Marketing\Campaign;
 use App\Models\Marketing\Company;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
 
@@ -24,7 +25,22 @@ class MarketingWorkspace
     {
         /** @var User $user */
         $user = $request->user();
-        $companyId = $request->query('company_id') ?: $request->query('company') ?: $request->session()->get('marketing_company_id');
+        $companyParam = $request->query('company_id', $request->query('company'));
+
+        if ($companyParam === 'all') {
+            $request->session()->put('marketing_company_scope', 'all');
+            $request->session()->forget('marketing_campaign_id');
+
+            return null;
+        }
+
+        if ($companyParam !== null && $companyParam !== '') {
+            $request->session()->forget('marketing_company_scope');
+        } elseif ($request->session()->get('marketing_company_scope') === 'all') {
+            return null;
+        }
+
+        $companyId = $companyParam ?: $request->session()->get('marketing_company_id');
 
         $query = Company::query()->visibleTo($user)->withCount(['campaigns', 'leads', 'conversations']);
         $company = $companyId ? (clone $query)->find($companyId) : null;
@@ -39,16 +55,12 @@ class MarketingWorkspace
 
     public function campaignsFor(User $user, ?Company $company): Collection
     {
-        if (! $company) {
-            return new Collection;
-        }
-
         return Campaign::query()
             ->visibleTo($user)
-            ->where('company_id', $company->id)
+            ->when($company, fn (Builder $query) => $query->where('company_id', $company->id))
             ->withCount(['leads', 'conversations'])
             ->withSum('leads', 'estimated_value')
-            ->with('responsible')
+            ->with(['responsible', 'company'])
             ->orderByRaw("CASE status WHEN 'active' THEN 1 WHEN 'paused' THEN 2 ELSE 3 END")
             ->orderBy('name')
             ->get();

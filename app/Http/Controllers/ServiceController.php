@@ -16,14 +16,17 @@ use Illuminate\Validation\ValidationException;
 
 class ServiceController extends Controller
 {
-    public const CATEGORIES = ['Telefonia Fija', 'Telefonia Celular', 'Predial', 'Mantenimiento', 'Agua', 'Luz', 'Tenencia', 'Renta', 'Otros'];
+    public const CATEGORIES = [
+        'Telefonia Fija', 'Telefonia Celular', 'Internet', 'Luz', 'Agua', 'Predial',
+        'Recoleccion de basura', 'Mantenimiento', 'Cuota de Mantenimiento de Condominio', 'Tenencia', 'Renta', 'Otros',
+    ];
 
     public function create()
     {
         $this->ensureServices();
 
         return view('services.form', [
-            'categories' => self::CATEGORIES,
+            'categories' => $this->serviceCategoryOptions(),
             'companies' => Company::orderBy('name')->get(),
         ]);
     }
@@ -51,7 +54,7 @@ class ServiceController extends Controller
         $this->ensureServices();
 
         return view('services.form', [
-            'categories' => self::CATEGORIES,
+            'categories' => $this->serviceCategoryOptions(),
             'companies' => Company::orderBy('name')->get(),
             'service' => $service,
         ]);
@@ -72,21 +75,59 @@ class ServiceController extends Controller
         $this->ensureServices();
 
         $query = trim((string) $request->query('q'));
+        $category = trim((string) $request->query('category'));
+        $company = trim((string) $request->query('company'));
+        $branch = trim((string) $request->query('branch'));
+        $status = trim((string) $request->query('status'));
+        $status = in_array($status, ['active', 'paused', 'inactive'], true) ? $status : '';
+        $companies = Company::query()->orderBy('name')->get(['id', 'name']);
         $services = RecurringService::query()
             ->when($query, fn($builder) => $builder->where(function ($inner) use ($query) {
                 $inner->where('folio', 'like', "%{$query}%")
                     ->orWhere('service_name', 'like', "%{$query}%")
                     ->orWhere('provider', 'like', "%{$query}%")
                     ->orWhere('company_name', 'like', "%{$query}%")
-                    ->orWhere('category', 'like', "%{$query}%");
+                    ->orWhere('category', 'like', "%{$query}%")
+                    ->orWhere('service_number', 'like', "%{$query}%")
+                    ->orWhere('branch', 'like', "%{$query}%");
             }))
+            ->when($category !== '', fn ($builder) => $builder->where('category', $category))
+            ->when($company !== '', fn ($builder) => $builder->where('company_name', $company))
+            ->when($branch === '__none', fn ($builder) => $builder->where(function ($inner) {
+                $inner->whereNull('branch')->orWhere('branch', '');
+            }))
+            ->when($branch !== '' && $branch !== '__none', fn ($builder) => $builder->where('branch', $branch))
+            ->when($status !== '', fn ($builder) => $builder->where('status', $status))
             ->latest()
-            ->get();
+            ->paginate(20)
+            ->withQueryString();
 
         return view('services.catalog', [
             'services' => $services,
             'query' => $query,
+            'category' => $category,
+            'company' => $company,
+            'branch' => $branch,
+            'statusFilter' => $status,
+            'categories' => $this->serviceCategoryOptions(),
+            'companies' => $companies,
+            'companyOptions' => $companies->pluck('name')
+                ->merge(RecurringService::query()->whereNotNull('company_name')->distinct()->pluck('company_name'))
+                ->filter()->unique()->sort()->values(),
+            'branchOptions' => RecurringService::query()
+                ->when($company !== '', fn ($builder) => $builder->where('company_name', $company))
+                ->whereNotNull('branch')->where('branch', '<>', '')
+                ->distinct()->orderBy('branch')->pluck('branch'),
+            'canCreateService' => $request->user()->canNavigateTo('services.create')
+                || $request->user()->canNavigateTo('finance.services.create'),
         ]);
+    }
+
+    private function serviceCategoryOptions(): Collection
+    {
+        return collect(self::CATEGORIES)
+            ->merge(RecurringService::query()->whereNotNull('category')->distinct()->pluck('category'))
+            ->filter()->unique()->values();
     }
 
     public function months(Request $request)

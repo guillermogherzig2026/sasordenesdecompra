@@ -17,60 +17,40 @@
         'menu_permissions',
         \App\Support\NavigationPermissionCatalog::defaultsForRole(old('role', 'buyer'), $createBuyerSubroles)
     );
-    $authorizationView = request()->query('view') === 'users' ? 'users' : 'create';
+    $openCreateDialog = request()->query('view') === 'create' || ($errors->any() && ! old('_authorization_edit_id'));
 @endphp
 
 @section('body')
-    <x-app-shell title="Autorizaciones de usuarios">
-        <div class="authorization-view-tabs" role="tablist" aria-label="Vistas de autorizaciones" data-authorization-view-tabs data-initial-view="{{ $authorizationView }}">
-            <button
-                id="authorization-create-tab"
-                class="authorization-view-tab {{ $authorizationView === 'create' ? 'is-active' : '' }}"
-                type="button"
-                role="tab"
-                aria-controls="authorization-create-view"
-                aria-selected="{{ $authorizationView === 'create' ? 'true' : 'false' }}"
-                data-authorization-view-target="create"
-            >Nuevo usuario</button>
-            <button
-                id="authorization-users-tab"
-                class="authorization-view-tab {{ $authorizationView === 'users' ? 'is-active' : '' }}"
-                type="button"
-                role="tab"
-                aria-controls="authorization-users-view"
-                aria-selected="{{ $authorizationView === 'users' ? 'true' : 'false' }}"
-                data-authorization-view-target="users"
-            >Ver usuarios</button>
-        </div>
-
-        <section
-            id="authorization-create-view"
-            class="panel collapsible-panel authorization-view-panel"
-            role="tabpanel"
-            aria-labelledby="authorization-create-tab"
-            data-authorization-view-panel="create"
-            data-collapsible-panel
-            data-collapsible-name="alta de usuarios y autorizaciones"
-            @if ($authorizationView !== 'create') hidden @endif
-        >
-            <div class="collapsible-panel-header">
-                <div>
-                    <h2>Alta de usuarios y autorizaciones</h2>
-                    <p class="fine-print">Finanzas puede crear usuarios y definir sus accesos por menú, empresa y almacén.</p>
-                </div>
-                <button
-                    class="collapsible-panel-toggle"
-                    type="button"
-                    aria-expanded="true"
-                    aria-controls="user-authorization-create-content"
-                    aria-label="Ocultar alta de usuarios y autorizaciones"
-                    title="Ocultar alta de usuarios y autorizaciones"
-                    data-collapsible-toggle
-                ><span aria-hidden="true" data-collapsible-symbol>-</span></button>
+    <x-app-shell title="Autorizaciones">
+        <header class="authorization-directory-heading">
+            <div>
+                <h2>Autorizaciones</h2>
+                <p>Administra usuarios y sus accesos al sistema.</p>
             </div>
+            <button class="button primary" type="button" data-authorization-create-open aria-haspopup="dialog" aria-controls="authorization-create-dialog"><span aria-hidden="true">+</span> Nuevo usuario</button>
+        </header>
 
-            <form id="user-authorization-create-content" class="stack" method="POST" action="{{ route('finance.admin.users.store') }}" data-collapsible-content data-credential-generator>
+        <dialog id="authorization-create-dialog" class="authorization-create-dialog" aria-labelledby="authorization-create-title" data-authorization-create-dialog @if ($openCreateDialog) data-auto-open @endif>
+            <header class="authorization-dialog-header">
+                <div>
+                    <h2 id="authorization-create-title">Nuevo usuario</h2>
+                    <p>Configura sus datos, accesos, empresas y almacenes.</p>
+                </div>
+                <button class="authorization-dialog-close" type="button" aria-label="Cerrar" title="Cerrar" data-authorization-create-close>×</button>
+            </header>
+            <form id="user-authorization-create-content" class="stack authorization-create-form" method="POST" action="{{ route('finance.admin.users.store') }}" data-credential-generator>
                 @csrf
+                <input type="hidden" name="_authorization_form" value="create">
+                @if ($errors->any() && ! old('_authorization_edit_id'))
+                    <div class="authorization-modal-errors" role="alert">
+                        <strong>Revisa los datos capturados.</strong>
+                        <ul>
+                            @foreach ($errors->all() as $error)
+                                <li>{{ $error }}</li>
+                            @endforeach
+                        </ul>
+                    </div>
+                @endif
                 <section class="authorization-step authorization-user-step">
                     <div class="authorization-step-header">
                         <div class="authorization-step-title">
@@ -160,40 +140,49 @@
                     <button class="button primary" type="submit">Crear usuario</button>
                 </div>
             </form>
-        </section>
+        </dialog>
 
         <section
             id="authorization-users-view"
-            class="panel collapsible-panel authorization-view-panel"
-            role="tabpanel"
-            aria-labelledby="authorization-users-tab"
-            data-authorization-view-panel="users"
-            data-collapsible-panel
-            data-collapsible-name="usuarios autorizados"
-            @if ($authorizationView !== 'users') hidden @endif
+            class="panel authorization-catalog"
+            aria-label="Catálogo de usuarios"
         >
-            <div class="collapsible-panel-header">
-                <h2>Usuarios autorizados</h2>
-                <button
-                    class="collapsible-panel-toggle"
-                    type="button"
-                    aria-expanded="true"
-                    aria-controls="authorized-users-content"
-                    aria-label="Ocultar usuarios autorizados"
-                    title="Ocultar usuarios autorizados"
-                    data-collapsible-toggle
-                ><span aria-hidden="true" data-collapsible-symbol>-</span></button>
+            <h2>Catálogo de usuarios</h2>
+            <div class="authorization-filters" aria-label="Filtros de usuarios">
+                <label class="authorization-filter-search">Buscar usuario
+                    <input type="search" placeholder="Buscar por nombre, usuario o correo..." autocomplete="off" data-authorization-search>
+                </label>
+                <label>Empresa
+                    <select data-authorization-company>
+                        <option value="">Todas</option>
+                        @foreach ($companies as $company)
+                            <option value="{{ $company->name }}">{{ $company->name }}</option>
+                        @endforeach
+                    </select>
+                </label>
+                <label>Módulo
+                    <select data-authorization-module>
+                        <option value="">Todos</option>
+                        @foreach ($navigationCatalog as $categoryKey => $category)
+                            <option value="{{ $categoryKey }}">{{ $category['label'] }}</option>
+                        @endforeach
+                    </select>
+                </label>
+                <label>Estado
+                    <select data-authorization-status>
+                        <option value="">Todos</option>
+                        <option value="active">Activo</option>
+                        <option value="inactive">Inactivo</option>
+                    </select>
+                </label>
             </div>
-            <div id="authorized-users-content" class="table-scroll" data-collapsible-content>
-                <table>
+            <div id="authorized-users-content" class="table-scroll">
+                <table class="authorization-table">
                     <thead>
                         <tr>
-                            <th>Nombre</th>
                             <th>Usuario</th>
                             <th>Correo</th>
-                            <th>Rol</th>
-                            <th>Subcategoria</th>
-                            <th>Menus</th>
+                            <th>Módulos autorizados</th>
                             <th>Empresas</th>
                             <th>Almacenes</th>
                             <th>Estado</th>
@@ -201,75 +190,63 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @forelse ($users as $managedUser)
-                            @php $assignments = $managedUser->normalizedCompanyAssignments(); @endphp
-                            <tr>
-                                <td>{{ $managedUser->name }}</td>
-                                <td>{{ $managedUser->username ?: 'Sin usuario' }}</td>
+                        @foreach ($users as $managedUser)
+                            @php
+                                $assignments = $managedUser->normalizedCompanyAssignments();
+                                $authorizedModules = collect($navigationCatalog)
+                                    ->filter(fn (array $category) => count(array_intersect(array_keys($category['items']), $managedUser->navigationPermissions())) > 0)
+                                    ->keys()->all();
+                                $warehouseCount = collect($assignments)->sum(fn (array $assignment) => count($assignment['warehouses']));
+                                $allCompanies = ! in_array($managedUser->role, ['buyer', 'inventory'], true);
+                                $initials = collect(preg_split('/\s+/', trim($managedUser->name)))
+                                    ->filter()->take(2)->map(fn (string $part) => mb_substr($part, 0, 1))->implode('');
+                            @endphp
+                            <tr data-authorization-row data-editor-id="finance-editor-{{ $managedUser->id }}"
+                                data-search="{{ $managedUser->name.' '.$managedUser->username.' '.$managedUser->email }}"
+                                data-companies="{{ json_encode($managedUser->authorizedCompanyNames()) }}"
+                                data-all-companies="{{ $allCompanies ? 'true' : 'false' }}"
+                                data-modules="{{ json_encode($authorizedModules) }}"
+                                data-status="{{ $managedUser->active ? 'active' : 'inactive' }}">
+                                <td data-filter-value="{{ $managedUser->name }}">
+                                    <div class="authorization-user-identity">
+                                        <span class="authorization-user-avatar" aria-hidden="true">{{ $initials ?: '?' }}</span>
+                                        <span><strong>{{ $managedUser->name }}</strong><small>{{ $managedUser->username ?: 'Sin usuario' }}</small></span>
+                                    </div>
+                                </td>
                                 <td>{{ $managedUser->email }}</td>
-                                <td>{{ $roleLabels[$managedUser->role] ?? $managedUser->role }}</td>
+                                <td><span class="authorization-count authorization-count-modules">{{ count($authorizedModules) }}</span> <span class="authorization-count-label">módulos</span></td>
+                                <td><span class="authorization-count authorization-count-companies">{{ $allCompanies ? 'Todas' : count($assignments) }}</span></td>
+                                <td><span class="authorization-count authorization-count-warehouses">{{ $allCompanies ? '—' : $warehouseCount }}</span></td>
                                 <td>
-                                    @if ($managedUser->role === 'buyer')
-                                        {{ $managedUser->buyerSubroleLabel() }}
-                                    @else
-                                        <span class="fine-print">—</span>
-                                    @endif
+                                    <span class="authorization-state {{ $managedUser->active ? 'is-active' : 'is-inactive' }}">{{ $managedUser->active ? 'Activo' : 'Inactivo' }}</span>
                                 </td>
                                 <td>
-                                    @forelse ($managedUser->authorizedNavigationCategoryLabels() as $categoryLabel)
-                                        <span class="navigation-category-chip">{{ $categoryLabel }}</span>
-                                    @empty
-                                        <span class="fine-print">Sin acceso</span>
-                                    @endforelse
-                                </td>
-                                <td>
-                                    @if (in_array($managedUser->role, ['buyer', 'inventory'], true))
-                                        @forelse ($assignments as $assignment)
-                                            <div>{{ $assignment['name'] }}</div>
-                                        @empty
-                                            Sin empresas asignadas
-                                        @endforelse
-                                    @else
-                                        Todas
-                                    @endif
-                                </td>
-                                <td>
-                                    @if (in_array($managedUser->role, ['buyer', 'inventory'], true))
-                                        @forelse ($assignments as $assignment)
-                                            <div>
-                                                <strong>{{ $assignment['name'] }}:</strong>
-                                                @if (count($assignment['warehouses']))
-                                                    {{ implode(', ', $assignment['warehouses']) }}
-                                                @else
-                                                    <span class="fine-print">Sin almacenes</span>
-                                                @endif
+                                    <div class="authorization-row-actions">
+                                        <button class="button ghost small editor-toggle" type="button" aria-controls="finance-editor-{{ $managedUser->id }}" aria-expanded="false" data-target="finance-editor-{{ $managedUser->id }}">Editar</button>
+                                        <button class="button ghost small editor-toggle" type="button" aria-controls="finance-editor-{{ $managedUser->id }}" aria-expanded="false" data-target="finance-editor-{{ $managedUser->id }}" data-permission-editor>Permisos</button>
+                                        <details class="authorization-more">
+                                            <summary aria-label="Más acciones e información de {{ $managedUser->name }}" title="Más acciones e información">⋯</summary>
+                                            <div class="authorization-more-content">
+                                                <p><strong>Rol:</strong> {{ $roleLabels[$managedUser->role] ?? $managedUser->role }}@if ($managedUser->role === 'buyer') · {{ $managedUser->buyerSubroleLabel() }} @endif</p>
+                                                <p><strong>Módulos:</strong> {{ implode(', ', $managedUser->authorizedNavigationCategoryLabels()) ?: 'Sin acceso' }}</p>
+                                                <p><strong>Empresas:</strong> {{ $allCompanies ? 'Todas' : (collect($assignments)->pluck('name')->implode(', ') ?: 'Sin empresas asignadas') }}</p>
+                                                <p><strong>Almacenes:</strong> {{ $allCompanies ? 'No aplica' : (collect($assignments)->flatMap(fn (array $assignment) => $assignment['warehouses'])->unique()->implode(', ') ?: 'Sin almacenes') }}</p>
+                                                <form method="POST" action="{{ route('finance.admin.users.toggle', $managedUser) }}">
+                                                    @csrf
+                                                    @method('PATCH')
+                                                    <button class="button {{ $managedUser->active ? 'danger' : 'primary' }} small" type="submit">{{ $managedUser->active ? 'Desactivar' : 'Activar' }}</button>
+                                                </form>
                                             </div>
-                                        @empty
-                                            <span class="fine-print">—</span>
-                                        @endforelse
-                                    @else
-                                        <span class="fine-print">—</span>
-                                    @endif
-                                </td>
-                                <td>
-                                    <span class="status {{ $managedUser->active ? 'approved' : 'canceled' }}">{{ $managedUser->active ? 'Activo' : 'Inactivo' }}</span>
-                                </td>
-                                <td class="row-actions">
-                                    <button class="button ghost small editor-toggle" type="button" data-target="finance-editor-{{ $managedUser->id }}">Editar</button>
-                                    <form class="inline-form" method="POST" action="{{ route('finance.admin.users.toggle', $managedUser) }}">
-                                        @csrf
-                                        @method('PATCH')
-                                        <button class="button {{ $managedUser->active ? 'danger' : 'primary' }} small" type="submit">
-                                            {{ $managedUser->active ? 'Desactivar' : 'Activar' }}
-                                        </button>
-                                    </form>
+                                        </details>
+                                    </div>
                                 </td>
                             </tr>
-                            <tr class="editor-row" id="finance-editor-{{ $managedUser->id }}" hidden>
-                                <td colspan="10">
+                            <tr class="editor-row" id="finance-editor-{{ $managedUser->id }}" data-authorization-editor hidden>
+                                <td colspan="7">
                                     <form class="stack" method="POST" action="{{ route('finance.admin.users.update', $managedUser) }}">
                                         @csrf
                                         @method('PUT')
+                                        <input type="hidden" name="_authorization_edit_id" value="{{ $managedUser->id }}">
                                         <section class="authorization-step authorization-user-step">
                                             <div class="authorization-step-header">
                                                 <div class="authorization-step-title">
@@ -372,97 +349,88 @@
                                     </form>
                                 </td>
                             </tr>
-                        @empty
-                            <tr>
-                                <td colspan="10">No hay usuarios autorizados.</td>
-                            </tr>
-                        @endforelse
+                        @endforeach
+                        <tr data-authorization-empty @if ($users->isNotEmpty()) hidden @endif>
+                            <td colspan="7">No hay usuarios que coincidan con los filtros.</td>
+                        </tr>
                     </tbody>
                 </table>
             </div>
+            <footer class="authorization-catalog-footer">
+                <span data-authorization-result-count>Mostrando {{ min($users->count(), 12) }} de {{ $users->count() }} usuarios</span>
+                <nav class="authorization-pagination" aria-label="Páginas de usuarios">
+                    <button class="button ghost small" type="button" data-authorization-previous aria-label="Página anterior" disabled>‹</button>
+                    <span data-authorization-page>1 de {{ max(1, (int) ceil($users->count() / 12)) }}</span>
+                    <button class="button ghost small" type="button" data-authorization-next aria-label="Página siguiente" @if ($users->count() <= 12) disabled @endif>›</button>
+                </nav>
+            </footer>
         </section>
 
         <style>
-            .authorization-view-tabs {
-                width: max-content;
-                max-width: 100%;
-                padding: 4px;
-                border: 1px solid #cbd9e7;
-                border-radius: 8px;
-                background: #eef3f8;
-                display: flex;
-                align-items: center;
-                gap: 4px;
-            }
-
-            .authorization-view-tab {
-                min-height: 34px;
-                padding: 7px 13px;
-                border: 1px solid transparent;
-                border-radius: 6px;
-                background: transparent;
-                color: #425368;
-                font: inherit;
-                font-size: .84rem;
-                font-weight: 800;
-                white-space: nowrap;
-                cursor: pointer;
-            }
-
-            .authorization-view-tab:hover,
-            .authorization-view-tab:focus-visible {
-                color: #0d637a;
-                outline: none;
-            }
-
-            .authorization-view-tab:focus-visible {
-                box-shadow: 0 0 0 3px rgba(20, 113, 139, .16);
-            }
-
-            .authorization-view-tab.is-active {
-                border-color: #14718b;
-                background: #14718b;
-                color: #fff;
-                box-shadow: 0 2px 5px rgba(20, 113, 139, .18);
-            }
-
-            .authorization-view-panel[hidden] {
-                display: none !important;
-            }
-
-            .collapsible-panel-header {
-                display: flex;
-                align-items: flex-start;
-                justify-content: space-between;
-                gap: 16px;
-            }
-
-            .collapsible-panel-header h2 {
-                margin: 0;
-            }
-
-            .collapsible-panel-toggle {
-                display: inline-grid;
-                flex: 0 0 36px;
-                width: 36px;
-                height: 36px;
-                place-items: center;
-                border: 1px solid #cbd9e7;
-                border-radius: 6px;
-                background: #fff;
-                color: #123247;
-                padding: 0;
-                font: 700 1.25rem/1 sans-serif;
-                cursor: pointer;
-            }
-
-            .collapsible-panel-toggle:hover,
-            .collapsible-panel-toggle:focus-visible {
-                border-color: #14718b;
-                color: #0d637a;
-                outline: 2px solid transparent;
-                box-shadow: 0 0 0 3px rgba(20, 113, 139, .14);
-            }
+            .authorization-directory-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+            .authorization-directory-heading h2 { margin: 0 0 4px; font-size: 1.5rem; }
+            .authorization-directory-heading p { margin: 0; color: var(--muted); }
+            .authorization-directory-heading .button { flex: 0 0 auto; }
+            .authorization-directory-heading .button span { font-size: 1.25rem; line-height: 1; }
+            .authorization-catalog { min-width: 0; max-height: none !important; overflow: visible !important; gap: 20px; padding: 22px; }
+            .authorization-catalog h2 { margin: 0; font-size: 1.25rem; }
+            .authorization-filters { display: grid; grid-template-columns: minmax(230px, 2fr) repeat(3, minmax(135px, 1fr)); align-items: end; gap: 12px; }
+            .authorization-filters label { display: grid; gap: 5px; min-width: 0; color: #344054; font-size: .8rem; font-weight: 750; }
+            .authorization-filters input, .authorization-filters select { min-width: 0; width: 100%; min-height: 40px; border: 1px solid var(--line); border-radius: 6px; background: #fff; padding: 8px 10px; color: var(--text); font: inherit; font-size: .88rem; }
+            .authorization-filters input:focus-visible, .authorization-filters select:focus-visible { outline: 2px solid #6da8c0; outline-offset: 1px; }
+            .authorization-catalog .table-scroll { min-width: 0; overflow-x: auto; border: 1px solid var(--line); border-radius: 6px; }
+            .authorization-table { width: 100%; min-width: 1120px; table-layout: fixed; border-collapse: collapse; }
+            .authorization-table th { background: #f5f9fd; color: #526077; font-size: .74rem; text-transform: uppercase; white-space: nowrap; }
+            .authorization-table th, .authorization-table td { padding: 12px 14px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: middle; }
+            .authorization-table th:nth-child(1) { width: 19%; }
+            .authorization-table th:nth-child(2) { width: 21%; }
+            .authorization-table th:nth-child(3) { width: 15%; }
+            .authorization-table th:nth-child(4), .authorization-table th:nth-child(5) { width: 8%; }
+            .authorization-table th:nth-child(6) { width: 10%; }
+            .authorization-table th:nth-child(7) { width: 19%; }
+            .authorization-table td:nth-child(2) { overflow-wrap: anywhere; }
+            .authorization-table tbody tr:last-child td { border-bottom: 0; }
+            .authorization-table tr[hidden] { display: none; }
+            .authorization-user-identity { display: flex; align-items: center; gap: 10px; min-width: 155px; }
+            .authorization-user-identity strong, .authorization-user-identity small { display: block; line-height: 1.25; overflow-wrap: anywhere; }
+            .authorization-user-identity strong { font-size: .88rem; }
+            .authorization-user-identity small { margin-top: 4px; color: var(--muted); font-size: .78rem; }
+            .authorization-user-avatar { display: grid; flex: 0 0 36px; width: 36px; height: 36px; place-items: center; border-radius: 50%; background: #e5effc; color: #1554a1; font-size: .76rem; font-weight: 850; }
+            .authorization-table tbody tr:nth-child(4n+2) .authorization-user-avatar { background: #ddf6ea; color: #126d4b; }
+            .authorization-table tbody tr:nth-child(4n+3) .authorization-user-avatar { background: #fae6ee; color: #a32957; }
+            .authorization-table tbody tr:nth-child(4n+4) .authorization-user-avatar { background: #fff1d6; color: #8c5e13; }
+            .authorization-count { display: inline-flex; min-width: 30px; min-height: 27px; align-items: center; justify-content: center; padding: 3px 7px; border-radius: 6px; font-size: .86rem; font-weight: 850; }
+            .authorization-count-modules { color: #19477f; background: #e8f2ff; }
+            .authorization-count-companies { color: #6135a0; background: #f1eaff; }
+            .authorization-count-warehouses { color: #80571a; background: #fff3d1; }
+            .authorization-count-label { color: var(--muted); font-size: .82rem; }
+            .authorization-state { display: inline-flex; align-items: center; gap: 6px; border-radius: 6px; padding: 6px 9px; font-size: .82rem; font-weight: 800; white-space: nowrap; }
+            .authorization-state::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+            .authorization-state.is-active { color: #08704b; background: #e6f8ee; }
+            .authorization-state.is-inactive { color: #a52831; background: #fde8ea; }
+            .authorization-row-actions { display: flex; align-items: center; flex-wrap: nowrap; gap: 6px; }
+            .authorization-row-actions:has(.authorization-more[open]) { flex-wrap: wrap; }
+            .authorization-row-actions .button { white-space: nowrap; }
+            .authorization-more summary { width: 34px; height: 34px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 6px; background: #fff; font-size: 1.2rem; line-height: 1; cursor: pointer; list-style: none; }
+            .authorization-more summary::-webkit-details-marker { display: none; }
+            .authorization-more-content { min-width: min(280px, 75vw); padding: 10px 0; color: #344054; font-size: .8rem; }
+            .authorization-more-content p { margin: 0 0 8px; line-height: 1.35; overflow-wrap: anywhere; }
+            .authorization-more-content form { margin-top: 10px; }
+            .authorization-more[open] { flex-basis: 100%; }
+            .authorization-catalog-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: var(--muted); font-size: .84rem; }
+            .authorization-pagination { display: flex; align-items: center; gap: 8px; color: var(--text); }
+            .authorization-pagination button { width: 34px; padding: 0; font-size: 1.15rem; }
+            .authorization-pagination button:disabled { opacity: .45; cursor: default; }
+            .authorization-create-dialog { width: min(1050px, calc(100vw - 24px)); max-width: none; max-height: calc(100dvh - 24px); padding: 0; border: 1px solid var(--line); border-radius: 8px; background: #fff; color: var(--text); box-shadow: 0 24px 60px rgba(10, 31, 44, .3); overflow: hidden; }
+            .authorization-create-dialog::backdrop { background: rgba(10, 31, 44, .62); }
+            .authorization-dialog-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px 22px; border-bottom: 1px solid var(--line); }
+            .authorization-dialog-header h2 { margin: 0 0 3px; font-size: 1.25rem; }
+            .authorization-dialog-header p { margin: 0; color: var(--muted); font-size: .85rem; }
+            .authorization-dialog-close { flex: 0 0 34px; width: 34px; height: 34px; border: 1px solid var(--line); border-radius: 6px; background: #fff; color: var(--text); font-size: 1.4rem; cursor: pointer; }
+            .authorization-create-form { max-height: calc(100dvh - 100px); overflow-y: auto; padding: 18px 22px 22px; }
+            .authorization-create-form .form-actions { position: sticky; bottom: -22px; z-index: 1; margin: 0 -22px -22px; padding: 12px 22px; border-top: 1px solid var(--line); background: #fff; }
+            .authorization-modal-errors { padding: 10px 14px; border: 1px solid #e7b0ae; border-radius: 6px; background: #fff3f2; color: #8d241e; font-size: .85rem; }
+            .authorization-modal-errors ul { margin: 6px 0 0; padding-left: 18px; }
 
             .authorization-configuration-stack {
                 display: grid;
@@ -471,8 +439,8 @@
 
             .authorization-user-fields {
                 display: grid;
-                grid-template-columns: minmax(0, 420px);
-                gap: 8px;
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+                gap: 10px;
                 margin-top: 12px;
             }
 
@@ -776,6 +744,8 @@
             }
 
             @media (max-width: 980px) {
+                .authorization-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+                .authorization-user-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
                 .navigation-permission-option {
                     flex-basis: 160px;
                     width: 160px;
@@ -790,13 +760,16 @@
             }
 
             @media (max-width: 640px) {
-                .authorization-view-tabs {
-                    width: 100%;
-                }
-
-                .authorization-view-tab {
-                    flex: 1 1 0;
-                }
+                .authorization-directory-heading { align-items: flex-start; flex-direction: column; }
+                .authorization-directory-heading .button { width: 100%; }
+                .authorization-catalog { padding: 14px; }
+                .authorization-filters { grid-template-columns: minmax(0, 1fr); }
+                .authorization-catalog-footer { align-items: flex-start; flex-direction: column; }
+                .authorization-create-dialog { width: calc(100vw - 12px); max-height: calc(100dvh - 12px); }
+                .authorization-dialog-header { padding: 12px 14px; }
+                .authorization-create-form { padding: 12px 14px 18px; max-height: calc(100dvh - 82px); }
+                .authorization-create-form .form-actions { margin: 0 -14px -18px; padding: 10px 14px; }
+                .authorization-user-fields { grid-template-columns: minmax(0, 1fr); }
 
                 .authorization-step {
                     padding: 13px;
@@ -956,82 +929,113 @@
                 proposeCredentials();
             }
 
-            const authorizationViewTabs = document.querySelector('[data-authorization-view-tabs]');
-
-            if (authorizationViewTabs) {
-                const viewButtons = Array.from(authorizationViewTabs.querySelectorAll('[data-authorization-view-target]'));
-                const viewPanels = Array.from(document.querySelectorAll('[data-authorization-view-panel]'));
-
-                const showAuthorizationView = (view, updateUrl = true) => {
-                    const activeButton = viewButtons.find((button) => button.dataset.authorizationViewTarget === view) || viewButtons[0];
-                    if (!activeButton) return;
-
-                    const activeView = activeButton.dataset.authorizationViewTarget;
-                    viewButtons.forEach((button) => {
-                        const isActive = button === activeButton;
-                        button.classList.toggle('is-active', isActive);
-                        button.setAttribute('aria-selected', String(isActive));
-                        button.tabIndex = isActive ? 0 : -1;
-                    });
-                    viewPanels.forEach((panel) => {
-                        panel.hidden = panel.dataset.authorizationViewPanel !== activeView;
-                    });
-
-                    if (updateUrl) {
-                        const url = new URL(window.location.href);
-                        if (activeView === 'create') url.searchParams.delete('view');
-                        else url.searchParams.set('view', activeView);
-                        window.history.replaceState({}, '', url);
-                    }
-
-                    window.dispatchEvent(new Event('resize'));
-                };
-
-                viewButtons.forEach((button, index) => {
-                    button.addEventListener('click', () => showAuthorizationView(button.dataset.authorizationViewTarget));
-                    button.addEventListener('keydown', (event) => {
-                        if (!['ArrowLeft', 'ArrowRight'].includes(event.key)) return;
-                        event.preventDefault();
-                        const direction = event.key === 'ArrowRight' ? 1 : -1;
-                        const nextButton = viewButtons[(index + direction + viewButtons.length) % viewButtons.length];
-                        showAuthorizationView(nextButton.dataset.authorizationViewTarget);
-                        nextButton.focus();
-                    });
-                });
-
-                showAuthorizationView(authorizationViewTabs.dataset.initialView || 'create', false);
-            }
-
-            document.querySelectorAll('[data-collapsible-panel]').forEach((panel) => {
-                const button = panel.querySelector('[data-collapsible-toggle]');
-                const content = panel.querySelector('[data-collapsible-content]');
-                const symbol = button?.querySelector('[data-collapsible-symbol]');
-                const name = panel.dataset.collapsibleName || 'seccion';
-
-                if (!button || !content || !symbol) return;
-
-                button.addEventListener('click', () => {
-                    const isExpanded = button.getAttribute('aria-expanded') === 'true';
-                    const nextExpanded = !isExpanded;
-                    const action = nextExpanded ? 'Ocultar' : 'Mostrar';
-
-                    content.hidden = !nextExpanded;
-                    button.setAttribute('aria-expanded', String(nextExpanded));
-                    button.setAttribute('aria-label', `${action} ${name}`);
-                    button.title = `${action} ${name}`;
-                    symbol.textContent = nextExpanded ? '-' : '+';
-                });
+            const createDialog = document.querySelector('[data-authorization-create-dialog]');
+            const openCreateDialog = () => {
+                if (!createDialog?.open) createDialog?.showModal();
+                window.dispatchEvent(new Event('resize'));
+            };
+            document.querySelector('[data-authorization-create-open]')?.addEventListener('click', openCreateDialog);
+            createDialog?.querySelector('[data-authorization-create-close]')?.addEventListener('click', () => createDialog.close());
+            createDialog?.addEventListener('click', (event) => {
+                if (event.target === createDialog) createDialog.close();
             });
+            createDialog?.addEventListener('close', () => {
+                const url = new URL(window.location.href);
+                if (url.searchParams.get('view') === 'create') {
+                    url.searchParams.delete('view');
+                    window.history.replaceState({}, '', url);
+                }
+            });
+            if (createDialog?.hasAttribute('data-auto-open')) openCreateDialog();
+
+            const catalog = document.querySelector('.authorization-catalog');
+            const userRows = Array.from(catalog?.querySelectorAll('[data-authorization-row]') || []);
+            const emptyRow = catalog?.querySelector('[data-authorization-empty]');
+            const searchInput = catalog?.querySelector('[data-authorization-search]');
+            const companySelect = catalog?.querySelector('[data-authorization-company]');
+            const moduleSelect = catalog?.querySelector('[data-authorization-module]');
+            const statusSelect = catalog?.querySelector('[data-authorization-status]');
+            const previousPage = catalog?.querySelector('[data-authorization-previous]');
+            const nextPage = catalog?.querySelector('[data-authorization-next]');
+            const pageLabel = catalog?.querySelector('[data-authorization-page]');
+            const resultCount = catalog?.querySelector('[data-authorization-result-count]');
+            const pageSize = 12;
+            let currentPage = 1;
+
+            const normalize = (value) => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+            const closeEditor = (row) => {
+                const editor = document.getElementById(row.dataset.editorId);
+                if (editor) editor.hidden = true;
+                row.querySelectorAll('.editor-toggle').forEach((button) => {
+                    button.setAttribute('aria-expanded', 'false');
+                    if (!button.hasAttribute('data-permission-editor')) button.textContent = 'Editar';
+                });
+            };
+            const renderUsers = () => {
+                const search = normalize(searchInput?.value.trim());
+                const company = companySelect?.value || '';
+                const module = moduleSelect?.value || '';
+                const status = statusSelect?.value || '';
+                const matching = userRows.filter((row) => {
+                    const companies = JSON.parse(row.dataset.companies || '[]');
+                    const modules = JSON.parse(row.dataset.modules || '[]');
+                    return (!search || normalize(row.dataset.search).includes(search))
+                        && (!company || row.dataset.allCompanies === 'true' || companies.includes(company))
+                        && (!module || modules.includes(module))
+                        && (!status || row.dataset.status === status);
+                });
+                const pages = Math.max(1, Math.ceil(matching.length / pageSize));
+                currentPage = Math.max(1, Math.min(currentPage, pages));
+                const visible = new Set(matching.slice((currentPage - 1) * pageSize, currentPage * pageSize));
+                userRows.forEach((row) => {
+                    row.hidden = !visible.has(row);
+                    if (row.hidden) closeEditor(row);
+                });
+                if (emptyRow) emptyRow.hidden = matching.length > 0;
+                if (previousPage) previousPage.disabled = currentPage <= 1;
+                if (nextPage) nextPage.disabled = currentPage >= pages;
+                if (pageLabel) pageLabel.textContent = `${currentPage} de ${pages}`;
+                if (resultCount) {
+                    const first = matching.length ? (currentPage - 1) * pageSize + 1 : 0;
+                    const last = Math.min(currentPage * pageSize, matching.length);
+                    resultCount.textContent = `Mostrando ${first}–${last} de ${matching.length} usuarios`;
+                }
+            };
+            searchInput?.addEventListener('input', () => { currentPage = 1; renderUsers(); });
+            [companySelect, moduleSelect, statusSelect].forEach((select) => select?.addEventListener('change', () => {
+                currentPage = 1;
+                renderUsers();
+            }));
+            previousPage?.addEventListener('click', () => { currentPage--; renderUsers(); });
+            nextPage?.addEventListener('click', () => { currentPage++; renderUsers(); });
+            renderUsers();
 
             document.querySelectorAll('.editor-toggle').forEach((button) => {
                 button.addEventListener('click', () => {
                     const row = document.getElementById(button.dataset.target);
                     if (!row) return;
-                    const isHidden = row.hasAttribute('hidden');
-                    row.toggleAttribute('hidden', !isHidden);
-                    button.textContent = isHidden ? 'Cerrar' : 'Editar';
+                    const shouldOpen = button.hasAttribute('data-permission-editor') || row.hidden;
+                    row.hidden = !shouldOpen;
+                    button.closest('[data-authorization-row]')?.querySelectorAll('.editor-toggle').forEach((toggle) => {
+                        toggle.setAttribute('aria-expanded', String(shouldOpen));
+                        if (!toggle.hasAttribute('data-permission-editor')) toggle.textContent = shouldOpen ? 'Cerrar' : 'Editar';
+                    });
+                    if (shouldOpen && button.hasAttribute('data-permission-editor')) {
+                        row.querySelector('[data-navigation-permission-manager]')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+                    }
+                    if (shouldOpen) window.dispatchEvent(new Event('resize'));
                 });
             });
+            const failedEditId = @json((int) old('_authorization_edit_id'));
+            if (failedEditId) {
+                const failedRowIndex = userRows.findIndex((row) => row.dataset.editorId === `finance-editor-${failedEditId}`);
+                if (failedRowIndex >= 0) {
+                    currentPage = Math.floor(failedRowIndex / pageSize) + 1;
+                    renderUsers();
+                }
+                const editButton = document.querySelector(`[data-target="finance-editor-${failedEditId}"]:not([data-permission-editor])`);
+                editButton?.click();
+            }
 
             document.querySelectorAll('[data-navigation-permission-manager]').forEach((manager) => {
                 const categoryInput = manager.querySelector('[data-navigation-category]');

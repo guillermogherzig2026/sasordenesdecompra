@@ -2025,6 +2025,116 @@ tbody tr:hover {
   width: 100%;
 }
 
+.biometric-cell {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 215px;
+}
+
+.biometric-cell-details {
+  display: grid;
+  justify-items: start;
+  gap: 3px;
+  min-width: 0;
+}
+
+.biometric-cell .icon-btn {
+  flex: 0 0 auto;
+  margin-left: auto;
+}
+
+.biometric-media-btn {
+  flex: 0 0 auto;
+  padding: 5px 7px;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.biometric-media-modal {
+  width: min(100%, 700px);
+}
+
+.biometric-file-hint {
+  margin: 5px 0 12px;
+}
+
+.biometric-file-preview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.biometric-preview-item {
+  display: grid;
+  gap: 4px;
+  width: 130px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.biometric-preview-item img,
+.biometric-preview-item video {
+  width: 130px;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  background: #edf2f7;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+}
+
+.biometric-media-heading {
+  margin: 12px 0 8px;
+}
+
+.biometric-media-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.biometric-media-list li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  border-top: 1px solid var(--line);
+}
+
+.biometric-media-file-name {
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 560px) {
+  .biometric-media-list li {
+    flex-wrap: wrap;
+  }
+
+  .biometric-media-file-name {
+    flex-basis: 100%;
+  }
+}
+
+.biometric-cell .icon-btn svg,
+.employee-biometric-backdrop .icon-btn svg {
+  width: 18px;
+  height: 18px;
+  stroke-width: 2;
+}
+
+.biometric-form-note {
+  margin: 0 0 14px;
+  line-height: 1.45;
+}
+
+body.hr-suite-embedded .employee-biometric-backdrop {
+  place-items: start center;
+  padding-top: var(--biometric-modal-top, 24px);
+}
+
 .model-column {
   min-width: 190px;
 }

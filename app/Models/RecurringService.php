@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Support\Carbon;
 use Illuminate\Database\Eloquent\Model;
 
 class RecurringService extends Model
@@ -56,6 +57,41 @@ class RecurringService extends Model
         }
 
         return $companyAddresses[$companyName] ?: 'Sin ubicacion';
+    }
+
+    public function nextScheduledPaymentDate(?Carbon $from = null): ?Carbon
+    {
+        $start = $this->start_date?->copy()->startOfDay();
+
+        if (! $start) {
+            return null;
+        }
+
+        $interval = max((int) $this->payment_interval_days, 1);
+
+        if ($this->cutoff_day) {
+            $month = (int) ($this->cutoff_month ?: $start->month);
+            $year = (int) ($this->cutoff_year ?: $start->year);
+
+            if (! checkdate($month, (int) $this->cutoff_day, $year)) {
+                return null;
+            }
+
+            $due = Carbon::create($year, $month, (int) $this->cutoff_day)->startOfDay();
+            if ($due->lt($start)) {
+                $due->addYear();
+            }
+            $due->addDays($interval);
+        } else {
+            $due = $start->copy()->addDays(max((int) $this->due_days_after_cutoff, 0));
+        }
+
+        $today = ($from ?? now())->copy()->startOfDay();
+        while ($due->lt($today)) {
+            $due->addDays($interval);
+        }
+
+        return $due;
     }
 
     protected function casts(): array
