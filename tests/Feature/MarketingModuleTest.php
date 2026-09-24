@@ -101,13 +101,14 @@ class MarketingModuleTest extends TestCase
         $this->seed(MarketingLeadFlowSeeder::class);
         $superAdmin = User::factory()->create(['role' => 'superadmin', 'active' => true]);
         $company = MarketingCompany::query()->where('name', 'Zen Dragon Labs')->firstOrFail();
+        $company->update(['is_favorite' => true]);
         $campaign = Campaign::query()->where('company_id', $company->id)->firstOrFail();
 
         foreach ([
+            'marketing.index',
             'marketing.campaigns.index',
             'marketing.leads.index',
             'marketing.conversations.index',
-            'marketing.reports.index',
         ] as $routeName) {
             $this->actingAs($superAdmin)
                 ->get(route($routeName, [
@@ -116,13 +117,19 @@ class MarketingModuleTest extends TestCase
                 ]))
                 ->assertOk()
                 ->assertSeeInOrder([
-                    'Empresa seleccionada',
+                    'Empresas favoritas',
+                    'data-marketing-favorite-id="'.$company->id.'"',
+                    'Todas las empresas',
                     'Campañas de '.$company->name,
                     'Nueva campaña',
-                    'Todas',
+                    'Todas las campañas',
                     $campaign->name,
                 ]);
         }
+
+        $this->get(route('marketing.reports.index', ['company_id' => $company->id, 'campaign_id' => $campaign->id]))
+            ->assertOk()
+            ->assertSee('Empresa seleccionada');
     }
 
     public function test_application_seeder_populates_the_isolated_marketing_tables(): void

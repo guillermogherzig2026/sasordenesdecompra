@@ -27,6 +27,7 @@ class SuperAdminGovernmentContractController extends Controller
 
         return view('superadmin.government-contracts.panel', [
             'selectedModule' => $item['module'],
+            'selectedSection' => $section,
         ]);
     }
 

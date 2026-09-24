@@ -29,6 +29,7 @@ class HumanResourcesModuleTest extends TestCase
             'reportes' => 'Reportes',
             'configuracion' => 'Configuración',
             'gerentes' => 'Gerentes y Sucursales',
+            'capacitacion' => 'Personal y capacitación',
         ];
 
         $response = $this->actingAs($user)->get(route('human-resources.show', 'inicio'));
@@ -88,6 +89,15 @@ class HumanResourcesModuleTest extends TestCase
         $this->assertStringContainsString('state.ui.candidateFormOpen = false', $applicationScript);
         $this->assertStringNotContainsString('modal.type === "candidate"', $applicationScript);
         $this->assertStringContainsString('Gestionar Vacaciones <span class="selector-count">', $applicationScript);
+        $this->assertStringContainsString('key: "biometricStatus", label: "Datos biométricos"', $applicationScript);
+        $this->assertStringContainsString('function employeeBiometricStatus(employee)', $applicationScript);
+        $this->assertStringContainsString('data-action="edit-employee-biometrics"', $applicationScript);
+        $this->assertStringContainsString('id="employee-biometric-form"', $applicationScript);
+        $this->assertStringContainsString('name="employeeId" value="${safe(employee.id)}"', $applicationScript);
+        $this->assertStringContainsString('function saveEmployeeBiometrics(form)', $applicationScript);
+        $this->assertStringContainsString('data-action="open-employee-biometric-media"', $applicationScript);
+        $this->assertStringContainsString('id="employee-biometric-media-form"', $applicationScript);
+        $this->assertStringContainsString('data-biometric-files', $applicationScript);
         $this->assertStringNotContainsString('Vacaciones pendientes <span class="selector-count">', $applicationScript);
         $this->assertMatchesRegularExpression('/data-action="portal-vacation"[^>]*>.*?Nueva solicitud<\/button>\s*<button[^>]*data-route="vacations"[^>]*>.*?Gestionar Vacaciones/s', $applicationScript);
         $this->assertStringContainsString('id="employee-form" class="form-card employee-form-compact"', $applicationScript);
@@ -166,6 +176,27 @@ class HumanResourcesModuleTest extends TestCase
         $this->assertStringContainsString('suiteConfig.registeredCompanies', $applicationScript);
         $this->assertStringContainsString('registeredCandidateCompanies(candidate?.company)', $applicationScript);
         $this->assertStringContainsString('const companyOptions = registeredCandidateCompanies(candidate?.company);', $applicationScript);
+    }
+
+    public function test_training_section_loads_the_integrated_training_workspace(): void
+    {
+        $user = User::factory()->create([
+            'role' => 'superadmin',
+            'active' => true,
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('human-resources.show', 'capacitacion'))
+            ->assertOk()
+            ->assertSee('src="'.route('human-resources.embed', 'capacitacion').'"', false);
+
+        $this->actingAs($user)
+            ->get(route('human-resources.embed', 'capacitacion'))
+            ->assertOk()
+            ->assertSee(asset('modules/human-resources/training.css'), false)
+            ->assertSee(asset('modules/human-resources/training.js'), false);
+
+        $this->assertFileExists(public_path('modules/human-resources/training-data.js'));
     }
 
     public function test_submenu_keeps_the_general_sidebar_open_and_loads_the_selected_screen_on_the_right(): void

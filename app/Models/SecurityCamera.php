@@ -11,6 +11,7 @@ class SecurityCamera extends Model
         'security_branch_id',
         'name',
         'stream_url',
+        'recorder_path',
         'sort_order',
     ];
 

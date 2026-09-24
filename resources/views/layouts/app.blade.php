@@ -100,8 +100,9 @@
             .nav-box-plazas-marketplace { --nav-box-border: rgba(191, 128, 255, .62); --nav-box-bg: rgba(191, 128, 255, .11); --nav-box-active: rgba(191, 128, 255, .25); }
             .nav-box-plazas-marketing { --nav-box-border: rgba(255, 183, 77, .68); --nav-box-bg: rgba(255, 183, 77, .11); --nav-box-active: rgba(255, 183, 77, .26); }
             .nav-box-marketing-primary { --nav-box-border: rgba(63, 181, 194, .62); --nav-box-bg: rgba(63, 181, 194, .10); --nav-box-active: rgba(63, 181, 194, .24); }
+            .nav-box-security-primary { --nav-box-border: rgba(79, 178, 206, .62); --nav-box-bg: rgba(79, 178, 206, .10); --nav-box-active: rgba(79, 178, 206, .24); }
             .content-shell { min-width: 0; min-height: 100vh; display: flex; flex-direction: column; }
-            .topbar { min-height: 66px; padding: 12px clamp(18px, 3vw, 32px); display: flex; align-items: center; justify-content: space-between; gap: 20px; background: rgba(244, 247, 251, .9); border-bottom: 1px solid var(--line); position: sticky; top: 0; }
+            .topbar { min-height: 66px; padding: 12px clamp(18px, 3vw, 32px); display: flex; align-items: center; justify-content: space-between; gap: 20px; background: var(--bg); border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 10; }
             .topbar-right { display: flex; align-items: center; gap: 10px; margin-left: auto; }
             .topbar-actions { display: flex; align-items: center; gap: 8px; }
             .topbar .eyebrow { margin-bottom: 4px; }
@@ -468,8 +469,8 @@
             .supply-orders-table-scroll { flex: 1 1 auto; max-height: none; min-height: 360px; padding-bottom: 4px; }
             .supply-orders-table { min-width: 1540px; }
             body { padding-bottom: 18px; }
-            .th-filter { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 6px; min-width: 118px; }
-            .th-filter > span { min-width: 0; }
+            .th-filter { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 6px; min-width: 0; }
+            .th-filter > span { min-width: 0; overflow-wrap: anywhere; }
             .column-header-tools { display: inline-flex; align-items: center; justify-content: flex-end; gap: 6px; min-width: max-content; }
             .th-filter > .column-header-tools { min-width: max-content; }
             .column-header-tools > :is(.column-filter, .excel-filter, .column-sort-button) { flex: 0 0 auto; }
@@ -482,17 +483,23 @@
             .column-filter summary.column-filter-toggle-icon::after { content: ''; width: 0; height: 0; margin: 2px 0 0; border-right: 4px solid transparent; border-left: 4px solid transparent; border-top: 5px solid currentColor; opacity: .8; }
             .column-filter[open] summary.column-filter-toggle-icon::after { content: ''; margin: 0 0 2px; transform: rotate(180deg); }
             .column-filter summary.is-filtered { color: #fff; border-color: var(--primary); background: var(--primary); }
+            .column-filter summary.is-sorted { border-color: var(--primary); }
             .column-sort-button { display: inline-grid; place-items: center; width: 28px; height: 28px; margin-left: 0; padding: 0; border: 1px solid var(--line); border-radius: 999px; background: #fff; color: var(--primary-strong); cursor: pointer; font-size: .95rem; font-weight: 900; line-height: 1; vertical-align: middle; }
             .column-sort-button:hover, .column-sort-button.is-active { border-color: var(--primary); background: #e5f3f7; }
             .column-filter-panel { position: fixed; z-index: 2100; top: 0; left: 0; width: 285px; max-height: min(360px, calc(100vh - 24px)); padding: 10px; border: 1px solid #b8b8b8; border-radius: 4px; background: #fff; color: #111827; box-shadow: 0 14px 30px rgba(35, 48, 73, .2); display: grid; gap: 8px; text-transform: none; }
+            .column-filter-sort { display: grid; gap: 2px; padding-bottom: 7px; border-bottom: 1px solid #e1e6ed; }
+            .column-filter-sort button { min-height: 28px; padding: 4px 7px; border: 0; border-radius: 4px; background: #fff; color: #26374e; text-align: left; font: inherit; font-size: .82rem; cursor: pointer; }
+            .column-filter-sort button:hover, .column-filter-sort button.is-active { background: #e5f3f7; color: var(--primary-strong); }
             .column-filter-search { width: 100%; min-height: 34px; padding: 7px 9px; border: 1px solid #aeb5bf; border-radius: 4px; background: #fff; color: #111827; font-size: .86rem; }
             .column-filter-search:focus { outline: 2px solid rgba(23, 107, 135, .2); border-color: var(--primary); }
-            .column-filter-options { max-height: 230px; overflow: auto; display: grid; gap: 3px; padding: 2px; border: 1px solid #d0d0d0; background: #fff; }
-            .column-filter-option { min-height: 22px; display: flex; align-items: center; gap: 4px; color: #111827; font-size: .86rem; font-weight: 500; line-height: 1.15; text-transform: none; white-space: nowrap; }
-            .column-filter-option input { width: 14px; min-height: 14px; accent-color: #176b87; }
+            .column-filter-options { max-height: min(190px, calc(100vh - 180px)); overflow: auto; display: grid; gap: 3px; padding: 2px; border: 1px solid #d0d0d0; background: #fff; }
+            .column-filter-option { min-height: 22px; display: flex; align-items: flex-start; gap: 6px; color: #111827; font-size: .86rem; font-weight: 500; line-height: 1.25; text-transform: none; overflow-wrap: anywhere; }
+            .column-filter-option[hidden], .column-filter-empty[hidden] { display: none; }
+            .column-filter-option input { width: 14px; min-height: 14px; flex: 0 0 14px; margin-top: 1px; accent-color: #176b87; }
             .column-filter-empty { padding: 8px; color: var(--muted); font-size: .84rem; text-transform: none; }
             .column-filter-actions { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; padding-top: 4px; }
             .column-filter-actions .button.small { min-height: 32px; padding: 5px 12px; border-color: #8b8b8b; border-radius: 4px; font-size: .82rem; font-weight: 650; }
+            .content-shell tr.column-filter-hidden { display: none !important; }
             .excel-filter-head { min-width: 118px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
             .excel-filter-head span { min-width: 0; }
             .excel-filter { position: relative; display: inline-block; text-transform: none; }
@@ -1000,6 +1007,15 @@
                         && table.querySelector('thead th')
                         && table.querySelector('tbody tr');
                 });
+                const filterTables = () => Array.from(document.querySelectorAll('.content-shell table')).filter((table) => {
+                    const headers = Array.from(table.tHead?.rows[0]?.cells || []);
+                    return !table.matches('[data-no-column-tools], [data-excel-filter-table], [data-column-filter-table]')
+                        && !table.closest('form')
+                        && table.tHead?.rows.length === 1
+                        && headers.length > 0
+                        && headers.every((header) => header.colSpan === 1 && header.rowSpan === 1)
+                        && table.tBodies.length > 0;
+                });
 
                 const closeColumnFilters = (except = null) => {
                     document.querySelectorAll('.column-filter[open]').forEach((filter) => {
@@ -1086,48 +1102,112 @@
                 const cellText = (cell) => normalize(cell?.dataset?.filterValue || cell?.dataset?.excelFilterValue || cell?.innerText || cell?.textContent);
 
                 const enhanceFilters = (table) => {
-                    if (table.dataset.globalFiltersReady || table.matches('[data-excel-filter-table]') || table.matches('[data-column-filter-table]')) return;
-                    const rows = Array.from(table.querySelectorAll('tbody tr')).filter((row) => row.cells.length > 1 && !row.querySelector('[colspan]'));
-                    const headers = Array.from(table.querySelectorAll('thead th'));
+                    if (table.dataset.globalFiltersReady) return;
+                    const headers = Array.from(table.tHead.rows[0].cells);
+                    const isRecord = (row) => !row.hasAttribute('data-parent-line')
+                        && row.cells.length === headers.length
+                        && Array.from(row.cells).every((cell) => cell.colSpan === 1);
+                    const bodyRecords = Array.from(table.tBodies).map((body) => {
+                        const mainRows = Array.from(body.rows).filter(isRecord);
+                        const mainSet = new Set(mainRows);
+                        return mainRows.map((row) => {
+                            const controlledIds = new Set(Array.from(row.querySelectorAll('[aria-controls]'))
+                                .map((control) => control.getAttribute('aria-controls')));
+                            row.querySelectorAll('[data-target]').forEach((control) => controlledIds.add(control.dataset.target));
+                            if (row.dataset.editorId) controlledIds.add(row.dataset.editorId);
+                            const parentId = row.querySelector('[data-provider-line-toggle]')?.dataset.providerLineToggle
+                                || row.querySelector('[data-management-line-toggle]')?.dataset.managementLineToggle;
+                            const details = [];
+                            for (let next = row.nextElementSibling; next && !mainSet.has(next); next = next.nextElementSibling) {
+                                if ((next.id && controlledIds.has(next.id))
+                                    || (parentId && next.dataset.parentLine === parentId)
+                                    || next.matches('.company-directory-detail, .service-directory-detail, [data-authorization-editor]')) {
+                                    details.push(next);
+                                }
+                            }
+                            return { row, details };
+                        });
+                    });
+                    const records = bodyRecords.flat();
                     if (!headers.length) return;
 
                     table.dataset.globalFiltersReady = 'true';
-                    rows.forEach((row) => row.dataset.filterRow = 'true');
                     const filters = new Map();
 
                     const applyFilters = () => {
-                        rows.forEach((row) => {
+                        records.forEach(({ row, details }) => {
                             const visible = headers.every((header, column) => {
                                 const selected = filters.get(column);
                                 if (!selected) return true;
                                 return selected.has(cellText(row.cells[column]));
                             });
-                            row.hidden = !visible;
+                            row.classList.toggle('column-filter-hidden', !visible);
+                            details.forEach((detail) => detail.classList.toggle('column-filter-hidden', !visible));
+                        });
+                    };
+
+                    const sortValue = (cell) => {
+                        const date = cell?.dataset?.filterDate || cell?.dataset?.excelFilterDate;
+                        if (date) return { type: 'date', value: date };
+                        const value = cellText(cell);
+                        const displayDate = value.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s|$)/);
+                        if (displayDate) return { type: 'date', value: `${displayDate[3]}-${displayDate[2].padStart(2, '0')}-${displayDate[1].padStart(2, '0')}` };
+                        const numeric = value.replace(/\s*(MXN|USD|%)\s*$/i, '').replace(/[$,\s]/g, '');
+                        if (numeric && /^-?\d+(?:\.\d+)?$/.test(numeric)) return { type: 'number', value: Number(numeric) };
+                        return { type: 'text', value };
+                    };
+                    const sortRecords = (column, direction) => {
+                        bodyRecords.forEach((items) => {
+                            if (items.length < 2) return;
+                            const marker = document.createComment('column-sort-position');
+                            items[0].row.before(marker);
+                            const sorted = items.map((item, index) => ({ ...item, index })).sort((left, right) => {
+                                const a = sortValue(left.row.cells[column]);
+                                const b = sortValue(right.row.cells[column]);
+                                const result = a.type === 'number' && b.type === 'number'
+                                    ? a.value - b.value
+                                    : String(a.value).localeCompare(String(b.value), 'es', { numeric: true, sensitivity: 'base' });
+                                return (direction === 'asc' ? result : -result) || left.index - right.index;
+                            });
+                            const fragment = document.createDocumentFragment();
+                            sorted.forEach(({ row, details }) => fragment.append(row, ...details));
+                            marker.replaceWith(fragment);
                         });
                     };
 
                     headers.forEach((header, column) => {
-                        if (header.hasAttribute('data-no-filter')) return;
                         const label = headerText(header);
-                        const values = [...new Set(rows.map((row) => cellText(row.cells[column])).filter(Boolean))]
+                        if (header.hasAttribute('data-no-filter') || !label
+                            || header.querySelector('input, select, textarea, button, a')
+                            || /^(acci[oó]n(?:es)?|opciones?)$/i.test(label)) return;
+                        const values = [...new Set(records.map(({ row }) => cellText(row.cells[column])).filter(Boolean))]
                             .sort((a, b) => a.localeCompare(b, 'es', { numeric: true }));
 
                         const wrapper = document.createElement('div');
                         wrapper.className = 'th-filter';
                         const title = document.createElement('span');
-                        title.textContent = label;
+                        title.append(...Array.from(header.childNodes));
                         const filter = document.createElement('details');
                         filter.className = 'column-filter';
                         const summary = document.createElement('summary');
                         summary.className = 'column-filter-toggle-icon';
-                        summary.title = `Filtrar ${label}`;
-                        summary.setAttribute('aria-label', `Filtrar ${label}`);
+                        summary.title = `Filtrar y ordenar ${label}`;
+                        summary.setAttribute('aria-label', `Filtrar y ordenar ${label}`);
                         const panel = document.createElement('div');
                         panel.className = 'column-filter-panel';
+                        const sortActions = document.createElement('div');
+                        sortActions.className = 'column-filter-sort';
+                        const sortAscending = document.createElement('button');
+                        sortAscending.type = 'button';
+                        sortAscending.textContent = '↑ Orden ascendente';
+                        const sortDescending = document.createElement('button');
+                        sortDescending.type = 'button';
+                        sortDescending.textContent = '↓ Orden descendente';
+                        sortActions.append(sortAscending, sortDescending);
                         const search = document.createElement('input');
                         search.type = 'search';
                         search.className = 'column-filter-search';
-                        search.placeholder = 'Buscar';
+                        search.placeholder = 'Buscar (Todos)';
                         search.autocomplete = 'off';
                         search.setAttribute('aria-label', `Buscar en ${label}`);
                         const options = document.createElement('div');
@@ -1139,7 +1219,7 @@
                         const selectAllCheckbox = document.createElement('input');
                         selectAllCheckbox.type = 'checkbox';
                         selectAllCheckbox.checked = true;
-                        selectAllOption.append(selectAllCheckbox, document.createTextNode('(Seleccionar todo)'));
+                        selectAllOption.append(selectAllCheckbox, document.createTextNode('(Todos)'));
                         options.append(selectAllOption);
 
                         values.forEach((value) => {
@@ -1178,15 +1258,14 @@
                         cancel.className = 'button ghost small';
                         cancel.textContent = 'Cancelar';
                         actions.append(accept, cancel);
-                        panel.append(search, options, actions);
+                        panel.append(sortActions, search, options, actions);
                         filter.append(summary, panel);
                         wrapper.append(title, filter);
-                        header.textContent = '';
                         header.append(wrapper);
 
                         const valueCheckboxes = () => Array.from(options.querySelectorAll('input[type="checkbox"]')).filter((input) => input !== selectAllCheckbox);
                         const syncSelectAll = () => {
-                            const boxes = valueCheckboxes();
+                            const boxes = valueCheckboxes().filter((input) => !input.closest('.column-filter-option').hidden);
                             const checked = boxes.filter((input) => input.checked).length;
                             selectAllCheckbox.checked = boxes.length > 0 && checked === boxes.length;
                             selectAllCheckbox.indeterminate = checked > 0 && checked < boxes.length;
@@ -1201,6 +1280,7 @@
                                 input.closest('.column-filter-option').hidden = false;
                             });
                             noMatches.hidden = true;
+                            syncSelectAll();
                         };
                         const updateFilteredState = () => {
                             summary.classList.toggle('is-filtered', selectedValues.size !== values.length);
@@ -1216,6 +1296,7 @@
                                 if (matches) visibleOptions += 1;
                             });
                             noMatches.hidden = values.length === 0 || visibleOptions > 0;
+                            syncSelectAll();
                         });
 
                         filter.addEventListener('toggle', () => {
@@ -1230,8 +1311,15 @@
                             }
                         });
                         filter.addEventListener('click', (event) => event.stopPropagation());
+                        filter.addEventListener('keydown', (event) => {
+                            if (event.key === 'Escape') {
+                                filter.removeAttribute('open');
+                                summary.focus();
+                            }
+                        });
                         selectAllCheckbox.addEventListener('change', () => {
-                            valueCheckboxes().forEach((input) => input.checked = selectAllCheckbox.checked);
+                            valueCheckboxes().filter((input) => !input.closest('.column-filter-option').hidden)
+                                .forEach((input) => input.checked = selectAllCheckbox.checked);
                             syncSelectAll();
                         });
                         options.addEventListener('change', (event) => {
@@ -1249,6 +1337,20 @@
                             restoreSelection();
                             filter.removeAttribute('open');
                         });
+                        const applySort = (direction) => {
+                            headers.forEach((otherHeader) => {
+                                otherHeader.removeAttribute('aria-sort');
+                                otherHeader.querySelector('.column-filter summary')?.classList.remove('is-sorted');
+                                otherHeader.querySelectorAll('.column-filter-sort button').forEach((button) => button.classList.remove('is-active'));
+                            });
+                            header.setAttribute('aria-sort', direction === 'asc' ? 'ascending' : 'descending');
+                            summary.classList.add('is-sorted');
+                            (direction === 'asc' ? sortAscending : sortDescending).classList.add('is-active');
+                            sortRecords(column, direction);
+                            filter.removeAttribute('open');
+                        };
+                        sortAscending.addEventListener('click', () => applySort('asc'));
+                        sortDescending.addEventListener('click', () => applySort('desc'));
                     });
                 };
 
@@ -1256,8 +1358,9 @@
                 const escapeHtml = (value) => String(value ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
                 const tableHtml = (table, title) => {
                     const headers = Array.from(table.querySelectorAll('thead th')).map(headerText);
-                    const rows = Array.from(table.querySelectorAll('tbody tr'))
-                        .filter((row) => !row.hidden && row.cells.length > 1 && !row.querySelector('[colspan]'))
+                    const rows = Array.from(table.tBodies).flatMap((body) => Array.from(body.rows))
+                        .filter((row) => !row.hidden && !row.classList.contains('column-filter-hidden')
+                            && row.cells.length > 1 && Array.from(row.cells).every((cell) => cell.colSpan === 1))
                         .map((row) => Array.from(row.cells).map(exportText));
                     let html = `<tr><th colspan="${Math.max(headers.length, 1)}">${escapeHtml(title)}</th></tr>`;
                     html += '<tr>' + headers.map((header) => `<th>${escapeHtml(header)}</th>`).join('') + '</tr>';
@@ -1349,7 +1452,7 @@
 
                 initStatusMenus();
                 const tables = reportTables();
-                tables.forEach((table) => enhanceFilters(table));
+                filterTables().forEach((table) => enhanceFilters(table));
                 Array.from(document.querySelectorAll('.panel')).forEach((panel) => {
                     const panelTables = tables.filter((table) => panel.contains(table));
                     addSectionExport(panel, panelTables);
@@ -1483,7 +1586,7 @@
                 };
                 const addSortButtons = () => {
                     document.querySelectorAll('.panel table').forEach((table) => {
-                        if (table.matches('[data-no-column-tools]') || table.closest('form') || table.dataset.sortButtonsReady) return;
+                        if (table.matches('[data-no-column-tools]') || table.closest('form') || table.dataset.sortButtonsReady || table.dataset.globalFiltersReady) return;
                         const headers = Array.from(table.tHead?.rows[0]?.cells || []);
                         if (!headers.length) return;
                         table.dataset.sortButtonsReady = 'true';

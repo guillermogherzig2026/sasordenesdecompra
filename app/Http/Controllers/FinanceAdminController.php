@@ -7,8 +7,11 @@ use App\Models\Company;
 use App\Models\Provider;
 use App\Models\ProviderBusinessLine;
 use App\Models\ProviderBusinessSubcategory;
+use App\Models\SecurityCompany;
+use App\Models\SecurityBranch;
 use App\Models\User;
 use App\Support\NavigationPermissionCatalog;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -16,10 +19,46 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class FinanceAdminController extends Controller
 {
     private const BUYER_SUBROLES = ['purchases', 'supplies', 'reimbursements'];
+
+    private const COMPANY_LOCATIONS = [
+        'CDMX' => ['CDMX', 'Ciudad de México', 'Ciudad de Mexico', 'Distrito Federal'],
+        'Monterrey' => ['Monterrey', 'Nuevo León', 'Nuevo Leon'],
+        'Guadalajara' => ['Guadalajara', 'Jalisco', 'Zapopan'],
+        'Aguascalientes' => ['Aguascalientes'],
+        'Baja California' => ['Baja California', 'Tijuana', 'Mexicali'],
+        'Baja California Sur' => ['Baja California Sur', 'La Paz'],
+        'Campeche' => ['Campeche'],
+        'Chiapas' => ['Chiapas', 'Tuxtla Gutiérrez', 'Tuxtla Gutierrez'],
+        'Chihuahua' => ['Chihuahua', 'Ciudad Juárez', 'Ciudad Juarez'],
+        'Coahuila' => ['Coahuila', 'Saltillo', 'Torreón', 'Torreon'],
+        'Colima' => ['Colima'],
+        'Durango' => ['Durango'],
+        'Guanajuato' => ['Guanajuato', 'León', 'Leon'],
+        'Guerrero' => ['Guerrero', 'Acapulco', 'Chilpancingo'],
+        'Hidalgo' => ['Hidalgo', 'Pachuca'],
+        'Estado de México' => ['Estado de México', 'Estado de Mexico', 'Edomex', 'Toluca'],
+        'Michoacán' => ['Michoacán', 'Michoacan', 'Morelia'],
+        'Morelos' => ['Morelos', 'Cuernavaca'],
+        'Nayarit' => ['Nayarit', 'Tepic'],
+        'Oaxaca' => ['Oaxaca'],
+        'Puebla' => ['Puebla'],
+        'Querétaro' => ['Querétaro', 'Queretaro'],
+        'Quintana Roo' => ['Quintana Roo', 'Cancún', 'Cancun', 'Chetumal'],
+        'San Luis Potosí' => ['San Luis Potosí', 'San Luis Potosi'],
+        'Sinaloa' => ['Sinaloa', 'Culiacán', 'Culiacan'],
+        'Sonora' => ['Sonora', 'Hermosillo'],
+        'Tabasco' => ['Tabasco', 'Villahermosa'],
+        'Tamaulipas' => ['Tamaulipas', 'Ciudad Victoria'],
+        'Tlaxcala' => ['Tlaxcala'],
+        'Veracruz' => ['Veracruz', 'Xalapa', 'Jalapa'],
+        'Yucatán' => ['Yucatán', 'Yucatan', 'Mérida', 'Merida'],
+        'Zacatecas' => ['Zacatecas'],
+    ];
 
     public function users()
     {
@@ -155,6 +194,9 @@ class FinanceAdminController extends Controller
         $this->ensureFinance();
 
         $query = trim((string) $request->query('q'));
+        $buyerId = $request->integer('buyer');
+        $businessLine = trim((string) $request->query('line'));
+        $subcategory = trim((string) $request->query('subcategory'));
         $providers = Provider::with(['buyer', 'businessSubcategory'])
             ->when($query, fn ($builder) => $builder->where(function ($inner) use ($query) {
                 $inner->where('business_name', 'like', "%{$query}%")
@@ -163,17 +205,39 @@ class FinanceAdminController extends Controller
                     ->orWhere('provider_business_subcategory', 'like', "%{$query}%")
                     ->orWhere('contact_name', 'like', "%{$query}%")
                     ->orWhere('phone', 'like', "%{$query}%")
+                    ->orWhere('address', 'like', "%{$query}%")
                     ->orWhere('bank', 'like', "%{$query}%")
+                    ->orWhere('account_number', 'like', "%{$query}%")
+                    ->orWhere('clabe', 'like', "%{$query}%")
+                    ->orWhere('reference', 'like', "%{$query}%")
+                    ->orWhereHas('businessSubcategory', fn ($subcategoryQuery) => $subcategoryQuery->where('name', 'like', "%{$query}%"))
                     ->orWhereHas('buyer', fn ($buyer) => $buyer->where('name', 'like', "%{$query}%"));
             }))
+            ->when($buyerId > 0, fn ($builder) => $builder->where('buyer_id', $buyerId))
+            ->when($businessLine !== '', fn ($builder) => $builder->where('business_line', $businessLine))
+            ->when($subcategory !== '', fn ($builder) => $builder->where(function ($inner) use ($subcategory) {
+                $inner->where('provider_business_subcategory', $subcategory)
+                    ->orWhereHas('businessSubcategory', fn ($subcategoryQuery) => $subcategoryQuery->where('name', $subcategory));
+            }))
             ->orderBy('business_name')
-            ->get();
+            ->paginate(15)
+            ->withQueryString();
 
         return view('finance.admin.providers', [
             'providers' => $providers,
             'businessLines' => $this->providerBusinessLines(),
             'buyers' => User::where('role', 'buyer')->where('active', true)->orderBy('name')->get(),
+            'filterBuyers' => User::whereIn('id', Provider::query()->select('buyer_id')->distinct())->orderBy('name')->get(),
+            'lineOptions' => Provider::query()->whereNotNull('business_line')->where('business_line', '<>', '')
+                ->distinct()->orderBy('business_line')->pluck('business_line'),
+            'subcategoryOptions' => Provider::query()->whereNotNull('provider_business_subcategory')
+                ->where('provider_business_subcategory', '<>', '')->distinct()->pluck('provider_business_subcategory')
+                ->merge(ProviderBusinessSubcategory::query()->whereHas('providers')->pluck('name'))
+                ->unique()->sort()->values(),
             'query' => $query,
+            'buyerId' => $buyerId,
+            'businessLineFilter' => $businessLine,
+            'subcategoryFilter' => $subcategory,
         ]);
     }
 
@@ -277,20 +341,94 @@ class FinanceAdminController extends Controller
         $this->ensureFinance();
 
         $query = trim((string) $request->query('q'));
+        $businessLine = trim((string) $request->query('giro'));
+        $location = trim((string) $request->query('location'));
+        $location = array_key_exists($location, self::COMPANY_LOCATIONS) ? $location : '';
+        $companyId = $request->integer('company_id');
+        $canViewSecurityBranches = $request->user()->role === 'superadmin'
+            || $request->user()->canNavigateTo('security.branches');
+        $canCreateSecurityCompany = $request->user()->role === 'superadmin'
+            || $request->user()->canNavigateTo('security.dashboard');
+        $locationOptions = collect(self::COMPANY_LOCATIONS)
+            ->filter(fn (array $aliases, string $name) => in_array($name, ['CDMX', 'Monterrey', 'Guadalajara'], true)
+                || $this->filterCompaniesByLocation(Company::query(), $aliases, $canViewSecurityBranches)->exists())
+            ->keys()->map(fn (string $name) => ['value' => $name, 'label' => $name, 'symbol' => '⌖'])->all();
         $companies = Company::query()
+            ->when($canViewSecurityBranches, fn ($builder) => $builder->with([
+                'securityCompanies.branches' => fn ($branches) => $branches->orderBy('name'),
+            ]))
             ->when($query, fn ($builder) => $builder->where(function ($inner) use ($query) {
                 $inner->where('name', 'like', "%{$query}%")
                     ->orWhere('rfc', 'like', "%{$query}%")
                     ->orWhere('address', 'like', "%{$query}%");
             }))
+            ->when($companyId > 0, fn ($builder) => $builder->whereKey($companyId))
+            ->when($businessLine === '__none', fn ($builder) => $builder->where(function ($inner) {
+                $inner->whereNull('business_line')->orWhere('business_line', '');
+            }))
+            ->when($businessLine !== '' && $businessLine !== '__none', fn ($builder) => $builder->where('business_line', $businessLine))
+            ->when($location !== '', fn (Builder $builder) => $this->filterCompaniesByLocation(
+                $builder, self::COMPANY_LOCATIONS[$location], $canViewSecurityBranches
+            ))
             ->orderBy('name')
             ->get();
+        $unlinkedSecurityCompaniesByRfc = $canViewSecurityBranches
+            ? SecurityCompany::query()
+                ->with(['branches' => fn ($branches) => $branches->orderBy('name')])
+                ->whereNull('finance_company_id')
+                ->whereIn('rfc', $companies->pluck('rfc')->filter()->all())
+                ->get()
+                ->groupBy('rfc')
+            : collect();
 
         return view('finance.admin.companies', [
             'companies' => $companies,
             'query' => $query,
+            'businessLine' => $businessLine,
+            'location' => $location,
+            'locationOptions' => $locationOptions,
+            'companyId' => $companyId,
+            'businessLines' => Company::query()->whereNotNull('business_line')->where('business_line', '<>', '')
+                ->distinct()->orderBy('business_line')->pluck('business_line'),
+            'companyOptions' => Company::query()->orderBy('name')->get(['id', 'name']),
+            'canViewSecurityBranches' => $canViewSecurityBranches,
+            'canCreateSecurityCompany' => $canCreateSecurityCompany,
+            'unlinkedSecurityCompaniesByRfc' => $unlinkedSecurityCompaniesByRfc,
             'buyers' => User::where('role', 'buyer')->where('active', true)->orderBy('name')->get(),
         ]);
+    }
+
+    private function filterCompaniesByLocation(Builder $query, array $aliases, bool $canViewSecurityBranches): Builder
+    {
+        return $query->where(function (Builder $matches) use ($aliases, $canViewSecurityBranches) {
+            // Fiscal addresses are legacy free text: match comma-delimited locations, not street names.
+            $matches->where(function (Builder $address) use ($aliases) {
+                foreach ($aliases as $alias) {
+                    $address->orWhere('address', $alias)
+                        ->orWhere('address', 'like', "%, {$alias},%")
+                        ->orWhere('address', 'like', "%, {$alias} ,%")
+                        ->orWhere('address', 'like', "%, {$alias}")
+                        ->orWhere('address', 'like', "%,{$alias},%")
+                        ->orWhere('address', 'like', "%,{$alias} ,%")
+                        ->orWhere('address', 'like', "%,{$alias}");
+                }
+            });
+
+            if (! $canViewSecurityBranches) {
+                return;
+            }
+
+            $branchMatches = static function (Builder $branches) use ($aliases) {
+                $branches->where(function (Builder $place) use ($aliases) {
+                    foreach ($aliases as $alias) {
+                        $place->orWhere('state', $alias)->orWhere('city', $alias);
+                    }
+                });
+            };
+            $matches->orWhereHas('securityCompanies.branches', $branchMatches)
+                ->orWhereIn('rfc', SecurityCompany::query()->whereNull('finance_company_id')
+                    ->whereHas('branches', $branchMatches)->select('rfc'));
+        });
     }
 
     public function storeCompany(Request $request)
@@ -299,39 +437,268 @@ class FinanceAdminController extends Controller
 
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255', 'unique:companies,name'],
+            'business_line' => ['nullable', 'string', 'max:120'],
             'rfc' => ['required', 'string', 'max:20', 'unique:companies,rfc'],
             'address' => ['required', 'string', 'max:1000'],
             'purchase_order_notes' => ['nullable', 'string', 'max:3000'],
             'logo' => ['nullable', 'image', 'max:2048'],
             'buyer_ids' => ['array'],
             'buyer_ids.*' => ['integer'],
-            'warehouses' => ['nullable', 'array'],
-            'warehouses.*.name' => ['required_with:warehouses', 'string', 'max:255'],
+            'warehouses' => ['required', 'array', 'min:1'],
+            'warehouses.*.name' => ['required', 'string', 'max:255'],
             'warehouses.*.short_name' => ['nullable', 'string', 'max:50'],
-            'warehouses.*.address' => ['nullable', 'string', 'max:1000'],
+            'warehouses.*.address' => ['required', 'string', 'max:1000'],
+            'warehouses.*.branch_index' => ['nullable', 'integer'],
+            'branches' => ['nullable', 'array', 'max:24'],
+            'branches.*.name' => ['required', 'string', 'max:255', 'distinct:ignore_case'],
+            'branches.*.code' => ['nullable', 'string', 'max:50', 'distinct:ignore_case'],
+            'branches.*.address' => ['required', 'string', 'max:1000'],
+            'branches.*.state' => ['required', 'string', 'max:120'],
+            'branches.*.city' => ['required', 'string', 'max:120'],
+            'branches.*.contact_name' => ['nullable', 'string', 'max:255'],
+            'branches.*.phone' => ['nullable', 'string', 'max:40'],
+            'primary_branch' => ['nullable', 'integer'],
         ]);
+
+        $branches = $validated['branches'] ?? [];
+        if ($branches && ! ($request->user()->role === 'superadmin' || $request->user()->canNavigateTo('security.branches'))) {
+            abort(403);
+        }
+
+        if (isset($validated['primary_branch']) && ! array_key_exists($validated['primary_branch'], $branches)) {
+            throw ValidationException::withMessages(['primary_branch' => 'Selecciona una sucursal principal válida.']);
+        }
+
+        foreach ($validated['warehouses'] ?? [] as $index => $warehouse) {
+            if (isset($warehouse['branch_index']) && ! array_key_exists($warehouse['branch_index'], $branches)) {
+                throw ValidationException::withMessages(["warehouses.{$index}.branch_index" => 'Selecciona una sucursal válida.']);
+            }
+        }
 
         $companyPayload = [
             'name' => $validated['name'],
+            'business_line' => filled($validated['business_line'] ?? null) ? trim($validated['business_line']) : null,
             'rfc' => strtoupper($validated['rfc']),
             'address' => $validated['address'],
             'purchase_order_notes' => $validated['purchase_order_notes'] ?? null,
             'logo_path' => $request->file('logo')?->store('company-logos'),
         ];
 
-        if (Schema::hasColumn('companies', 'warehouses')) {
-            $companyPayload['warehouses'] = $this->parseWarehouses(
-                $validated['warehouses'] ?? [],
-                $validated['address']
-            );
+        try {
+            DB::transaction(function () use ($validated, $branches, $companyPayload): void {
+                $company = Company::create($companyPayload);
+                $branchIds = [];
+
+                if ($branches) {
+                    $rfc = strtoupper(trim($validated['rfc']));
+                    $matches = SecurityCompany::query()
+                        ->where('rfc', $rfc)
+                        ->orWhere('name', $validated['name'])
+                        ->get();
+
+                    if ($matches->count() > 1 || ($matches->first()?->rfc && $matches->first()->rfc !== $rfc)
+                        || ($matches->first()?->finance_company_id && $matches->first()->finance_company_id !== $company->id)) {
+                        throw ValidationException::withMessages(['branches' => 'La empresa ya tiene un registro de Vigilancia incompatible. Revisa su RFC y vinculación.']);
+                    }
+
+                    $securityCompany = $matches->first();
+                    if ($securityCompany) {
+                        $securityCompany->update([
+                            'finance_company_id' => $company->id,
+                            'rfc' => $securityCompany->rfc ?: $rfc,
+                        ]);
+                    } else {
+                        $securityCompany = SecurityCompany::create([
+                            'name' => $company->name,
+                            'entity_type' => 'company',
+                            'legal_name' => $company->name,
+                            'rfc' => $rfc,
+                            'address' => $company->address,
+                            'finance_company_id' => $company->id,
+                        ]);
+                    }
+
+                    $primaryIndex = $validated['primary_branch'] ?? array_key_first($branches);
+                    if (isset($validated['primary_branch'])) {
+                        $securityCompany->branches()->where('is_primary', true)->update(['is_primary' => false]);
+                    }
+                    $hasPrimary = $securityCompany->branches()->where('is_primary', true)->exists();
+
+                    foreach ($branches as $index => $branch) {
+                        $code = filled($branch['code'] ?? null) ? strtoupper(trim($branch['code'])) : null;
+                        $duplicate = $securityCompany->branches()
+                            ->where(fn ($query) => $query->where('name', trim($branch['name']))
+                                ->when($code, fn ($query) => $query->orWhere('code', $code)))
+                            ->exists();
+                        if ($duplicate) {
+                            throw ValidationException::withMessages(["branches.{$index}.name" => 'Esta sucursal o clave ya existe en la empresa.']);
+                        }
+
+                        $created = $securityCompany->branches()->create([
+                            'name' => trim($branch['name']),
+                            'code' => $code,
+                            'address' => trim($branch['address']),
+                            'state' => trim($branch['state']),
+                            'city' => trim($branch['city']),
+                            'contact_name' => $branch['contact_name'] ?? null,
+                            'phone' => $branch['phone'] ?? null,
+                            'country' => 'México',
+                            'timezone' => 'America/Mexico_City',
+                            'status' => 'active',
+                            'is_primary' => (int) $index === (int) $primaryIndex && ! $hasPrimary,
+                        ]);
+                        $branchIds[$index] = $created->id;
+                    }
+                }
+
+                if (Schema::hasColumn('companies', 'warehouses')) {
+                    $company->update(['warehouses' => $this->parseWarehouses(
+                        $validated['warehouses'] ?? [], $validated['address'], $branchIds
+                    )]);
+                }
+
+                $this->assignCompanyToBuyers($company, $validated['buyer_ids'] ?? []);
+                $this->audit($company, 'company_created', "Empresa {$company->name} creada por Finanzas.");
+            });
+        } catch (\Throwable $exception) {
+            if ($companyPayload['logo_path']) Storage::delete($companyPayload['logo_path']);
+            throw $exception;
         }
 
-        $company = Company::create($companyPayload);
-
-        $this->assignCompanyToBuyers($company, $validated['buyer_ids'] ?? []);
-        $this->audit($company, 'company_created', "Empresa {$company->name} creada por Finanzas.");
-
         return redirect()->route('finance.admin.companies')->with('status', 'Empresa guardada.');
+    }
+
+    public function storeCompanyBranch(Request $request, Company $company)
+    {
+        $this->ensureFinance();
+        abort_unless($request->user()->role === 'superadmin' || $request->user()->canNavigateTo('security.branches'), 403);
+
+        $validated = $request->validate([
+            'branch.name' => ['required', 'string', 'max:255'],
+            'branch.code' => ['nullable', 'string', 'max:50'],
+            'branch.address' => ['required', 'string', 'max:1000'],
+            'branch.state' => ['required', 'string', 'max:120'],
+            'branch.city' => ['required', 'string', 'max:120'],
+            'branch.contact_name' => ['nullable', 'string', 'max:255'],
+            'branch.phone' => ['nullable', 'string', 'max:40'],
+        ]);
+        $branch = $validated['branch'];
+        $branch['name'] = trim($branch['name']);
+        $branch['code'] = filled($branch['code'] ?? null) ? strtoupper(trim($branch['code'])) : null;
+        $branch['address'] = trim($branch['address']);
+        $branch['state'] = trim($branch['state']);
+        $branch['city'] = trim($branch['city']);
+
+        DB::transaction(function () use ($request, $company, $branch): void {
+            $securityCompany = SecurityCompany::query()->where('finance_company_id', $company->id)->first();
+
+            if (! $securityCompany) {
+                abort_unless($request->user()->role === 'superadmin' || $request->user()->canNavigateTo('security.dashboard'), 403);
+                $rfc = strtoupper(trim($company->rfc));
+                $matches = SecurityCompany::query()
+                    ->where(fn ($query) => $query->where('rfc', $rfc)->orWhere('name', $company->name))
+                    ->get();
+
+                if ($matches->count() > 1 || ($matches->first()?->finance_company_id && $matches->first()->finance_company_id !== $company->id)
+                    || ($matches->first()?->rfc && strtoupper($matches->first()->rfc) !== $rfc)) {
+                    throw ValidationException::withMessages(['branch.name' => 'La empresa ya tiene un registro de Vigilancia incompatible. Revisa su RFC y vinculación.']);
+                }
+
+                $securityCompany = $matches->first();
+                if ($securityCompany) {
+                    $securityCompany->update([
+                        'finance_company_id' => $company->id,
+                        'rfc' => $securityCompany->rfc ?: $rfc,
+                    ]);
+                } else {
+                    $securityCompany = SecurityCompany::create([
+                        'name' => $company->name,
+                        'entity_type' => 'company',
+                        'legal_name' => $company->name,
+                        'rfc' => $rfc,
+                        'address' => $company->address,
+                        'finance_company_id' => $company->id,
+                    ]);
+                }
+            }
+
+            if ($securityCompany->branches()->where('name', $branch['name'])->exists()) {
+                throw ValidationException::withMessages(['branch.name' => 'Esta sucursal ya existe en la empresa.']);
+            }
+            if ($branch['code'] && $securityCompany->branches()->where('code', $branch['code'])->exists()) {
+                throw ValidationException::withMessages(['branch.code' => 'Esta clave ya existe en la empresa.']);
+            }
+
+            $securityCompany->branches()->create($branch + [
+                'country' => 'México',
+                'timezone' => 'America/Mexico_City',
+                'status' => 'active',
+                'is_primary' => ! $securityCompany->branches()->exists(),
+            ]);
+        });
+
+        return redirect()->route('finance.admin.companies', ['company_id' => $company->id])
+            ->with('status', 'Sucursal agregada.');
+    }
+
+    public function updateCompanyWarehouse(Request $request, Company $company, int $warehouseIndex)
+    {
+        $this->ensureFinance();
+
+        $warehouses = $company->warehouseObjects();
+        abort_unless(array_key_exists($warehouseIndex, $warehouses), 404);
+
+        $validated = $request->validate([
+            'warehouse.name' => ['required', 'string', 'max:255'],
+            'warehouse.short_name' => ['nullable', 'string', 'max:50'],
+            'warehouse.address' => ['required', 'string', 'max:1000'],
+        ])['warehouse'];
+
+        $name = trim($validated['name']);
+        foreach ($warehouses as $index => $warehouse) {
+            if ($index !== $warehouseIndex && mb_strtolower($warehouse['name']) === mb_strtolower($name)) {
+                throw ValidationException::withMessages(['warehouse.name' => 'Ya existe un almacén con ese nombre en la empresa.']);
+            }
+        }
+
+        $oldName = $warehouses[$warehouseIndex]['name'];
+        $warehouses[$warehouseIndex] = [
+            'name' => $name,
+            'short_name' => trim($validated['short_name'] ?? ''),
+            'address' => trim($validated['address']),
+            ...(! empty($warehouses[$warehouseIndex]['branch_id']) ? ['branch_id' => $warehouses[$warehouseIndex]['branch_id']] : []),
+        ];
+
+        DB::transaction(function () use ($company, $warehouses, $oldName, $name): void {
+            $company->update(['warehouses' => $warehouses]);
+
+            if ($oldName !== $name) {
+                User::whereIn('role', ['buyer', 'inventory'])->get()->each(function (User $user) use ($company, $oldName, $name): void {
+                    $assignments = $user->normalizedCompanyAssignments();
+                    $changed = false;
+                    foreach ($assignments as &$assignment) {
+                        if ($assignment['name'] !== $company->name || ! in_array($oldName, $assignment['warehouses'], true)) {
+                            continue;
+                        }
+
+                        $assignment['warehouses'] = collect($assignment['warehouses'])
+                            ->map(fn (string $warehouse) => $warehouse === $oldName ? $name : $warehouse)
+                            ->unique()->values()->all();
+                        $changed = true;
+                    }
+                    unset($assignment);
+
+                    if ($changed) {
+                        $user->update(['companies' => $assignments]);
+                    }
+                });
+            }
+
+            $this->audit($company, 'company_updated', "Almacén {$name} actualizado en {$company->name}.");
+        });
+
+        return redirect()->route('finance.admin.companies', ['company_id' => $company->id])
+            ->with('status', 'Almacén actualizado.');
     }
 
     public function updateCompany(Request $request, Company $company)
@@ -340,6 +707,7 @@ class FinanceAdminController extends Controller
 
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
+            'business_line' => ['nullable', 'string', 'max:120'],
             'rfc' => ['required', 'string', 'max:20'],
             'address' => ['required', 'string', 'max:1000'],
             'purchase_order_notes' => ['nullable', 'string', 'max:3000'],
@@ -350,7 +718,17 @@ class FinanceAdminController extends Controller
             'warehouses.*.name' => ['required_with:warehouses', 'string', 'max:255'],
             'warehouses.*.short_name' => ['nullable', 'string', 'max:50'],
             'warehouses.*.address' => ['nullable', 'string', 'max:1000'],
+            'warehouses.*.branch_id' => ['nullable', 'integer'],
         ]);
+
+        $postedBranchIds = collect($validated['warehouses'] ?? [])
+            ->pluck('branch_id')->filter()->map(fn ($id) => (int) $id)->unique()->values();
+        if ($postedBranchIds->isNotEmpty() && SecurityBranch::query()
+            ->whereIn('id', $postedBranchIds)
+            ->whereHas('securityCompany', fn ($query) => $query->where('finance_company_id', $company->id))
+            ->count() !== $postedBranchIds->count()) {
+            throw ValidationException::withMessages(['warehouses' => 'Una sucursal vinculada no pertenece a esta empresa.']);
+        }
 
         $oldName = $company->name;
         $oldLogoPath = $company->logo_path;
@@ -360,6 +738,9 @@ class FinanceAdminController extends Controller
 
         $companyPayload = [
             'name' => $validated['name'],
+            'business_line' => array_key_exists('business_line', $validated)
+                ? (filled($validated['business_line']) ? trim($validated['business_line']) : null)
+                : $company->business_line,
             'rfc' => strtoupper($validated['rfc']),
             'address' => $validated['address'],
             'purchase_order_notes' => $validated['purchase_order_notes'] ?? null,
@@ -600,14 +981,21 @@ class FinanceAdminController extends Controller
         return "Almacen Central {$name}";
     }
 
-    private function parseWarehouses(array $warehouses, string $companyAddress): array
+    private function parseWarehouses(array $warehouses, string $companyAddress, array $branchIds = []): array
     {
         $parsed = collect($warehouses)
-            ->map(fn ($warehouse) => [
-                'name' => trim($warehouse['name'] ?? ''),
-                'short_name' => trim($warehouse['short_name'] ?? ''),
-                'address' => trim($warehouse['address'] ?? '') ?: trim($companyAddress),
-            ])
+            ->map(function ($warehouse) use ($companyAddress, $branchIds) {
+                $branchId = isset($warehouse['branch_index'])
+                    ? ($branchIds[$warehouse['branch_index']] ?? null)
+                    : ($warehouse['branch_id'] ?? null);
+
+                return [
+                    'name' => trim($warehouse['name'] ?? ''),
+                    'short_name' => trim($warehouse['short_name'] ?? ''),
+                    'address' => trim($warehouse['address'] ?? '') ?: trim($companyAddress),
+                    ...($branchId ? ['branch_id' => (int) $branchId] : []),
+                ];
+            })
             ->filter(fn ($warehouse) => filled($warehouse['name']))
             ->unique('name')
             ->values()

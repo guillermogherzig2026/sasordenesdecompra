@@ -14,6 +14,7 @@ use App\Http\Controllers\FinanceReimbursementOrderController;
 use App\Http\Controllers\FinanceServicePaymentController;
 use App\Http\Controllers\FinanceSupplyOrderController;
 use App\Http\Controllers\HumanResourcesController;
+use App\Http\Controllers\HumanResourcesBiometricMediaController;
 use App\Http\Controllers\InventoryReceiptController;
 use App\Http\Controllers\InventorySupplyOrderController;
 use App\Http\Controllers\Marketing\CampaignController as MarketingCampaignController;
@@ -26,6 +27,8 @@ use App\Http\Controllers\Marketing\SettingsController as MarketingSettingsContro
 use App\Http\Controllers\Marketing\UserController as MarketingUserController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\SecurityCompanyController;
+use App\Http\Controllers\SecurityIncidentController;
+use App\Http\Controllers\SecurityCameraController;
 use App\Http\Controllers\ServiceController;
 use App\Http\Controllers\SuperAdminGovernmentContractController;
 use App\Http\Controllers\SuperAdminPlazaController;
@@ -226,6 +229,10 @@ Route::middleware(['auth', EnforceNavigationPermission::class])->prefix('superad
 Route::middleware(['auth', EnforceNavigationPermission::class])->prefix('recursos-humanos')->name('human-resources.')->group(function () {
     Route::get('/', [HumanResourcesController::class, 'show'])->name('index');
     Route::get('/aplicacion/{section?}', [HumanResourcesController::class, 'embed'])->name('embed');
+    Route::get('/biometria', [HumanResourcesBiometricMediaController::class, 'index'])->name('biometric-media.index');
+    Route::post('/biometria', [HumanResourcesBiometricMediaController::class, 'store'])->name('biometric-media.store');
+    Route::get('/biometria/{employeeBiometricMedia}', [HumanResourcesBiometricMediaController::class, 'show'])->name('biometric-media.show');
+    Route::delete('/biometria/{employeeBiometricMedia}', [HumanResourcesBiometricMediaController::class, 'destroy'])->name('biometric-media.destroy');
     Route::get('/{section?}', [HumanResourcesController::class, 'show'])->name('show');
 });
 
@@ -234,6 +241,7 @@ Route::middleware(['auth', EnforceNavigationPermission::class])->prefix('marketi
 
     Route::resource('companies', MarketingCompanyController::class)->except(['show', 'destroy']);
     Route::patch('companies/{company}/estado', [MarketingCompanyController::class, 'toggle'])->name('companies.toggle');
+    Route::patch('companies/{company}/favorita', [MarketingCompanyController::class, 'updateFavorite'])->name('companies.favorite');
 
     Route::resource('campaigns', MarketingCampaignController::class)->except(['show', 'destroy']);
     Route::patch('campaigns/{campaign}/estado', [MarketingCampaignController::class, 'toggle'])->name('campaigns.toggle');
@@ -261,8 +269,14 @@ Route::middleware(['auth', EnforceNavigationPermission::class])->prefix('marketi
 Route::middleware(['auth', EnforceNavigationPermission::class])->prefix('seguridad-vigilancia')->name('security.')->group(function () {
     Route::get('/', [SecurityCompanyController::class, 'index'])->name('index');
     Route::post('/empresas', [SecurityCompanyController::class, 'store'])->name('companies.store');
+    Route::patch('/empresas/favoritas', [SecurityCompanyController::class, 'updateFavorites'])->name('companies.favorites.update');
+    Route::patch('/empresas/{securityCompany}/favorita', [SecurityCompanyController::class, 'updateFavorite'])->name('companies.favorite');
+    Route::post('/incidencias', [SecurityIncidentController::class, 'store'])->name('incidents.store');
+    Route::patch('/incidencias/{securityIncident}/estado', [SecurityIncidentController::class, 'updateStatus'])->name('incidents.status.update');
     Route::post('/sucursales', [SecurityCompanyController::class, 'storeBranch'])->name('branches.store');
     Route::patch('/sucursales/{securityBranch}', [SecurityCompanyController::class, 'updateBranch'])->name('branches.update');
+    Route::post('/sucursales/{securityBranch}/camaras', [SecurityCameraController::class, 'store'])->name('branches.cameras.store');
+    Route::patch('/sucursales/{securityBranch}/camaras/{securityCamera}', [SecurityCameraController::class, 'update'])->name('branches.cameras.update');
 });
 
 Route::middleware(['auth', EnforceNavigationPermission::class])->prefix('administracion-obra')->name('construction.')->group(function () {
@@ -383,6 +397,8 @@ Route::middleware(['auth', EnforceNavigationPermission::class])->prefix('finanza
     Route::put('/proveedores/{provider}', [FinanceAdminController::class, 'updateProvider'])->name('admin.providers.update');
     Route::get('/empresas', [FinanceAdminController::class, 'companies'])->name('admin.companies');
     Route::post('/empresas', [FinanceAdminController::class, 'storeCompany'])->name('admin.companies.store');
+    Route::post('/empresas/{company}/sucursales', [FinanceAdminController::class, 'storeCompanyBranch'])->name('admin.companies.branches.store');
+    Route::patch('/empresas/{company}/almacenes/{warehouseIndex}', [FinanceAdminController::class, 'updateCompanyWarehouse'])->whereNumber('warehouseIndex')->name('admin.companies.warehouses.update');
     Route::get('/empresas/{company}/editar', [FinanceAdminController::class, 'editCompany'])->name('admin.companies.edit');
     Route::put('/empresas/{company}', [FinanceAdminController::class, 'updateCompany'])->name('admin.companies.update');
     Route::delete('/empresas/{company}', [FinanceAdminController::class, 'destroyCompany'])->name('admin.companies.destroy');

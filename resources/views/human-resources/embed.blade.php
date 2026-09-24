@@ -40,6 +40,8 @@
                 'embedded' => true,
                 'route' => $appRoute,
                 'registeredCompanies' => $registeredCompanies,
+                'biometricMediaUrl' => route('human-resources.biometric-media.index'),
+                'csrfToken' => csrf_token(),
             ];
         @endphp
         <script>

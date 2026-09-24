@@ -1,0 +1,27 @@
+logLevel: info
+
+# All listeners stay on this computer. Do not expose camera feeds to the LAN by default.
+api: true
+apiAddress: 127.0.0.1:9997
+playback: true
+playbackAddress: 127.0.0.1:9996
+rtsp: true
+rtspTransports: [tcp]
+rtspAddress: 127.0.0.1:8554
+rtmp: false
+hls: true
+hlsAddress: 127.0.0.1:8888
+hlsVariant: fmp4
+webrtc: false
+srt: false
+moq: false
+
+pathDefaults:
+  record: true
+  recordPath: ../camera-recordings/%path/%Y-%m-%d_%H-%M-%S-%f
+  recordDeleteAfter: 7d
+
+paths:
+  camara1:
+    # Replace publisher with the camera's full RTSP URL when available.
+    source: publisher

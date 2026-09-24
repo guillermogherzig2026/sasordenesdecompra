@@ -1694,6 +1694,43 @@ button svg,
   min-width: 88px;
 }
 
+.local-marketing-toolbar .local-marketing-new-playlist {
+  min-height: 36px;
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+.local-marketing-playlist-table {
+  min-width: 680px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  border-collapse: separate;
+  border-spacing: 0;
+  background: var(--surface);
+}
+
+.local-marketing-playlist-table :is(th, td) {
+  padding: 10px 12px;
+}
+
+.local-marketing-playlist-table td:first-child {
+  font-weight: 750;
+}
+
+.local-marketing-playlist-fields {
+  display: grid;
+  gap: 12px;
+}
+
+.local-marketing-playlist-fields :is(input, select) {
+  width: 100%;
+}
+
+.modal.modal-playlist {
+  align-self: start;
+  margin-top: 16px;
+}
+
 .local-marketing-content .empty-state {
   display: grid;
   min-height: 220px;
@@ -5987,6 +6024,10 @@ button svg,
 
   .local-marketing-toolbar button {
     min-width: 0;
+  }
+
+  .local-marketing-toolbar .local-marketing-new-playlist {
+    margin-left: 0;
   }
 
   .local-marketing-screen-toolbar,

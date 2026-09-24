@@ -195,6 +195,7 @@ class ReportController extends Controller
         return Company::orderBy('name')->get()->map(fn (Company $company) => [
             'Razon Social' => $company->name,
             'RFC' => $company->rfc,
+            'Giro de negocio' => $company->business_line,
             'Direccion' => $company->address,
             'Observaciones OC' => $company->purchase_order_notes,
             'Logotipo' => $company->logo_path ? 'Cargado' : 'Sin logotipo',

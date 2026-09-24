@@ -154,7 +154,7 @@
                             <h2>Seguimiento de servicios</h2>
                             <p class="fine-print">Da de alta servicios recurrentes, revisa fechas de corte y adjunta facturas por periodo.</p>
                         </div>
-                        <a class="button primary" href="{{ route('services.create') }}">Alta servicio</a>
+                        <a class="button primary" href="{{ route('services.catalog', ['create' => 1]) }}">Alta servicio</a>
                     </div>
                 </section>
             @endif

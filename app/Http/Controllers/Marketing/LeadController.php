@@ -112,7 +112,9 @@ class LeadController extends Controller
 
     private function formData(Request $request): array
     {
-        $companyId = $request->session()->get('marketing_company_id');
+        $companyId = $request->session()->get('marketing_company_scope') === 'all'
+            ? null
+            : $request->session()->get('marketing_company_id');
 
         return [
             'companies' => Company::query()->visibleTo($request->user())->orderBy('name')->get(),

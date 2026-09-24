@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Marketing;
 use App\Http\Controllers\Controller;
 use App\Models\Marketing\Campaign;
 use App\Models\Marketing\Company;
+use App\Models\Marketing\Lead;
 use App\Models\Marketing\User;
 use App\Support\MarketingWorkspace;
 use Illuminate\Database\Eloquent\Builder;
@@ -26,7 +27,10 @@ class CampaignController extends Controller
             'spent' => $campaign ? $campaign->spent : $campaigns->sum('spent'),
             'conversations' => $campaign ? $campaign->conversations_count : $campaigns->sum('conversations_count'),
             'leads' => $campaign ? $campaign->leads_count : $campaigns->sum('leads_count'),
-            'sales' => $company ? $company->leads()->when($campaign, fn (Builder $query) => $query->where('campaign_id', $campaign->id))->where('status', 'convertido')->sum('estimated_value') : 0,
+            'sales' => Lead::query()->visibleTo($request->user())
+                ->when($company, fn (Builder $query) => $query->where('company_id', $company->id))
+                ->when($campaign, fn (Builder $query) => $query->where('campaign_id', $campaign->id))
+                ->where('status', 'convertido')->sum('estimated_value'),
         ];
 
         return view('marketing.leadflow.campaigns.index', compact('company', 'campaign', 'companies', 'campaigns', 'summary'));

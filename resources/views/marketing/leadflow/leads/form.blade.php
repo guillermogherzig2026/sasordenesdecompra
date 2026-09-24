@@ -8,15 +8,18 @@
     </div>
 </div>
 
-<form class="panel pad" method="post" action="{{ $lead->exists ? route('marketing.leads.update', $lead) : route('marketing.leads.store') }}">
+<form class="panel pad" method="post" action="{{ $lead->exists ? route('marketing.leads.update', $lead) : route('marketing.leads.store') }}" data-marketing-lead-form>
     @csrf
     @if($lead->exists) @method('put') @endif
     <div class="form-grid">
         <div class="field">
             <label>Empresa</label>
             <select class="select" name="company_id" required>
+                @if (!$lead->exists && session('marketing_company_scope') === 'all')
+                    <option value="" disabled @selected(!old('company_id'))>Selecciona una empresa</option>
+                @endif
                 @foreach($companies as $company)
-                    <option value="{{ $company->id }}" @selected(old('company_id', $lead->company_id ?: session('marketing_company_id')) == $company->id)>{{ $company->name }}</option>
+                    <option value="{{ $company->id }}" @selected(old('company_id', $lead->company_id ?: (session('marketing_company_scope') === 'all' ? null : session('marketing_company_id'))) == $company->id)>{{ $company->name }}</option>
                 @endforeach
             </select>
         </div>
@@ -25,7 +28,7 @@
             <select class="select" name="campaign_id">
                 <option value="">Sin campaña</option>
                 @foreach($campaigns as $campaign)
-                    <option value="{{ $campaign->id }}" @selected(old('campaign_id', $lead->campaign_id ?: session('marketing_campaign_id')) == $campaign->id)>{{ $campaign->name }}</option>
+                    <option value="{{ $campaign->id }}" data-company-id="{{ $campaign->company_id }}" @selected(old('campaign_id', $lead->campaign_id ?: (session('marketing_company_scope') === 'all' ? null : session('marketing_campaign_id'))) == $campaign->id)>{{ $campaign->name }}</option>
                 @endforeach
             </select>
         </div>
@@ -62,7 +65,7 @@
             <select class="select" name="advisor_id">
                 <option value="">Sin asignar</option>
                 @foreach($advisors as $advisor)
-                    <option value="{{ $advisor->id }}" @selected(old('advisor_id', $lead->advisor_id) == $advisor->id)>{{ $advisor->name }}</option>
+                    <option value="{{ $advisor->id }}" data-company-id="{{ $advisor->company_id }}" @selected(old('advisor_id', $lead->advisor_id) == $advisor->id)>{{ $advisor->name }}</option>
                 @endforeach
             </select>
         </div>
@@ -89,3 +92,7 @@
     </div>
 </form>
 @endsection
+
+@push('scripts')
+    <script src="{{ asset('modules/marketing/lead-company-fields.js') }}" defer></script>
+@endpush

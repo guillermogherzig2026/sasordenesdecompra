@@ -1,40 +1,8 @@
 @extends('marketing.leadflow.layout', ['title' => 'Inicio | LeadFlow'])
 
 @section('content')
-<div class="panel pad" style="margin-bottom:16px">
-    <h2 class="section-title"><span class="badge green">1</span> Empresa</h2>
-    <p class="muted small">Selecciona la empresa que deseas gestionar.</p>
-    <div class="card-row">
-        @foreach($companies as $item)
-            <a class="square-card {{ $company?->id === $item->id ? 'active' : '' }}" href="{{ route('marketing.index', ['company_id' => $item->id, 'campaign' => 'all']) }}">
-                @if($company?->id === $item->id)<span class="check">✓</span>@endif
-                <span class="logo-circle" style="background:{{ $item->brand_color }}">{{ $item->logo_initials }}</span>
-                <strong>{{ $item->name }}</strong>
-                <span class="status-dot {{ $item->active ? 'active' : 'inactive' }}">{{ $item->active ? 'Activa' : 'Inactiva' }}</span>
-            </a>
-        @endforeach
-    </div>
-</div>
-
-<div class="panel pad" style="margin-bottom:16px">
-    <h2 class="section-title"><span class="badge green">2</span> Campaña</h2>
-    <p class="muted small">Selecciona una campaña o revisa todas las campañas.</p>
-    <div class="card-row">
-        <a class="square-card {{ $campaign ? '' : 'active' }}" href="{{ route('marketing.index', ['company_id' => $company?->id, 'campaign' => 'all']) }}">
-            @unless($campaign)<span class="check">✓</span>@endunless
-            <span class="metric-icon">▦</span>
-            <strong>Todas las campañas</strong>
-        </a>
-        @foreach($campaigns as $item)
-            <a class="square-card {{ $campaign?->id === $item->id ? 'active' : '' }}" href="{{ route('marketing.index', ['company_id' => $company?->id, 'campaign_id' => $item->id]) }}">
-                @if($campaign?->id === $item->id)<span class="check">✓</span>@endif
-                <span class="metric-icon">{{ $loop->iteration }}</span>
-                <strong>{{ $item->name }}</strong>
-                <span class="status-dot {{ $item->status }}">{{ \App\Models\Marketing\Campaign::STATUSES[$item->status] ?? $item->status }}</span>
-            </a>
-        @endforeach
-    </div>
-</div>
+@include('marketing.leadflow.partials.company-selection')
+@include('marketing.leadflow.partials.campaign-selection', ['selectionRoute' => 'marketing.index'])
 
 <div class="grid cols-4" style="margin-bottom:16px">
     <div class="panel metric"><span class="metric-icon">♙</span><div><span>Leads</span><strong>{{ number_format($metrics['leads']) }}</strong><span class="trend">↑ 12.5%</span></div></div>

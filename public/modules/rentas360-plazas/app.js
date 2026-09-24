@@ -589,6 +589,7 @@ const seedState = {
       active: true
     }
   ],
+  localMarketingPlaylists: [],
   localMarketingMaintenanceTickets: [],
   units: [
     {
@@ -1017,6 +1018,7 @@ function loadState() {
       users: mergeById(seed.users, parsed.users),
       tenantProfiles: mergeById(seed.tenantProfiles, parsed.tenantProfiles),
       localMarketingScreens: mergeById(seed.localMarketingScreens, parsed.localMarketingScreens),
+      localMarketingPlaylists: mergeById(seed.localMarketingPlaylists, parsed.localMarketingPlaylists),
       units: mergeById(seed.units, parsed.units)
     });
   } catch {
@@ -1086,6 +1088,16 @@ function normalizeState(nextState) {
       active: screen.active !== false,
       deleted: Boolean(screen.deleted)
     }));
+  nextState.localMarketingPlaylists = (
+    Array.isArray(nextState.localMarketingPlaylists) ? nextState.localMarketingPlaylists : []
+  ).map((playlist, index) => ({
+    id: String(playlist.id || `playlist-${index + 1}`),
+    name: String(playlist.name || "Lista sin nombre"),
+    propertyId: String(playlist.propertyId || ""),
+    type: ["generic", "category", "season", "promotions"].includes(playlist.type) ? playlist.type : "generic",
+    status: playlist.status === "active" ? "active" : "draft",
+    items: Array.isArray(playlist.items) ? playlist.items : []
+  }));
   nextState.localMarketingMaintenanceTickets = (
     Array.isArray(nextState.localMarketingMaintenanceTickets) ? nextState.localMarketingMaintenanceTickets : []
   ).map((ticket, index) => ({
@@ -6545,6 +6557,132 @@ const localMarketingCampaignCarouselOptions = [
   { id: "library", label: "Biblioteca", icon: "layoutDashboard" }
 ];
 
+const localMarketingPlaylistTypes = [
+  { value: "generic", label: "Genérica" },
+  { value: "category", label: "Por categoría" },
+  { value: "season", label: "Por temporada" },
+  { value: "promotions", label: "Promociones" }
+];
+
+function localMarketingPlaylistsMarkup(properties, property, allSelected, scope, emptyMessage) {
+  const propertyIds = new Set(properties.map((item) => item.id));
+  const playlists = state.localMarketingPlaylists.filter((playlist) =>
+    propertyIds.has(playlist.propertyId) &&
+    (allSelected || playlist.propertyId === property.id) &&
+    (scope === "all" || (scope === "drafts" ? playlist.status === "draft" : playlist.type === scope))
+  );
+
+  if (!playlists.length) return emptyState(emptyMessage);
+
+  return `
+    <div class="table-scroll">
+      <table class="local-marketing-playlist-table">
+        <thead><tr><th>Lista de reproducción</th><th>Plaza</th><th>Tipo</th><th>Estado</th><th>Contenidos</th><th>Acciones</th></tr></thead>
+        <tbody>
+          ${playlists.map((playlist) => `
+            <tr>
+              <td><strong>${escapeAttribute(playlist.name)}</strong></td>
+              <td>${escapeAttribute(getProperty(playlist.propertyId)?.name || "Sin plaza")}</td>
+              <td>${escapeAttribute(localMarketingPlaylistTypes.find((type) => type.value === playlist.type)?.label || "Genérica")}</td>
+              <td>${playlist.status === "active" ? "Activa" : "Borrador"}</td>
+              <td>${playlist.items.length}</td>
+              <td><button class="secondary-button" type="button" data-local-marketing-playlist-edit="${escapeAttribute(playlist.id)}">Editar</button></td>
+            </tr>
+          `).join("")}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+function openLocalMarketingPlaylistForm(playlistId = "") {
+  const playlist = state.localMarketingPlaylists.find((item) => item.id === playlistId) || null;
+  const properties = visibleProperties();
+  const selectedPropertyId = view.localMarketingPropertyId !== "all" && properties.some((property) => property.id === view.localMarketingPropertyId)
+    ? view.localMarketingPropertyId
+    : properties[0]?.id || "";
+
+  els.modal.classList.add("modal-compact", "modal-playlist");
+  els.modalEyebrow.textContent = "Marketing local";
+  els.modalTitle.textContent = playlist ? "Editar lista de reproducción" : "Nueva lista de reproducción";
+  els.modalBody.innerHTML = `
+    <form id="localMarketingPlaylistForm">
+      <div class="local-marketing-playlist-fields">
+        <div class="field">
+          <label for="localMarketingPlaylistName">Nombre *</label>
+          <input id="localMarketingPlaylistName" name="name" value="${escapeAttribute(playlist?.name || "")}" maxlength="120" required autofocus>
+        </div>
+        <div class="field">
+          <label for="localMarketingPlaylistProperty">Plaza *</label>
+          <select id="localMarketingPlaylistProperty" name="propertyId" required>
+            ${plazaCreationOptions(properties.map((property) => ({ value: property.id, label: property.name })), playlist?.propertyId || selectedPropertyId)}
+          </select>
+        </div>
+        <div class="field">
+          <label for="localMarketingPlaylistType">Tipo *</label>
+          <select id="localMarketingPlaylistType" name="type" required>
+            ${plazaCreationOptions(localMarketingPlaylistTypes, playlist?.type || "generic")}
+          </select>
+        </div>
+        <div class="field">
+          <label for="localMarketingPlaylistStatus">Estado *</label>
+          <select id="localMarketingPlaylistStatus" name="status" required>
+            ${plazaCreationOptions([{ value: "draft", label: "Borrador" }, { value: "active", label: "Activa" }], playlist?.status || "draft")}
+          </select>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="secondary-button" type="button" data-modal-cancel>Cancelar</button>
+        <button class="action-button" type="submit">${playlist ? "Guardar cambios" : "Crear lista"}</button>
+      </div>
+    </form>
+  `;
+
+  const form = els.modalBody.querySelector("#localMarketingPlaylistForm");
+  const nameInput = form.elements.name;
+  nameInput.addEventListener("input", () => nameInput.setCustomValidity(""));
+  form.querySelector("[data-modal-cancel]").addEventListener("click", closeModal);
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const values = new FormData(form);
+    const name = String(values.get("name") || "").trim();
+    const propertyId = String(values.get("propertyId") || "");
+    const type = String(values.get("type") || "");
+    const status = String(values.get("status") || "");
+    const duplicate = state.localMarketingPlaylists.some((item) =>
+      item.id !== playlist?.id && item.propertyId === propertyId && normalizeText(item.name) === normalizeText(name)
+    );
+
+    if (!name || duplicate) {
+      nameInput.setCustomValidity(duplicate ? "Ya existe una lista con ese nombre en esta plaza." : "Ingresa un nombre.");
+      nameInput.reportValidity();
+      return;
+    }
+    if (!properties.some((property) => property.id === propertyId) ||
+        !localMarketingPlaylistTypes.some((option) => option.value === type) ||
+        !["draft", "active"].includes(status)) return;
+
+    if (playlist) {
+      Object.assign(playlist, { name, propertyId, type, status });
+    } else {
+      state.localMarketingPlaylists.unshift({
+        id: uniqueId("playlist", name, state.localMarketingPlaylists.map((item) => item.id)),
+        name, propertyId, type, status, items: []
+      });
+    }
+
+    saveState();
+    closeModal();
+    view.localMarketingCampaignSection = "playlists";
+    view.localMarketingScope = "all";
+    if (view.localMarketingPropertyId !== "all") view.localMarketingPropertyId = propertyId;
+    render();
+    toast(playlist ? "Lista actualizada" : "Lista creada");
+  });
+  openModal();
+  nameInput.focus();
+}
+
 function localMarketingCampaignMiniCarouselMarkup() {
   const activeSection = localMarketingCampaignCarouselOptions.some((option) => option.id === view.localMarketingCampaignSection)
     ? view.localMarketingCampaignSection
@@ -6738,6 +6876,11 @@ function renderLocalMarketing() {
               ${option.label}
             </button>
           `).join("")}
+          ${isCampaignView && view.localMarketingCampaignSection === "playlists" ? `
+            <button class="action-button local-marketing-new-playlist" type="button" data-local-marketing-playlist-new>
+              <span data-icon="plus" aria-hidden="true"></span>Nueva lista de reproducción
+            </button>
+          ` : ""}
         </nav>
 
         <div class="property-administration-content local-marketing-content" data-local-marketing-content data-active-scope="${activeScope}" aria-live="polite">
@@ -6750,7 +6893,9 @@ function renderLocalMarketing() {
                   <p class="muted">${scopeCopy.description}</p>
                 </div>
               </div>
-              ${emptyState(scopeCopy.empty)}
+              ${view.localMarketingCampaignSection === "playlists"
+                ? localMarketingPlaylistsMarkup(properties, property, allSelected, activeScope, scopeCopy.empty)
+                : emptyState("No hay contenidos registrados en la biblioteca.")}
             </section>
           ` : localMarketingScreensWorkspaceMarkup(properties, property, allSelected, activeScope, scopeCopy)}
         </div>
@@ -6781,6 +6926,11 @@ function renderLocalMarketing() {
   });
 
   if (isCampaignView) {
+    els.contentArea.querySelector("[data-local-marketing-playlist-new]")?.addEventListener("click", () => openLocalMarketingPlaylistForm());
+    els.contentArea.querySelectorAll("[data-local-marketing-playlist-edit]").forEach((button) => {
+      button.addEventListener("click", () => openLocalMarketingPlaylistForm(button.dataset.localMarketingPlaylistEdit));
+    });
+
     const selectCampaignSection = (sectionId) => {
       if (!localMarketingCampaignCarouselOptions.some((option) => option.id === sectionId)) return;
       if (sectionId === view.localMarketingCampaignSection) return;
@@ -14595,7 +14745,7 @@ function openModal() {
 
 function closeModal() {
   els.modalBackdrop.hidden = true;
-  els.modal?.classList.remove("modal-wide", "modal-compact", "modal-plaza-flow");
+  els.modal?.classList.remove("modal-wide", "modal-compact", "modal-plaza-flow", "modal-playlist");
 }
 
 function toast(message) {

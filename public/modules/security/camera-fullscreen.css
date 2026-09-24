@@ -1,0 +1,180 @@
+.security-camera-fullscreen-open { white-space: nowrap; }
+.security-camera-fullscreen-open > span { font-size: 1.1rem; line-height: 1; }
+
+.security-camera-fullscreen {
+    inset: 0;
+    width: 100vw;
+    max-width: none;
+    height: 100dvh;
+    max-height: none;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    overflow: hidden;
+    background: #071923;
+    color: #f5fafc;
+}
+.security-camera-fullscreen::backdrop { background: #071923; }
+.security-camera-fullscreen:fullscreen { width: 100vw; height: 100dvh; }
+.security-camera-fullscreen [hidden] { display: none !important; }
+.security-camera-fullscreen button,
+.security-camera-fullscreen input,
+.security-camera-fullscreen select { font: inherit; }
+.security-camera-fullscreen button { cursor: pointer; }
+.security-camera-fullscreen button:disabled { cursor: not-allowed; opacity: .45; }
+.security-camera-fullscreen button:focus-visible,
+.security-camera-fullscreen input:focus-visible,
+.security-camera-fullscreen select:focus-visible,
+.security-camera-fullscreen-tile:focus-visible { outline: 2px solid #4dd2e5; outline-offset: 2px; }
+
+.security-camera-fullscreen-shell { position: relative; width: 100%; height: 100%; overflow: hidden; background: #071923; }
+.security-camera-fullscreen-shell:fullscreen { width: 100vw; height: 100dvh; }
+.security-camera-fullscreen-stage {
+    position: absolute;
+    inset: 0;
+    padding: 4px;
+    display: grid;
+    grid-template-columns: repeat(var(--wall-columns, 2), minmax(0, 1fr));
+    grid-template-rows: repeat(var(--wall-rows, 2), minmax(0, 1fr));
+    gap: 4px;
+    background: #061822;
+}
+.security-camera-fullscreen-stage.is-three { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); grid-template-rows: repeat(2, minmax(0, 1fr)); }
+.security-camera-fullscreen-stage.is-three .is-featured { grid-row: span 2; }
+.security-camera-fullscreen-stage.is-three[data-three-orientation="vertical"] { grid-template-columns: minmax(0, 1fr); grid-template-rows: 1.2fr 1fr 1fr; }
+.security-camera-fullscreen-stage.is-three[data-three-orientation="vertical"] .is-featured { grid-column: auto; grid-row: auto; }
+.security-camera-fullscreen-stage.is-zoomed { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); }
+.security-camera-fullscreen-stage.is-zoomed .is-featured { grid-column: auto !important; grid-row: auto !important; }
+.security-camera-fullscreen-stage.is-zoomed .security-camera-fullscreen-tile:not(.is-zoomed) { display: none; }
+.security-camera-fullscreen-tile {
+    position: relative;
+    min-width: 0;
+    min-height: 0;
+    border: 1px solid #36505c;
+    border-radius: 3px;
+    overflow: hidden;
+    background: #182a34;
+    cursor: zoom-in;
+}
+.security-camera-fullscreen-tile.is-zoomed { cursor: zoom-out; }
+.security-camera-fullscreen-video { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: #08141b; pointer-events: none; }
+.security-camera-fullscreen-offline { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 8px; color: #becbd1; }
+.security-camera-fullscreen-offline > span { width: 36px; height: 36px; border: 1px solid #6e8792; border-radius: 50%; display: grid; place-items: center; font-size: 1.25rem; }
+.security-camera-fullscreen-offline > strong { font-size: .85rem; }
+.security-camera-fullscreen-tile-label {
+    position: absolute;
+    z-index: 1;
+    right: 10px;
+    bottom: 10px;
+    left: 10px;
+    width: fit-content;
+    max-width: calc(100% - 20px);
+    padding: 6px 9px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-radius: 4px;
+    background: rgba(4, 21, 30, .82);
+    font-size: clamp(.7rem, .8vw, .9rem);
+    overflow: hidden;
+    white-space: nowrap;
+}
+.security-camera-fullscreen-tile-label::before { content: ''; flex: 0 0 auto; width: 8px; height: 8px; border-radius: 50%; background: #a0adb3; }
+.security-camera-fullscreen-tile.is-online .security-camera-fullscreen-tile-label::before { background: #20cd86; }
+.security-camera-fullscreen-tile-label strong { overflow: hidden; text-overflow: ellipsis; }
+.security-camera-fullscreen-tile-label span { color: #d3e0e5; overflow: hidden; text-overflow: ellipsis; }
+
+.security-camera-fullscreen-controls {
+    position: absolute;
+    z-index: 3;
+    top: 0;
+    right: 0;
+    left: 0;
+    min-height: 58px;
+    padding: 9px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    background: rgba(8, 30, 43, .94);
+    border-bottom: 1px solid #34505d;
+    transition: opacity .2s ease, transform .2s ease;
+}
+.security-camera-fullscreen[data-controls-hidden="true"] .security-camera-fullscreen-controls { opacity: 0; transform: translateY(-100%); pointer-events: none; }
+.security-camera-fullscreen-title { min-width: 0; display: grid; gap: 3px; }
+.security-camera-fullscreen-title strong { font-size: .96rem; line-height: 1.2; }
+.security-camera-fullscreen-title span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #b7cbd4; font-size: .72rem; }
+.security-camera-fullscreen-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
+.security-camera-fullscreen-actions button,
+.security-camera-fullscreen-selector-heading button { min-height: 34px; padding: 5px 11px; border: 1px solid #486675; border-radius: 5px; background: #153548; color: #f5fafc; font-size: .78rem; font-weight: 750; white-space: nowrap; }
+.security-camera-fullscreen-actions button:hover,
+.security-camera-fullscreen-selector-heading button:hover { background: #20617a; }
+.security-camera-fullscreen-actions [data-security-wall-exit] { background: #103041; }
+.security-camera-fullscreen-count { color: #d2e4e9; font-size: .75rem; font-weight: 700; white-space: nowrap; }
+
+.security-camera-fullscreen-selector {
+    position: absolute;
+    z-index: 4;
+    top: 68px;
+    right: 12px;
+    bottom: 12px;
+    width: min(356px, calc(100vw - 24px));
+    min-height: 0;
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    border: 1px solid #496e80;
+    border-radius: 8px;
+    background: #102b3a;
+    box-shadow: 0 20px 44px rgba(0, 0, 0, .38);
+}
+.security-camera-fullscreen-selector-heading { padding: 14px 15px; display: flex; align-items: center; justify-content: space-between; gap: 10px; border-bottom: 1px solid #355363; }
+.security-camera-fullscreen-selector-heading h2 { margin: 0; font-size: .99rem; }
+.security-camera-fullscreen-selector-heading button { min-width: 30px; min-height: 30px; padding: 0 6px; font-size: 1.2rem; }
+.security-camera-fullscreen-selector-body { min-height: 0; padding: 14px; display: flex; flex-direction: column; gap: 13px; overflow-y: auto; }
+.security-camera-fullscreen-quantity { min-width: 0; margin: 0; padding: 0; border: 0; }
+.security-camera-fullscreen-quantity legend { margin-bottom: 9px; font-size: .76rem; font-weight: 800; }
+.security-camera-fullscreen-presets { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+.security-camera-fullscreen-presets button,
+.security-camera-fullscreen-custom-trigger { min-height: 34px; padding: 5px 0; border: 1px solid #486675; border-radius: 5px; background: #143448; color: #f5fafc; font-size: .76rem; font-weight: 750; }
+.security-camera-fullscreen-presets button[aria-pressed="true"],
+.security-camera-fullscreen-custom-trigger[aria-pressed="true"] { border-color: #35bcd1; background: #126f87; }
+.security-camera-fullscreen-custom-trigger { width: 100%; margin-top: 6px; }
+.security-camera-fullscreen-custom-field,
+.security-camera-fullscreen-featured { display: grid; gap: 5px; color: #d3e2e8; font-size: .73rem; font-weight: 750; }
+.security-camera-fullscreen-custom-field { margin-top: 8px; }
+.security-camera-fullscreen-custom-field input,
+.security-camera-fullscreen-featured select,
+.security-camera-fullscreen-search { width: 100%; min-height: 35px; padding: 7px 10px; border: 1px solid #567483; border-radius: 5px; background: #17394b; color: #f4fafc; font-size: .77rem; }
+.security-camera-fullscreen-search::placeholder { color: #a5bdc7; }
+.security-camera-fullscreen-selection-count { margin: 0; padding-top: 12px; border-top: 1px solid #355363; font-size: .8rem; font-weight: 750; }
+.security-camera-fullscreen-camera-list { min-height: 75px; display: grid; align-content: start; gap: 3px; }
+.security-camera-fullscreen-option { min-width: 0; padding: 9px 7px; display: flex; align-items: center; gap: 8px; border: 1px solid transparent; border-radius: 5px; cursor: pointer; }
+.security-camera-fullscreen-option:hover { border-color: #426c7e; background: #17394b; }
+.security-camera-fullscreen-option:has(input:checked) { background: #19485a; }
+.security-camera-fullscreen-option input { flex: 0 0 auto; width: 17px; height: 17px; margin: 0; accent-color: #22b5ca; }
+.security-camera-fullscreen-option-copy { min-width: 0; display: grid; gap: 3px; flex: 1 1 auto; }
+.security-camera-fullscreen-option-copy strong,
+.security-camera-fullscreen-option-copy small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.security-camera-fullscreen-option-copy strong { color: #f5fafc; font-size: .72rem; }
+.security-camera-fullscreen-option-copy small { color: #b0c6d0; font-size: .67rem; }
+.security-camera-fullscreen-status { display: inline-flex; align-items: center; gap: 5px; color: #c6d4da; font-size: .64rem; white-space: nowrap; }
+.security-camera-fullscreen-status::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: #abb7bd; }
+.security-camera-fullscreen-status.is-online::before { background: #20cd86; }
+.security-camera-fullscreen-selector-footer { padding: 13px 15px; border-top: 1px solid #355363; }
+.security-camera-fullscreen-selector-footer button { width: 100%; min-height: 40px; border: 1px solid #1594ab; border-radius: 5px; background: #0d8199; color: #fff; font-size: .8rem; font-weight: 800; }
+.security-camera-fullscreen-selector-footer button:hover:not(:disabled) { background: #1095ae; }
+
+@media (max-width: 700px) {
+    .security-camera-fullscreen-controls { padding: 8px; }
+    .security-camera-fullscreen-title { max-width: 30%; }
+    .security-camera-fullscreen-title strong { font-size: .76rem; }
+    .security-camera-fullscreen-title span,
+    .security-camera-fullscreen-count,
+    .security-camera-fullscreen-actions [data-security-wall-controls-toggle] { display: none; }
+    .security-camera-fullscreen-actions { gap: 5px; }
+    .security-camera-fullscreen-actions button { padding: 5px 7px; font-size: .68rem; }
+    .security-camera-fullscreen-selector { top: 60px; right: 6px; bottom: 6px; width: min(356px, calc(100vw - 12px)); }
+    .security-camera-fullscreen-tile-label { right: 4px; bottom: 4px; left: 4px; max-width: calc(100% - 8px); padding: 4px 5px; }
+    .security-camera-fullscreen-tile-label span { display: none; }
+}

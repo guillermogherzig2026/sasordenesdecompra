@@ -26,21 +26,23 @@ class UserNavigationPermissionTest extends TestCase
         $response->assertSee('Selecciona un menú');
         $response->assertSee('Autoriza los submenús de');
         $response->assertSee('Define las empresas y los almacenes');
-        $response->assertSee('data-authorization-view-tabs', false);
-        $response->assertSee('data-initial-view="create"', false);
-        $response->assertSee('data-authorization-view-target="create"', false);
-        $response->assertSee('data-authorization-view-target="users"', false);
+        $response->assertSee('Catálogo de usuarios');
+        $response->assertSee('data-authorization-create-open', false);
+        $response->assertSee('data-authorization-create-dialog', false);
+        $this->assertDoesNotMatchRegularExpression('/<dialog[^>]*data-authorization-create-dialog\s+data-auto-open/', $response->getContent());
+        $response->assertSee('data-authorization-search', false);
+        $response->assertSee('data-authorization-company', false);
+        $response->assertSee('data-authorization-module', false);
+        $response->assertSee('data-authorization-status', false);
+        $response->assertDontSee('data-authorization-view-tabs', false);
         $response->assertSee('Nuevo usuario');
-        $response->assertSee('Ver usuarios');
         $response->assertSee('name="first_name"', false);
         $response->assertSee('name="paternal_last_name"', false);
         $response->assertSee('name="maternal_last_name"', false);
         $response->assertSee('name="username"', false);
         $response->assertSee('data-credential-generator', false);
         $response->assertSee('data-role-navigation-manager', false);
-        $response->assertSee('aria-controls="user-authorization-create-content"', false);
-        $response->assertSee('aria-controls="authorized-users-content"', false);
-        $response->assertSee('data-collapsible-toggle', false);
+        $response->assertSee('aria-controls="authorization-create-dialog"', false);
         $response->assertSee('data-navigation-carousel', false);
         $response->assertSee('data-navigation-category-button="finance"', false);
         $response->assertSee('Inicio');
@@ -68,6 +70,7 @@ class UserNavigationPermissionTest extends TestCase
             'human_resources.reports' => 'Reportes',
             'human_resources.configuration' => 'Configuración',
             'human_resources.managers_branches' => 'Gerentes y Sucursales',
+            'human_resources.training' => 'Personal y capacitación',
         ], NavigationPermissionCatalog::categories()['human_resources']['items']);
         $response->assertSee('value="human_resources.candidates"', false);
         $response->assertSee('value="human_resources.contracts"', false);
@@ -78,6 +81,7 @@ class UserNavigationPermissionTest extends TestCase
         $response->assertSee('value="human_resources.reports"', false);
         $response->assertSee('value="human_resources.configuration"', false);
         $response->assertSee('value="human_resources.managers_branches"', false);
+        $response->assertSee('value="human_resources.training"', false);
         $response->assertSee('Administracion de obra');
         $response->assertSee('Administracion de Plazas');
         $response->assertSee('Contratos Gobierno');
@@ -109,6 +113,46 @@ class UserNavigationPermissionTest extends TestCase
         $response->assertSee('value="security.users"', false);
         $response->assertSee('value="security.reports"', false);
         $response->assertSee('value="security.configuration"', false);
+    }
+
+    public function test_create_user_dialog_opens_for_legacy_create_link_and_validation_errors(): void
+    {
+        $superAdmin = User::factory()->create(['role' => 'superadmin', 'active' => true]);
+        $legacyResponse = $this->actingAs($superAdmin)->get(route('finance.admin.users', ['view' => 'create']));
+        $legacyResponse->assertOk();
+        $this->assertMatchesRegularExpression('/<dialog[^>]*data-authorization-create-dialog\s+data-auto-open/', $legacyResponse->getContent());
+
+        $this->from(route('finance.admin.users'))
+            ->post(route('finance.admin.users.store'), [
+                '_authorization_form' => 'create',
+                'first_name' => 'Nueva',
+                'email' => 'correo-invalido',
+            ])
+            ->assertRedirect(route('finance.admin.users'))
+            ->assertSessionHasErrors('email');
+
+        $failedResponse = $this->get(route('finance.admin.users'));
+        $failedResponse->assertOk()
+            ->assertSee('name="first_name" value="Nueva"', false)
+            ->assertSee('class="authorization-modal-errors" role="alert"', false);
+        $this->assertMatchesRegularExpression('/<dialog[^>]*data-authorization-create-dialog\s+data-auto-open/', $failedResponse->getContent());
+    }
+
+    public function test_user_catalog_keeps_edit_permissions_and_status_actions(): void
+    {
+        $superAdmin = User::factory()->create(['role' => 'superadmin', 'active' => true]);
+        $managedUser = User::factory()->create([
+            'role' => 'buyer', 'active' => true, 'name' => 'Ana López', 'email' => 'ana@example.com',
+        ]);
+
+        $this->actingAs($superAdmin)->get(route('finance.admin.users'))
+            ->assertOk()
+            ->assertSee('data-authorization-row', false)
+            ->assertSee('Ana López')
+            ->assertSee('data-authorization-editor', false)
+            ->assertSee('data-permission-editor', false)
+            ->assertSee('action="'.route('finance.admin.users.update', $managedUser).'"', false)
+            ->assertSee('action="'.route('finance.admin.users.toggle', $managedUser).'"', false);
     }
 
     public function test_personal_name_fields_generate_and_save_login_credentials(): void

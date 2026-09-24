@@ -50,10 +50,10 @@ final class NavigationPermissionCatalog
                     'finance.reimbursements.active' => 'OR Vigentes',
                     'finance.reimbursements.history' => 'OR Historial',
                     'finance.authorizations' => 'Autorizaciones',
-                    'finance.providers' => 'Alta Proveedores',
-                    'finance.companies' => 'Alta Empresas',
-                    'finance.services.create' => 'Alta Servicio',
-                    'finance.services.catalog' => 'Catalogo Servicios',
+                    'finance.providers' => 'Proveedores',
+                    'finance.companies' => 'Empresas y Negocios',
+                    'finance.services.create' => 'Crear servicios',
+                    'finance.services.catalog' => 'Servicios',
                 ],
                 'groups' => [
                     'purchase_orders' => [
@@ -167,8 +167,8 @@ final class NavigationPermissionCatalog
                 'label' => 'Servicios',
                 'description' => 'Alta, catalogo, calendario e historial de servicios.',
                 'items' => [
-                    'services.create' => 'Alta Servicio',
-                    'services.catalog' => 'Catalogo Servicios',
+                    'services.create' => 'Crear servicios',
+                    'services.catalog' => 'Servicios',
                     'services.months' => 'Vista por Mes',
                     'services.history' => 'Historial de Servicios',
                 ],
@@ -187,6 +187,7 @@ final class NavigationPermissionCatalog
                     'human_resources.reports' => 'Reportes',
                     'human_resources.configuration' => 'Configuración',
                     'human_resources.managers_branches' => 'Gerentes y Sucursales',
+                    'human_resources.training' => 'Personal y capacitación',
                 ],
             ],
             'construction' => [
@@ -559,6 +560,9 @@ final class NavigationPermissionCatalog
         if (Str::startsWith($routeName, 'security.companies.')) {
             return ['security.dashboard'];
         }
+        if (Str::startsWith($routeName, 'security.incidents.')) {
+            return ['security.dashboard', 'security.alerts'];
+        }
         if (Str::startsWith($routeName, 'security.branches.')) {
             return ['security.branches'];
         }
@@ -587,6 +591,7 @@ final class NavigationPermissionCatalog
                 'reportes' => 'human_resources.reports',
                 'configuracion' => 'human_resources.configuration',
                 'gerentes' => 'human_resources.managers_branches',
+                'capacitacion' => 'human_resources.training',
                 default => 'human_resources.dashboard',
             }];
         }

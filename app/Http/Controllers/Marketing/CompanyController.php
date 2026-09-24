@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Marketing;
 
 use App\Http\Controllers\Controller;
 use App\Models\Marketing\Company;
+use App\Support\MarketingWorkspace;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -11,27 +12,29 @@ use Illuminate\View\View;
 
 class CompanyController extends Controller
 {
-    public function index(Request $request): View
+    public function index(Request $request, MarketingWorkspace $workspace): View
     {
-        $companies = Company::query()
+        $companyQuery = Company::query()
             ->visibleTo($request->user())
             ->withCount(['campaigns', 'leads', 'conversations', 'users'])
-            ->with(['whatsappNumbers' => fn ($query) => $query->where('status', 'active')])
+            ->with(['whatsappNumbers' => fn ($query) => $query->where('status', 'active')]);
+
+        $allCompanies = (clone $companyQuery)
+            ->orderByDesc('active')
+            ->orderBy('name')
+            ->get();
+        $companies = (clone $companyQuery)
             ->when($request->filled('search'), fn ($query) => $query->where('name', 'like', '%'.(string) $request->string('search').'%'))
             ->when($request->filled('status'), fn ($query) => $query->where('status', (string) $request->string('status')))
             ->orderByDesc('active')
             ->orderBy('name')
             ->get();
 
-        $selected = $companies->firstWhere('id', (int) $request->query('company_id'))
-            ?? $companies->firstWhere('id', (int) $request->session()->get('marketing_company_id'))
-            ?? $companies->first();
+        $selected = $workspace->selectedCompany($request);
+        $company = $selected;
+        $workspaceCompanies = $allCompanies;
 
-        if ($selected) {
-            $request->session()->put('marketing_company_id', $selected->id);
-        }
-
-        return view('marketing.leadflow.companies.index', compact('companies', 'selected'));
+        return view('marketing.leadflow.companies.index', compact('companies', 'selected', 'company', 'workspaceCompanies'));
     }
 
     public function create(): View
@@ -44,10 +47,12 @@ class CompanyController extends Controller
         $data = $this->validatedData($request);
         $data['slug'] = Str::slug($data['name']).'-'.Str::lower(Str::random(4));
         $data['active'] = $request->boolean('active');
+        $data['is_favorite'] = $request->boolean('is_favorite');
 
-        Company::create($data);
+        $company = Company::create($data);
 
-        return redirect()->route('marketing.companies.index')->with('status', 'Empresa creada correctamente.');
+        return redirect()->route('marketing.companies.index', ['company_id' => $company->id])
+            ->with('status', 'Empresa creada correctamente.');
     }
 
     public function edit(Company $company): View
@@ -59,6 +64,7 @@ class CompanyController extends Controller
     {
         $data = $this->validatedData($request);
         $data['active'] = $request->boolean('active');
+        $data['is_favorite'] = $request->boolean('is_favorite');
         $company->update($data);
 
         return redirect()->route('marketing.companies.index', ['company_id' => $company->id])->with('status', 'Empresa actualizada.');
@@ -69,6 +75,16 @@ class CompanyController extends Controller
         $company->update(['active' => ! $company->active]);
 
         return back()->with('status', $company->active ? 'Empresa activada.' : 'Empresa desactivada.');
+    }
+
+    public function updateFavorite(Request $request, Company $company): RedirectResponse
+    {
+        $validated = $request->validate(['favorite' => ['required', 'boolean']]);
+        $company->update(['is_favorite' => (bool) $validated['favorite']]);
+
+        return back()->with('status', $company->is_favorite
+            ? 'Empresa agregada a favoritas.'
+            : 'Empresa retirada de favoritas.');
     }
 
     private function validatedData(Request $request): array

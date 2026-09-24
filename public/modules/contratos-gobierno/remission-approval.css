@@ -1,0 +1,23 @@
+.remission-folio-button.generated-remission-button.pending-remission-button {
+    border-color: #c58a00;
+    background: #fff3c4;
+    color: #6b4900;
+}
+
+.remission-folio-button.generated-remission-button.pending-remission-button:hover {
+    border-color: #a87300;
+    background: #d99a00;
+    color: #fff;
+}
+
+.remission-folio-button.generated-remission-button.approved-remission-button {
+    border-color: #239a62;
+    background: #e4f6eb;
+    color: #087345;
+}
+
+.remission-folio-button.generated-remission-button.approved-remission-button:hover {
+    border-color: #087345;
+    background: #087345;
+    color: #fff;
+}
