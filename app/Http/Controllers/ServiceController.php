@@ -4,14 +4,19 @@ namespace App\Http\Controllers;
 
 use App\Models\AuditLog;
 use App\Models\Company;
+use App\Models\OccasionalService;
+use App\Models\OccasionalServiceEntry;
+use App\Models\OccasionalServicePayment;
 use App\Models\RecurringService;
 use App\Models\RecurringServiceReceipt;
 use App\Support\StoredFileResponse;
+use Dompdf\Dompdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 
 class ServiceController extends Controller
@@ -81,7 +86,21 @@ class ServiceController extends Controller
         $status = trim((string) $request->query('status'));
         $status = in_array($status, ['active', 'paused', 'inactive'], true) ? $status : '';
         $companies = Company::query()->orderBy('name')->get(['id', 'name']);
-        $services = RecurringService::query()
+        $occasionalServices = OccasionalService::query()->orderBy('id')->get();
+        $selectedOccasionalService = $occasionalServices->firstWhere('id', (int) $request->query('occasional'));
+        $isOccasionalView = $request->query('view') === 'occasional' || $selectedOccasionalService !== null;
+        if ($isOccasionalView) {
+            $category = '';
+        }
+
+        $occasionalEntries = $isOccasionalView ? OccasionalServiceEntry::query()
+            ->with('category')
+            ->when($selectedOccasionalService, fn ($builder) => $builder->where('occasional_service_id', $selectedOccasionalService->id))
+            ->latest()
+            ->paginate(20)
+            ->withQueryString() : null;
+
+        $services = $isOccasionalView ? null : RecurringService::query()
             ->when($query, fn($builder) => $builder->where(function ($inner) use ($query) {
                 $inner->where('folio', 'like', "%{$query}%")
                     ->orWhere('service_name', 'like', "%{$query}%")
@@ -104,20 +123,14 @@ class ServiceController extends Controller
 
         return view('services.catalog', [
             'services' => $services,
-            'query' => $query,
+            'occasionalServices' => $occasionalServices,
+            'occasionalEntries' => $occasionalEntries,
+            'selectedOccasionalService' => $selectedOccasionalService,
+            'isOccasionalView' => $isOccasionalView,
             'category' => $category,
             'company' => $company,
-            'branch' => $branch,
-            'statusFilter' => $status,
             'categories' => $this->serviceCategoryOptions(),
             'companies' => $companies,
-            'companyOptions' => $companies->pluck('name')
-                ->merge(RecurringService::query()->whereNotNull('company_name')->distinct()->pluck('company_name'))
-                ->filter()->unique()->sort()->values(),
-            'branchOptions' => RecurringService::query()
-                ->when($company !== '', fn ($builder) => $builder->where('company_name', $company))
-                ->whereNotNull('branch')->where('branch', '<>', '')
-                ->distinct()->orderBy('branch')->pluck('branch'),
             'canCreateService' => $request->user()->canNavigateTo('services.create')
                 || $request->user()->canNavigateTo('finance.services.create'),
         ]);
@@ -139,21 +152,27 @@ class ServiceController extends Controller
         return view('services.months', [
             'months' => $months,
             'next_week_total' => $this->nextWeekTotal($months),
+            'occasional_entries' => OccasionalServiceEntry::with('category')->orderBy('name')->get(),
+            'occasional_categories' => OccasionalService::orderBy('name')->get(),
+            'canCreateOccasionalPayment' => ($request->user()->canNavigateTo('services.create')
+                || $request->user()->canNavigateTo('finance.services.create')),
         ]);
     }
 
     public function history(Request $request)
     {
         $this->ensureServiceHistory();
+        $demoPaymentMonth = app()->environment('local') ? Carbon::create(2026, 9, 1) : null;
 
         return view('services.months', [
-            'months' => $this->historyMonthsPayload(),
+            'months' => $this->historyMonthsPayload($demoPaymentMonth),
             'next_week_total' => 0,
             'title' => 'Historial de Servicios',
             'downloadReport' => null,
             'monthSubtitle' => 'Servicios pagados durante este mes.',
             'emptyMessage' => 'No hay servicios pagados durante este mes.',
             'historyMode' => true,
+            'demoPaymentMonth' => $demoPaymentMonth?->format('Y-m'),
             'metricLabels' => [
                 'total' => 'Monto pagado del mes',
                 'paid' => 'Monto total pagado',
@@ -215,11 +234,155 @@ class ServiceController extends Controller
         return StoredFileResponse::inline($receipt->support_file_path, $receipt->support_original_name);
     }
 
+    public function downloadSupportPdf(RecurringServiceReceipt $receipt)
+    {
+        $this->ensureServiceHistory();
+        abort_unless(filled($receipt->support_file_path), 404);
+
+        $filename = $receipt->support_original_name ?: $receipt->support_file_path;
+        if (strtolower(pathinfo($filename, PATHINFO_EXTENSION)) === 'pdf') {
+            return StoredFileResponse::download($receipt->support_file_path, $receipt->support_original_name);
+        }
+
+        $service = $receipt->recurringService;
+        abort_unless($service, 404);
+
+        return $this->paymentPdfResponse([
+            'type' => 'invoice',
+            'demo' => false,
+            'folio' => $service->folio,
+            'holder' => $service->holder ?: $service->company_name,
+            'branch' => $service->display_branch,
+            'service' => $service->service_name,
+            'provider' => $service->provider,
+            'reference' => $service->reference,
+            'paidOn' => $receipt->due_date?->format('d/m/Y'),
+            'amount' => (float) ($receipt->amount ?? $service->cost),
+            'originalName' => $receipt->support_original_name,
+            'imageData' => $this->paymentImageData($receipt->support_file_path),
+        ], 'factura-servicio-'.$receipt->id.'.pdf', true);
+    }
+
     public function paymentFile(RecurringServiceReceipt $receipt)
     {
         $this->ensureServices();
 
         return StoredFileResponse::inline($receipt->payment_file_path, $receipt->payment_original_name);
+    }
+
+    public function downloadPaymentPdf(RecurringServiceReceipt $receipt)
+    {
+        $this->ensureServiceHistory();
+        abort_unless($receipt->isPaid(), 404);
+
+        $filename = $receipt->payment_original_name ?: $receipt->payment_file_path;
+        if (strtolower(pathinfo($filename, PATHINFO_EXTENSION)) === 'pdf') {
+            return StoredFileResponse::download($receipt->payment_file_path, $receipt->payment_original_name);
+        }
+
+        $service = $receipt->recurringService;
+        abort_unless($service, 404);
+
+        return $this->paymentPdfResponse([
+            'type' => 'payment',
+            'demo' => false,
+            'folio' => $service->folio,
+            'holder' => $service->holder ?: $service->company_name,
+            'branch' => $service->display_branch,
+            'service' => $service->service_name,
+            'provider' => $service->provider,
+            'reference' => $service->reference,
+            'paidOn' => $receipt->payment_paid_on?->format('d/m/Y') ?: $receipt->due_date?->format('d/m/Y'),
+            'amount' => (float) ($receipt->amount ?? $service->cost),
+            'originalName' => $receipt->payment_original_name,
+            'imageData' => $this->paymentImageData($receipt->payment_file_path),
+        ], 'comprobante-servicio-'.$receipt->id.'.pdf', true);
+    }
+
+    public function demoPaymentFile(Request $request)
+    {
+        $this->ensureServiceHistory();
+        abort_unless(app()->environment('local'), 404);
+
+        return $this->paymentPdfResponse([
+            'type' => 'payment',
+            'demo' => true,
+            'folio' => 'DEMO-SEP-2026',
+            'holder' => 'Empresa de ejemplo',
+            'branch' => 'Sucursal demo',
+            'service' => 'Internet empresarial (demo)',
+            'provider' => 'Proveedor de ejemplo',
+            'reference' => 'PAGO-DEMO-SEP-2026',
+            'paidOn' => '18/09/2026',
+            'amount' => 1250,
+            'originalName' => null,
+            'imageData' => null,
+        ], 'comprobante-demo-septiembre-2026.pdf', $request->boolean('download'));
+    }
+
+    public function demoInvoiceFile(Request $request)
+    {
+        $this->ensureServiceHistory();
+        abort_unless(app()->environment('local'), 404);
+
+        return $this->paymentPdfResponse([
+            'type' => 'invoice',
+            'demo' => true,
+            'folio' => 'DEMO-SEP-2026',
+            'holder' => 'Empresa de ejemplo',
+            'branch' => 'Sucursal demo',
+            'service' => 'Internet empresarial (demo)',
+            'provider' => 'Proveedor de ejemplo',
+            'reference' => 'DEMO-001',
+            'paidOn' => '18/09/2026',
+            'amount' => 1250,
+            'originalName' => null,
+            'imageData' => null,
+        ], 'factura-demo-septiembre-2026.pdf', $request->boolean('download'));
+    }
+
+    private function paymentPdfResponse(array $payment, string $filename, bool $download)
+    {
+        $pdf = new Dompdf();
+        $pdf->loadHtml(view('services.payment-receipt-pdf', ['payment' => $payment])->render());
+        $pdf->setPaper('letter');
+        $pdf->render();
+
+        return response($pdf->output(), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => ($download ? 'attachment' : 'inline').'; filename="'.$filename.'"',
+            'Cache-Control' => 'private, no-store',
+        ]);
+    }
+
+    private function paymentImageData(?string $path): ?string
+    {
+        if (! filled($path) || ! Storage::disk('local')->exists($path)) {
+            return null;
+        }
+
+        $bytes = Storage::disk('local')->get($path);
+        $size = @getimagesizefromstring($bytes);
+        if (! $size || $size[0] * $size[1] > 20_000_000) {
+            return null;
+        }
+
+        $mime = $size['mime'];
+        if ($mime === 'image/webp') {
+            $image = @imagecreatefromstring($bytes);
+            if (! $image) {
+                return null;
+            }
+            ob_start();
+            imagepng($image);
+            $bytes = ob_get_clean();
+            imagedestroy($image);
+            $mime = 'image/png';
+        }
+
+        return in_array($mime, ['image/png', 'image/jpeg'], true)
+            ? 'data:'.$mime.';base64,'.base64_encode($bytes)
+            : null;
     }
 
     public function updateAmount(Request $request, RecurringService $service, string $dueDate)
@@ -264,6 +427,10 @@ class ServiceController extends Controller
     private function monthsPayload(): array
     {
         $start = now()->startOfMonth();
+        $occasionalPayments = OccasionalServicePayment::with('entry.category')
+            ->whereBetween('due_date', [$start->toDateString(), $start->copy()->addMonthsNoOverflow(12)->endOfMonth()->toDateString()])
+            ->get()
+            ->groupBy(fn (OccasionalServicePayment $payment) => $payment->due_date->format('Y-m'));
         $monthNames = [
             1 => 'enero',
             2 => 'febrero',
@@ -279,8 +446,10 @@ class ServiceController extends Controller
             12 => 'diciembre',
         ];
 
-        return collect(range(0, 12))->map(function (int $offset) use ($start, $monthNames) {
+        return collect(range(0, 12))->map(function (int $offset) use ($start, $monthNames, $occasionalPayments) {
             $month = $start->copy()->addMonths($offset);
+            $oneTimePayments = $occasionalPayments->get($month->format('Y-m'), collect())
+                ->sortBy('due_date')->values();
             $items = RecurringService::with('receipts')
                 ->where('status', '!=', 'inactive')
                 ->get()
@@ -289,16 +458,22 @@ class ServiceController extends Controller
                 ->sortBy(fn(array $item) => $item['due_date'])
                 ->values();
 
+            $totals = $this->monthTotals($items);
+            $oneTimeTotal = $oneTimePayments->sum(fn (OccasionalServicePayment $payment) => (float) $payment->amount);
+
             return [
                 'month_key' => $month->format('Y-m'),
                 'label' => ($monthNames[(int) $month->month] ?? $month->format('F')) . ' de ' . $month->year,
                 'items' => $items,
-                ...$this->monthTotals($items),
+                'occasional_payments' => $oneTimePayments,
+                'total' => $totals['total'] + $oneTimeTotal,
+                'paid_total' => $totals['paid_total'],
+                'pending_total' => $totals['pending_total'] + $oneTimeTotal,
             ];
         })->all();
     }
 
-    private function historyMonthsPayload(): array
+    private function historyMonthsPayload(?Carbon $demoPaymentMonth = null): array
     {
         $latestMonth = now()->startOfMonth();
         $paidReceipts = RecurringServiceReceipt::with('recurringService')
@@ -311,6 +486,9 @@ class ServiceController extends Controller
             ->where('is_domiciled', true)
             ->get();
         $earliestMonth = $this->earliestHistoryMonth($latestMonth, $paidReceipts, $domiciledServices);
+        if ($demoPaymentMonth?->lte($latestMonth) && $demoPaymentMonth->lt($earliestMonth)) {
+            $earliestMonth = $demoPaymentMonth->copy();
+        }
         $months = [];
 
         for ($month = $latestMonth->copy(); $month->gte($earliestMonth); $month->subMonthNoOverflow()) {
@@ -439,7 +617,7 @@ class ServiceController extends Controller
             ->addDays(6)
             ->endOfDay();
 
-        return collect($months)
+        $recurringTotal = collect($months)
             ->flatMap(fn(array $month) => $month['items'])
             ->filter(function (array $item) use ($nextMonday, $nextSunday) {
                 $paymentDueDate = Carbon::parse(
@@ -462,6 +640,13 @@ class ServiceController extends Controller
                     ?? $item['service']->cost
                 );
             });
+
+        $occasionalTotal = collect($months)
+            ->flatMap(fn (array $month) => $month['occasional_payments'] ?? collect())
+            ->filter(fn (OccasionalServicePayment $payment) => $payment->due_date->betweenIncluded($nextMonday, $nextSunday))
+            ->sum(fn (OccasionalServicePayment $payment) => (float) $payment->amount);
+
+        return $recurringTotal + $occasionalTotal;
     }
 
     private function monthTotals($items): array

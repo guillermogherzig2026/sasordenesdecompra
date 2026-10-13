@@ -22,7 +22,7 @@ class InventoryReceiptController extends Controller
             ->general()
             ->where('status', 'paid')
             ->where('receipt_status', '!=', 'completed')
-            ->when(Auth::user()?->role !== 'superadmin', fn ($builder) => $this->restrictToAuthorizedCompanies($builder))
+            ->when(! Auth::user()?->canManageAllRecordsIn('inventory'), fn ($builder) => $this->restrictToAuthorizedCompanies($builder))
             ->when($query, fn ($builder) => $this->search($builder, $query))
             ->orderByDesc('updated_at')
             ->get();
@@ -42,7 +42,7 @@ class InventoryReceiptController extends Controller
             ->general()
             ->where('status', 'paid')
             ->where('receipt_status', 'completed')
-            ->when(Auth::user()?->role !== 'superadmin', fn ($builder) => $this->restrictToAuthorizedCompanies($builder))
+            ->when(! Auth::user()?->canManageAllRecordsIn('inventory'), fn ($builder) => $this->restrictToAuthorizedCompanies($builder))
             ->when($query, fn ($builder) => $this->search($builder, $query))
             ->orderByDesc('updated_at')
             ->get();

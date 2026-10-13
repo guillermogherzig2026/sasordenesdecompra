@@ -220,6 +220,23 @@ class User extends Authenticatable
         return collect($categoryKeys)->contains(fn (string $permission) => $this->canNavigateTo($permission));
     }
 
+    public function canManageAllRecordsIn(string $category): bool
+    {
+        if (! $this->active) {
+            return false;
+        }
+
+        if ($this->role === 'superadmin') {
+            return true;
+        }
+
+        $permissions = NavigationPermissionCatalog::categoryKeys($category);
+
+        return $this->role === 'finance'
+            && count($permissions) > 0
+            && collect($permissions)->every(fn (string $permission) => $this->canNavigateTo($permission));
+    }
+
     public function authorizedNavigationCategoryLabels(): array
     {
         return NavigationPermissionCatalog::categoryLabelsFor($this->navigationPermissions());

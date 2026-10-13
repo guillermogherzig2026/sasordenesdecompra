@@ -25,6 +25,7 @@ use App\Http\Controllers\Marketing\LeadController as MarketingLeadController;
 use App\Http\Controllers\Marketing\ReportController as MarketingReportController;
 use App\Http\Controllers\Marketing\SettingsController as MarketingSettingsController;
 use App\Http\Controllers\Marketing\UserController as MarketingUserController;
+use App\Http\Controllers\OccasionalServiceController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\SecurityCompanyController;
 use App\Http\Controllers\SecurityIncidentController;
@@ -205,6 +206,9 @@ Route::middleware(['auth', EnforceNavigationPermission::class])->prefix('superad
     Route::get('/administracion-plazas/catalogo-propiedades', [SuperAdminPlazaController::class, 'properties'])->name('plazas.properties');
     Route::get('/administracion-plazas/marketing-local', [SuperAdminPlazaController::class, 'localMarketing'])->name('plazas.local-marketing');
     Route::get('/administracion-plazas/centro-de-agentes', [AgentCenterController::class, 'index'])->name('plazas.agents.index');
+    Route::post('/administracion-plazas/centro-de-agentes', [AgentCenterController::class, 'store'])->name('plazas.agents.store');
+    Route::put('/administracion-plazas/centro-de-agentes/{aiAgent}', [AgentCenterController::class, 'update'])->name('plazas.agents.update');
+    Route::patch('/administracion-plazas/centro-de-agentes/{aiAgent}/estado', [AgentCenterController::class, 'toggle'])->name('plazas.agents.toggle');
     Route::get('/administracion-plazas/alta-usuarios', [SuperAdminPlazaController::class, 'users'])->name('plazas.users');
     Route::get('/administracion-plazas/catalogo-arrendatarios', [SuperAdminPlazaController::class, 'tenants'])->name('plazas.tenants');
     Route::get('/administracion-plazas/panel', [SuperAdminPlazaController::class, 'panel'])->name('plazas.panel');
@@ -348,6 +352,9 @@ Route::middleware(['auth', EnforceNavigationPermission::class])->prefix('comprad
 
 Route::middleware(['auth', EnforceNavigationPermission::class])->prefix('finanzas')->name('finance.')->group(function () {
     Route::get('/centro-de-agentes', [AgentCenterController::class, 'index'])->name('agents.index');
+    Route::post('/centro-de-agentes', [AgentCenterController::class, 'store'])->name('agents.store');
+    Route::put('/centro-de-agentes/{aiAgent}', [AgentCenterController::class, 'update'])->name('agents.update');
+    Route::patch('/centro-de-agentes/{aiAgent}/estado', [AgentCenterController::class, 'toggle'])->name('agents.toggle');
     Route::get('/ordenes-vigentes', [FinancePurchaseOrderController::class, 'active'])->name('orders.active');
     Route::patch('/ordenes/{purchaseOrder}/aprobar', [FinancePurchaseOrderController::class, 'approve'])->name('orders.approve');
     Route::patch('/ordenes/{purchaseOrder}/rechazar', [FinancePurchaseOrderController::class, 'reject'])->name('orders.reject');
@@ -438,6 +445,9 @@ Route::middleware(['auth', EnforceNavigationPermission::class])->prefix('servici
     Route::get('/alta', [ServiceController::class, 'create'])->name('create');
     Route::post('/alta', [ServiceController::class, 'store'])->name('store');
     Route::get('/catalogo', [ServiceController::class, 'catalog'])->name('catalog');
+    Route::post('/ocasionales', [OccasionalServiceController::class, 'store'])->name('occasional.store');
+    Route::post('/ocasionales/pagos', [OccasionalServiceController::class, 'storePayment'])->name('occasional.payments.store');
+    Route::get('/ocasionales/exportar', [OccasionalServiceController::class, 'export'])->name('occasional.export');
     Route::get('/meses', [ServiceController::class, 'months'])->name('months');
     Route::get('/historial', [ServiceController::class, 'history'])->name('history');
     Route::get('/{service}/editar', [ServiceController::class, 'edit'])->name('edit');
@@ -445,7 +455,11 @@ Route::middleware(['auth', EnforceNavigationPermission::class])->prefix('servici
     Route::get('/{service}/{dueDate}/recibo', [ServiceController::class, 'receiptForm'])->name('receipt');
     Route::post('/{service}/{dueDate}/recibo', [ServiceController::class, 'storeReceipt'])->name('receipt.store');
     Route::get('/recibos/{receipt}/factura', [ServiceController::class, 'supportFile'])->name('support-file');
+    Route::get('/recibos/{receipt}/factura/pdf', [ServiceController::class, 'downloadSupportPdf'])->name('support-file.pdf');
     Route::get('/recibos/{receipt}/comprobante', [ServiceController::class, 'paymentFile'])->name('payment-file');
+    Route::get('/recibos/{receipt}/comprobante/pdf', [ServiceController::class, 'downloadPaymentPdf'])->name('payment-file.pdf');
+    Route::get('/historial/demo-septiembre-2026/factura', [ServiceController::class, 'demoInvoiceFile'])->name('demo-invoice-file');
+    Route::get('/historial/demo-septiembre-2026/comprobante', [ServiceController::class, 'demoPaymentFile'])->name('demo-payment-file');
     Route::patch('/{service}/{dueDate}/monto', [ServiceController::class, 'updateAmount'])->name('amount.update');
     Route::patch('/{service}/estado/{status}', [ServiceController::class, 'updateStatus'])->name('status');
 });

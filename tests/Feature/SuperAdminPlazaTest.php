@@ -485,11 +485,12 @@ class SuperAdminPlazaTest extends TestCase
             ->assertForbidden();
     }
 
-    public function test_plaza_administration_rejects_non_superadmin_users(): void
+    public function test_plaza_administration_rejects_users_without_permission(): void
     {
         $user = User::factory()->create([
             'role' => 'finance',
             'active' => true,
+            'menu_permissions' => [],
         ]);
 
         $this->actingAs($user)

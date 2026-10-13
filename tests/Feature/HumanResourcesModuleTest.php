@@ -178,6 +178,26 @@ class HumanResourcesModuleTest extends TestCase
         $this->assertStringContainsString('const companyOptions = registeredCandidateCompanies(candidate?.company);', $applicationScript);
     }
 
+    public function test_employee_qr_and_credential_assets_are_available_locally(): void
+    {
+        $this->assertFileExists(public_path('hr-suite/assets/js/employee-credential.js'));
+        $this->assertFileExists(public_path('hr-suite/assets/js/vendor/qrcode-generator.mjs'));
+
+        $script = file_get_contents(public_path('hr-suite/assets/js/app.js'));
+        $this->assertStringContainsString('label: "QR de empleado"', $script);
+        $this->assertStringContainsString('label: "Credencial del empleado"', $script);
+        $this->assertStringContainsString('data-action="view-employee-qr"', $script);
+        $this->assertStringContainsString('data-action="view-employee-credential"', $script);
+        $this->assertStringContainsString('function renderEmployeeCredential(employee)', $script);
+        $this->assertStringContainsString('employee-profile-placeholder', $script);
+        $this->assertSame(2, substr_count($script, 'initializeEmployeeCredential(employee);'));
+        $this->assertStringContainsString('id="employee-credential-photo-form"', $script);
+
+        $credentialScript = file_get_contents(public_path('hr-suite/assets/js/employee-credential.js'));
+        $this->assertStringNotContainsString('api.qrserver.com', $credentialScript);
+        $this->assertStringContainsString('code.addData(value, "Alphanumeric")', $credentialScript);
+    }
+
     public function test_training_section_loads_the_integrated_training_workspace(): void
     {
         $user = User::factory()->create([

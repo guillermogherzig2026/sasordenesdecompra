@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\Company;
 use Illuminate\Contracts\View\View;
-use Illuminate\Support\Facades\Auth;
 
 class HumanResourcesController extends Controller
 {
@@ -24,7 +23,6 @@ class HumanResourcesController extends Controller
 
     public function show(?string $section = null): View
     {
-        $this->ensureSuperAdmin();
         [$section, $screen] = $this->resolveSection($section);
 
         return view('human-resources.index', [
@@ -35,7 +33,6 @@ class HumanResourcesController extends Controller
 
     public function embed(?string $section = null): View
     {
-        $this->ensureSuperAdmin();
         [, $screen] = $this->resolveSection($section);
 
         return view($screen['route'] === 'training' ? 'human-resources.training' : 'human-resources.embed', [
@@ -55,10 +52,5 @@ class HumanResourcesController extends Controller
         abort_unless(array_key_exists($section, self::SECTIONS), 404);
 
         return [$section, self::SECTIONS[$section]];
-    }
-
-    private function ensureSuperAdmin(): void
-    {
-        abort_unless(Auth::user()?->canAccessRole('superadmin'), 403);
     }
 }

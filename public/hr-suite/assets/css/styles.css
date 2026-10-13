@@ -341,9 +341,60 @@ body.hr-suite-embedded .content {
   padding: 18px;
 }
 
+body.hr-suite-embedded .content:has(> .employee-list-screen) {
+  height: 100dvh;
+}
+
+.employee-list-screen {
+  height: 100%;
+  min-height: 0;
+  grid-template-rows: auto auto minmax(0, 1fr);
+}
+
+.employee-list-screen > .table-card {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.employee-list-screen > .table-card > .table-wrap {
+  flex: 1;
+  min-height: 0;
+  max-height: none;
+}
+
+.employee-list-screen .table-toolbar,
+.employee-list-screen .table-footer {
+  flex-shrink: 0;
+}
+
+.employee-list-screen .table-footer {
+  padding-bottom: 30px;
+}
+
+.employee-list-screen .table-sticky-scroll {
+  bottom: 0;
+}
+
+body.hr-suite-embedded .main:has(.employee-list-screen) {
+  padding-bottom: 0;
+}
+
 @media (max-width: 860px) {
   body.hr-suite-embedded .content {
     padding: 12px;
+  }
+}
+
+@media (max-width: 760px) {
+  .employee-list-screen .table-toolbar {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    padding: 8px;
+  }
+
+  .employee-list-screen .table-toolbar > [data-table-search] {
+    grid-column: 1 / -1;
   }
 }
 
@@ -2130,9 +2181,385 @@ tbody tr:hover {
   line-height: 1.45;
 }
 
-body.hr-suite-embedded .employee-biometric-backdrop {
+body.hr-suite-embedded .employee-biometric-backdrop,
+body.hr-suite-embedded .employee-identification-backdrop {
   place-items: start center;
   padding-top: var(--biometric-modal-top, 24px);
+}
+
+.employee-qr-column {
+  min-width: 110px;
+  text-align: center;
+}
+
+.employee-qr-button {
+  display: inline-grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  padding: 2px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: #fff;
+  cursor: pointer;
+}
+
+.employee-qr-button:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.employee-qr-button img,
+.employee-qr-preview img,
+.employee-credential-qr img {
+  display: block;
+  aspect-ratio: 1;
+  max-width: 100%;
+  height: auto;
+}
+
+.employee-qr-preview {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  padding: 12px;
+}
+
+.modal.employee-credential-modal {
+  width: min(100%, 480px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.employee-credential-modal > header,
+.employee-credential-modal > footer {
+  flex-shrink: 0;
+}
+
+.employee-credential-modal > .modal-body {
+  min-height: 0;
+  overflow: auto;
+}
+
+.employee-identification-backdrop .modal-subtitle {
+  overflow-wrap: anywhere;
+}
+
+.employee-identification-backdrop .icon-btn {
+  flex-shrink: 0;
+}
+
+.employee-identification-backdrop .icon-btn svg {
+  width: 18px;
+  height: 18px;
+  stroke-width: 2;
+}
+
+.employee-credential-preview {
+  display: flex;
+  justify-content: center;
+}
+
+.employee-credential-format {
+  margin: 12px 0 0;
+  text-align: center;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.employee-credential {
+  width: 53.98mm;
+  height: 85.60mm;
+  flex-shrink: 0;
+  display: grid;
+  grid-template-rows: 8mm 21mm 14mm minmax(0, 1fr) 20mm 3mm;
+  gap: 0.5mm;
+  padding: 2.5mm;
+  margin: 0 auto;
+  border: 0.2mm solid var(--line-strong);
+  border-radius: 2mm;
+  background: #fff;
+  color: #152033;
+  zoom: 1.45;
+}
+
+.employee-credential-banner {
+  display: flex;
+  align-items: center;
+  gap: 2mm;
+  padding: 0 1mm;
+  background: #e7f6f2;
+  border-radius: 1mm;
+}
+
+.employee-credential-banner > div {
+  flex: 1;
+  min-width: 0;
+}
+
+.employee-credential-banner strong,
+.employee-credential-banner > div > span {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.employee-credential-banner > div > span {
+  margin-bottom: 0.3mm;
+  font-size: 4.5pt;
+  line-height: 1;
+  color: var(--muted);
+}
+
+.employee-credential-banner strong {
+  height: 5mm;
+  font-size: 6.5pt;
+  line-height: 1.05;
+}
+
+.employee-credential-mark {
+  display: grid;
+  place-items: center;
+  width: 6mm;
+  height: 6mm;
+  border-radius: 1mm;
+  color: #fff;
+  background: #146c7d;
+  font-weight: 800;
+  font-size: 6.5pt;
+  flex-shrink: 0;
+}
+
+.employee-credential-identity {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) 3mm 4.5mm;
+  text-align: center;
+  min-height: 0;
+}
+
+.employee-credential-portrait {
+  position: relative;
+  width: 18mm;
+  height: 21mm;
+  justify-self: center;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border: 0.2mm solid var(--line);
+  border-radius: 1mm;
+  background: var(--surface-soft);
+  color: var(--muted);
+}
+
+.employee-profile-placeholder svg {
+  width: 10mm;
+  height: 10mm;
+  stroke-width: 1.5;
+}
+
+.employee-profile-photo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.employee-credential-identity h4 {
+  margin: 0;
+  min-height: 0;
+  font-size: 8pt;
+  line-height: 1.05;
+  overflow-wrap: anywhere;
+  align-self: stretch;
+}
+
+.employee-credential-number {
+  font-size: 6.5pt;
+  line-height: 3mm;
+  color: #146c7d;
+}
+
+.employee-credential-identity p {
+  margin: 0;
+  min-height: 0;
+  font-size: 5.5pt;
+  line-height: 1.1;
+  overflow-wrap: anywhere;
+}
+
+.employee-credential-details {
+  display: grid;
+  grid-template-rows: repeat(3, minmax(0, 1fr));
+  gap: 0.5mm;
+  margin: 0;
+  padding: 0 0.5mm;
+  min-height: 0;
+}
+
+.employee-credential-details > div {
+  display: grid;
+  grid-template-columns: 13mm minmax(0, 1fr);
+  align-items: center;
+  gap: 1mm;
+  min-height: 0;
+}
+
+.employee-credential-details dt {
+  color: var(--muted);
+  font-size: 4.5pt;
+  line-height: 1.1;
+}
+
+.employee-credential-details dd {
+  margin: 0;
+  font-size: 5.5pt;
+  line-height: 1.05;
+  height: 100%;
+  min-height: 0;
+  overflow-wrap: anywhere;
+}
+
+.employee-credential-qr {
+  margin: 0;
+  display: grid;
+  place-items: center;
+}
+
+.employee-credential-qr img {
+  width: 20mm;
+  height: 20mm;
+}
+
+.employee-credential-bottom {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 10mm;
+  gap: 1mm;
+  border-top: 0.2mm solid var(--line);
+  padding-top: 0.4mm;
+  min-height: 0;
+  font-size: 4.5pt;
+  line-height: 1;
+}
+
+.employee-credential-bottom span,
+.employee-credential-status {
+  min-height: 0;
+  overflow-wrap: anywhere;
+}
+
+.employee-credential-status {
+  text-align: right;
+  color: #146c7d;
+}
+
+.employee-credential-photo-form {
+  display: flex;
+  align-items: end;
+  gap: 10px;
+  margin: 18px 0 0;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.employee-credential-photo-form .form-field {
+  flex: 1;
+  min-width: 0;
+}
+
+.employee-credential-photo-form .input {
+  width: 100%;
+  min-width: 0;
+  font-size: 11px;
+}
+
+@media (max-width: 480px) {
+  .employee-identification-backdrop {
+    padding: 12px;
+  }
+
+  .employee-credential {
+    zoom: 1.2;
+  }
+
+  .employee-credential-photo-form {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .employee-identification-backdrop footer {
+    flex-wrap: wrap;
+  }
+}
+
+@media print {
+  @page employee-credential {
+    size: 53.98mm 85.60mm;
+    margin: 0;
+  }
+
+  html:has(body.printing-employee-credential),
+  body.printing-employee-credential {
+    overflow: visible !important;
+    min-height: 0 !important;
+    background: #fff;
+  }
+
+  body.printing-employee-credential {
+    page: employee-credential;
+    width: 53.98mm;
+    height: 85.60mm;
+    margin: 0;
+    padding: 0;
+  }
+
+  body.printing-employee-credential .app-shell,
+  body.printing-employee-credential .hr-embedded-app {
+    display: block;
+    min-height: 0;
+  }
+
+  body.printing-employee-credential .main,
+  body.printing-employee-credential .sidebar,
+  body.printing-employee-credential .modal > header,
+  body.printing-employee-credential .modal > footer,
+  body.printing-employee-credential .employee-credential-photo-form,
+  body.printing-employee-credential .employee-credential-format {
+    display: none !important;
+  }
+
+  body.printing-employee-credential .employee-identification-backdrop {
+    position: static;
+    display: block;
+    background: none;
+    padding: 0 !important;
+  }
+
+  body.printing-employee-credential .modal {
+    display: block;
+    max-height: none !important;
+    width: 53.98mm;
+    height: 85.60mm;
+    overflow: visible;
+    box-shadow: none;
+  }
+
+  body.printing-employee-credential .modal-body {
+    padding: 0;
+    overflow: visible;
+  }
+
+  body.printing-employee-credential .employee-credential {
+    page: employee-credential;
+    width: 53.98mm;
+    height: 85.60mm;
+    zoom: 1;
+    border-color: transparent;
+    margin: 0;
+    break-inside: avoid;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
 }
 
 .model-column {

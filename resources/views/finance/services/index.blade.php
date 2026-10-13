@@ -6,7 +6,7 @@
             <a class="button ghost" href="{{ route('reports.download', 'services-months-excel') }}">Descargar</a>
         </x-slot:actions>
         @foreach ($months as $month)
-            <section class="panel service-month-panel" data-month-panel>
+            <section class="panel service-month-panel finance-service-month-panel" data-month-panel>
                 <div class="panel-header service-month-header service-month-header-compact">
                     <button class="month-toggle" type="button" data-month-toggle
                         aria-expanded="{{ $loop->first ? 'true' : 'false' }}">

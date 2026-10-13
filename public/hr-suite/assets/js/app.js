@@ -1,5 +1,7 @@
 ﻿import { createInitialData, menuItems, roles, routeTitles, screenGroups } from "./data.js";
 
+import { employeeCredentialData, employeeQrImage, initializeEmployeeCredential, validateEmployeePhoto } from "./employee-credential.js";
+
 const STORAGE_KEY = "hr-suite-mexico-state-v1";
 const app = document.querySelector("#app");
 const toastRegion = document.querySelector("#toast-region");
@@ -20,6 +22,8 @@ const icons = {
   chart: '<path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/><path d="M15 9h4v4"/>',
   settings: '<path d="M12 15.5A3.5 3.5 0 1 0 12 8a3.5 3.5 0 0 0 0 7.5Z"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.05.05a2 2 0 1 1-2.83 2.83l-.05-.05A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6l-.02.05a2 2 0 0 1-3.96 0L10 20a1.7 1.7 0 0 0-1-.6 1.7 1.7 0 0 0-1.87.34l-.05.05a2 2 0 1 1-2.83-2.83l.05-.05A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-.6-1l-.05-.02a2 2 0 0 1 0-3.96L4 10a1.7 1.7 0 0 0 .6-1 1.7 1.7 0 0 0-.34-1.87l-.05-.05a2 2 0 1 1 2.83-2.83l.05.05A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-.6l.02-.05a2 2 0 0 1 3.96 0L14 4a1.7 1.7 0 0 0 1 .6 1.7 1.7 0 0 0 1.87-.34l.05-.05a2 2 0 1 1 2.83 2.83l-.05.05A1.7 1.7 0 0 0 19.4 9c.42.22.77.55 1 1l.05.02a2 2 0 0 1 0 3.96L20.4 14c-.23.45-.58.78-1 1Z"/>',
   "badge-user": '<path d="M3 10a7 7 0 0 1 14 0v4a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4v-4Z"/><path d="M21 12v7a2 2 0 0 1-2 2h-2"/><circle cx="10" cy="9" r="2"/><path d="M6.5 15a4 4 0 0 1 7 0"/>',
+  user: '<path d="M20 21v-2a8 8 0 0 0-16 0v2"/><circle cx="12" cy="7" r="4"/>',
+  "id-card": '<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M16 10h2M16 14h2"/><circle cx="9" cy="10" r="2"/><path d="M6 16a3 3 0 0 1 6 0"/>',
   bell: '<path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>',
   logout: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/>',
   menu: '<path d="M4 6h16M4 12h16M4 18h16"/>',
@@ -129,6 +133,7 @@ function loadState() {
   normalizeContractApprovals(fallback.data.contracts);
   normalizeDepartmentCatalog(fallback.data);
   normalizePayrollHistory(fallback.data);
+  fallback.data.employees.forEach(initializeEmployeeCredential);
   try {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
     if (!saved?.data) return fallback;
@@ -148,6 +153,7 @@ function loadState() {
     normalizeDepartmentCatalog(data);
     normalizeTemplates(data);
     normalizePayrollHistory(data);
+    data.employees.forEach(initializeEmployeeCredential);
     return {
       data,
       ui
@@ -1115,6 +1121,7 @@ function render() {
       ${renderModal()}
     </div>
   `;
+  fitEmployeeCredentialText();
   positionEmployeeBiometricModal();
   requestAnimationFrame(() => {
     renderCharts();
@@ -1568,8 +1575,9 @@ function renderTable({ id, rows, columns, filters = [], searchPlaceholder = "Bus
 
   const searchHtml = `<input class="input" data-table-search="${safe(id)}" placeholder="${safe(searchPlaceholder)}" value="${safe(current.search)}" />`;
   const scrollStyle = scrollY ? ` style="--table-scroll-y:${safe(scrollY)}"` : "";
-  const hasStickyScroll = id === "contracts-list" || id === "overtime";
-  const stickyScrollHtml = hasStickyScroll ? `<div class="table-sticky-scroll" data-sticky-x-scroll aria-hidden="true"><div></div></div>` : "";
+  const hasStickyScroll = ["contracts-list", "overtime", "employees"].includes(id);
+  const stickyA11y = id === "employees" ? 'role="region" tabindex="0" aria-label="Desplazamiento horizontal de la lista de empleados"' : 'aria-hidden="true"';
+  const stickyScrollHtml = hasStickyScroll ? `<div class="table-sticky-scroll" data-sticky-x-scroll ${stickyA11y}><div></div></div>` : "";
 
   return `
     <div class="table-card">
@@ -2054,14 +2062,16 @@ function renderEmployees() {
     { key: "profileAction", label: "Perfil", sortable: false, className: "text-center", tdClassName: "action-column", render: (row) => `<button class="btn secondary compact employee-view-btn" data-action="view-employee" data-id="${row.id}" data-tooltip="Ver perfil">${icon("eye", "btn-icon")}Ver</button>` },
     { key: "documentsAction", label: "Expediente", sortable: false, className: "text-center", tdClassName: "action-column", render: (row) => `<button class="btn secondary compact employee-view-btn" data-action="select-employee-route" data-id="${row.id}" data-route-target="employee-documents" data-tooltip="Ver expediente">${icon("file", "btn-icon")}Ver</button>` },
     { key: "contractAction", label: "Contrato", sortable: false, className: "text-center", tdClassName: "action-column", render: (row) => `<button class="btn secondary compact employee-view-btn" data-action="view-signed-contract" data-id="${row.id}" data-tooltip="Ver contrato firmado">${icon("file-signature", "btn-icon")}Ver</button>` },
-    { key: "biometricStatus", label: "Datos biométricos", render: renderEmployeeBiometricCell, filterValue: employeeBiometricStatus, sortValue: employeeBiometricStatus }
+    { key: "biometricStatus", label: "Datos biométricos", render: renderEmployeeBiometricCell, filterValue: employeeBiometricStatus, sortValue: employeeBiometricStatus },
+    { key: "employeeQr", label: "QR de empleado", sortable: false, filterable: false, className: "text-center", tdClassName: "employee-qr-column", render: (row) => `<button class="employee-qr-button" type="button" data-action="view-employee-qr" data-id="${safe(row.id)}" data-tooltip="Ver QR de ${safe(row.fullName)}" aria-label="Ver QR de ${safe(row.fullName)}"><img src="${employeeQrImage(row)}" width="48" height="48" alt="QR ${safe(row.number)}" /></button>` },
+    { key: "employeeCredential", label: "Credencial del empleado", sortable: false, filterable: false, className: "text-center", tdClassName: "action-column", render: (row) => `<button class="btn secondary compact employee-view-btn" type="button" data-action="view-employee-credential" data-id="${safe(row.id)}" aria-label="Ver credencial de ${safe(row.fullName)}">${icon("id-card", "btn-icon")}Ver</button>` }
   ];
   if (state.ui.role === "Gerente de sucursal") {
     columns.push({ key: "vacationAction", label: "Vacaciones", sortable: false, className: "text-center", tdClassName: "action-column", render: (row) => `<button class="icon-btn" data-action="manager-vacation-request" data-id="${row.id}" data-tooltip="Crear solicitud de vacaciones">${icon("calendar-days")}</button>` });
   }
 
   return `
-    <div class="screen-stack">
+    <div class="screen-stack employee-list-screen">
 ${pageHeader("Listado de empleados", "", `
   <button class="btn" data-route="employee-new">${icon("plus", "btn-icon")}Nuevo empleado</button>
   <button class="btn secondary" data-action="export-employees">${icon("download", "btn-icon")}CSV</button>
@@ -2236,6 +2246,7 @@ function renderEmployeeForm() {
             ${field("Correo", "email", "email", "nuevo.empleado@empresa.mx", true)}
             ${field("Domicilio", "address", "text", "Av. Reforma 100, CDMX", true)}
             ${field("Contacto de emergencia", "emergencyContact", "text", "Laura Pérez - 55 0000 0000")}
+            <label class="form-field"><span>Foto de perfil</span><input class="input" type="file" name="profilePhoto" accept="image/jpeg,image/png,image/webp" /></label>
           </div>
         </div>
 
@@ -5378,9 +5389,81 @@ function formatBiometricFileSize(bytes) {
   return bytes >= 1048576 ? `${(bytes / 1048576).toFixed(1)} MB` : `${Math.ceil(bytes / 1024)} KB`;
 }
 
+function renderEmployeeCredential(employee) {
+  const data = employeeCredentialData(employee);
+  return `
+    <article class="employee-credential" data-card-format="ID-1" aria-label="Credencial de ${safe(data.fullName)}">
+      <div class="employee-credential-banner">
+        <span class="employee-credential-mark">OC</span>
+        <div><span>Credencial del empleado</span><strong data-credential-fit>${safe(data.company || "OC System")}</strong></div>
+      </div>
+      <div class="employee-credential-portrait" role="img" aria-label="${data.photo ? "Foto de" : "Perfil de"} ${safe(data.fullName)}">
+        ${icon("user", "employee-profile-placeholder")}
+        ${data.photo ? `<img class="employee-profile-photo" src="${safe(data.photo)}" alt="${safe(data.fullName)}" />` : ""}
+      </div>
+      <div class="employee-credential-identity">
+        <h4 data-credential-fit>${safe(data.fullName)}</h4>
+        <strong class="employee-credential-number">${safe(data.number)}</strong>
+        <p data-credential-fit>${safe(data.position || "Sin puesto registrado")}</p>
+      </div>
+      <dl class="employee-credential-details">${[
+          ["Departamento", data.department],
+          ["Sucursal", data.branch],
+          ["Ingreso", data.hireDate ? date(data.hireDate) : ""]
+        ].map(([label, value]) => `<div><dt>${label}</dt><dd data-credential-fit>${safe(value || "Sin registrar")}</dd></div>`).join("")}</dl>
+      <figure class="employee-credential-qr"><img src="${employeeQrImage(employee)}" width="76" height="76" alt="QR ${safe(data.number)}" /></figure>
+      <div class="employee-credential-bottom">
+        <span data-credential-fit>${safe(data.email || "Sin correo registrado")}</span>
+        <strong class="employee-credential-status" data-credential-fit>${safe(data.status || "Sin estatus")}</strong>
+      </div>
+    </article>
+  `;
+}
+
+function fitEmployeeCredentialText() {
+  document.querySelectorAll("[data-credential-fit]").forEach((element) => {
+    element.style.fontSize = "";
+    let size = parseFloat(window.getComputedStyle(element).fontSize);
+    while ((element.scrollHeight > element.clientHeight + 1 || element.scrollWidth > element.clientWidth + 1) && size > 5) {
+      size = Math.max(5, size - 0.25);
+      element.style.fontSize = `${size}px`;
+    }
+  });
+}
+
+function renderEmployeeIdentificationModal(modal) {
+  const employee = state.data.employees.find((item) => Number(item.id) === modal.id);
+  if (!employee) return "";
+  const credential = modal.type === "employee-credential";
+  return `
+    <div class="modal-backdrop employee-identification-backdrop" role="dialog" aria-modal="true" aria-labelledby="employee-identification-title">
+      <div class="modal ${credential ? "employee-credential-modal" : "employee-qr-modal"}">
+        <header>
+          <div><h3 id="employee-identification-title">${credential ? "Credencial del empleado" : "QR de empleado"}</h3><p class="modal-subtitle">${safe(employee.fullName)} · ${safe(employee.number)}</p></div>
+          <button class="icon-btn" type="button" data-action="close-modal" aria-label="Cerrar">${icon("x")}</button>
+        </header>
+        <div class="modal-body">
+          ${credential ? `<div class="employee-credential-preview">${renderEmployeeCredential(employee)}</div><p class="employee-credential-format">ID-1 · 53.98 × 85.60 mm</p>` : `<div class="employee-qr-preview"><img src="${employeeQrImage(employee)}" width="232" height="232" alt="QR ${safe(employee.number)}" /><strong>${safe(employee.number)}</strong></div>`}
+          ${credential && state.ui.role === "Superadministrador" ? `
+            <form id="employee-credential-photo-form" class="employee-credential-photo-form">
+              <input type="hidden" name="employeeId" value="${safe(employee.id)}" />
+              <label class="form-field"><span>Foto de perfil</span><input class="input" type="file" name="profilePhoto" accept="image/jpeg,image/png,image/webp" required /></label>
+              <button class="btn secondary compact" type="submit">${icon("upload", "btn-icon")}Guardar foto</button>
+            </form>` : ""}
+        </div>
+        <footer>
+          <button class="btn secondary" type="button" data-action="close-modal">Cerrar</button>
+          <button class="btn" type="button" data-action="${credential ? "print-employee-credential" : "download-employee-qr"}" data-id="${safe(employee.id)}">${icon(credential ? "printer" : "download", "btn-icon")}${credential ? "Imprimir credencial" : "Descargar QR"}</button>
+        </footer>
+      </div>
+    </div>
+  `;
+}
+
 function renderModal() {
   const modal = state.ui.modal;
   if (!modal) return "";
+  if (["employee-qr", "employee-credential"].includes(modal.type)) return renderEmployeeIdentificationModal(modal);
   if (modal.type === "employee-biometric-media") {
     const employee = state.data.employees.find((item) => Number(item.id) === modal.id);
     if (!employee) return "";
@@ -5741,7 +5824,7 @@ function renderEmployeeTableWithScroll() {
 }
 
 function positionEmployeeBiometricModal() {
-  const backdrop = document.querySelector(".employee-biometric-backdrop");
+  const backdrop = document.querySelector(".employee-biometric-backdrop, .employee-identification-backdrop");
   if (!backdrop || !isEmbedded || !window.frameElement) return;
   const frame = window.frameElement.getBoundingClientRect();
   const visibleTop = Math.max(0, -frame.top);
@@ -5753,6 +5836,87 @@ function positionEmployeeBiometricModal() {
   const modalTop = visibleTop + Math.max(16, (visibleHeight - modal.getBoundingClientRect().height) / 2);
   backdrop.style.setProperty("--biometric-modal-top", `${modalTop}px`);
 }
+
+async function readEmployeeProfilePhoto(file) {
+  if (!file?.size) return "";
+  validateEmployeePhoto(file);
+  const url = URL.createObjectURL(file);
+  try {
+    const image = new Image();
+    image.src = url;
+    await image.decode();
+    const scale = Math.min(1, 384 / image.naturalWidth, 512 / image.naturalHeight);
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+    canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+    const context = canvas.getContext("2d");
+    context.fillStyle = "#ffffff";
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.drawImage(image, 0, 0, canvas.width, canvas.height);
+    return canvas.toDataURL("image/jpeg", 0.85);
+  } catch {
+    throw new Error("No se pudo leer la foto. Selecciona otra imagen.");
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+async function saveEmployeeCredentialPhoto(form) {
+  const data = new FormData(form);
+  const id = Number(data.get("employeeId"));
+  const employee = state.data.employees.find((item) => Number(item.id) === id);
+  if (!employee || state.ui.role !== "Superadministrador" || state.ui.modal?.type !== "employee-credential" || state.ui.modal.id !== id) return;
+  const submit = form.querySelector('[type="submit"]');
+  submit.disabled = true;
+  const previousPhoto = employee.profilePhoto;
+  try {
+    const photo = await readEmployeeProfilePhoto(data.get("profilePhoto"));
+    if (!photo) throw new Error("Selecciona una foto de perfil.");
+    employee.profilePhoto = photo;
+    try {
+      saveState();
+    } catch {
+      employee.profilePhoto = previousPhoto;
+      throw new Error("No hay espacio disponible para guardar la foto en este navegador.");
+    }
+    renderEmployeeTableWithScroll();
+    toast("Foto de perfil guardada.");
+  } catch (error) {
+    toast(error.message, "error");
+  } finally {
+    submit.disabled = false;
+  }
+}
+
+async function printEmployeeCredential() {
+  if (state.ui.modal?.type !== "employee-credential") return;
+  await Promise.all(Array.from(document.querySelectorAll(".employee-credential img"), (image) => image.decode().catch(() => {})));
+  document.body.classList.add("printing-employee-credential");
+  try {
+    window.print();
+  } finally {
+    document.body.classList.remove("printing-employee-credential");
+  }
+}
+
+document.addEventListener("keydown", (event) => {
+  if (!["employee-qr", "employee-credential"].includes(state.ui.modal?.type)) return;
+  if (event.key === "Escape") {
+    event.preventDefault();
+    handleAction("close-modal");
+  } else if (event.key === "Tab") {
+    const controls = [...document.querySelectorAll('.employee-identification-backdrop button:not(:disabled), .employee-identification-backdrop input:not([type="hidden"]):not(:disabled)')];
+    const destination = event.shiftKey && document.activeElement === controls[0] ? controls.at(-1) : !event.shiftKey && document.activeElement === controls.at(-1) ? controls[0] : null;
+    if (destination) {
+      event.preventDefault();
+      destination.focus();
+    }
+  }
+});
+
+document.addEventListener("error", (event) => {
+  if (event.target.matches?.(".employee-profile-photo")) event.target.remove();
+}, true);
 
 function setEmployeeBiometricMedia(employeeNumber, items) {
   biometricMediaByEmployee.set(employeeNumber, items.filter((item) => item.employeeNumber === employeeNumber));
@@ -6129,7 +6293,14 @@ document.addEventListener("submit", (event) => {
 
   if (event.target.id === "employee-form") {
     event.preventDefault();
-    createEmployee(new FormData(event.target));
+    const button = event.target.querySelector('[type="submit"]');
+    button.disabled = true;
+    createEmployee(new FormData(event.target)).finally(() => { button.disabled = false; });
+  }
+
+  if (event.target.id === "employee-credential-photo-form") {
+    event.preventDefault();
+    saveEmployeeCredentialPhoto(event.target);
   }
 
   if (event.target.id === "employee-biometric-form") {
@@ -6401,6 +6572,27 @@ function handleAction(action, target) {
       state.ui.selectedEmployeeId = Number(data.id);
       state.ui.selectedPayrollEmployeeId = Number(data.id);
       navigate("employee-profile");
+      break;
+    case "view-employee-qr":
+    case "view-employee-credential": {
+      const id = Number(data.id);
+      if (!state.data.employees.some((employee) => Number(employee.id) === id)) break;
+      state.ui.modal = { type: action === "view-employee-qr" ? "employee-qr" : "employee-credential", id, originAction: action };
+      renderEmployeeTableWithScroll();
+      document.querySelector('.employee-identification-backdrop [data-action="close-modal"]')?.focus();
+      break;
+    }
+    case "download-employee-qr": {
+      const employee = state.data.employees.find((item) => Number(item.id) === Number(data.id));
+      if (!employee) break;
+      const link = document.createElement("a");
+      link.href = employeeQrImage(employee);
+      link.download = `QR-${employee.number}.svg`;
+      link.click();
+      break;
+    }
+    case "print-employee-credential":
+      printEmployeeCredential();
       break;
     case "edit-employee-biometrics": {
       if (state.ui.role !== "Superadministrador") break;
@@ -6711,10 +6903,14 @@ function handleAction(action, target) {
       confirmTermination(data.payload || target.dataset.payload);
       break;
     case "close-modal": {
+      const identificationModal = ["employee-qr", "employee-credential"].includes(state.ui.modal?.type) ? state.ui.modal : null;
       const biometricEmployeeId = ["employee-biometrics", "employee-biometric-media"].includes(state.ui.modal?.type) ? state.ui.modal.id : null;
       const wasMediaModal = state.ui.modal?.type === "employee-biometric-media";
       state.ui.modal = null;
-      if (biometricEmployeeId !== null) {
+      if (identificationModal) {
+        renderEmployeeTableWithScroll();
+        document.querySelector(`[data-action="${identificationModal.originAction}"][data-id="${identificationModal.id}"]`)?.focus();
+      } else if (biometricEmployeeId !== null) {
         if (wasMediaModal) clearBiometricPreview();
         renderEmployeeTableWithScroll();
         document.querySelector(`[data-action="${wasMediaModal ? "open-employee-biometric-media" : "edit-employee-biometrics"}"][data-id="${biometricEmployeeId}"]`)?.focus();
@@ -6895,7 +7091,7 @@ function toggleDraftClause(clause, checked) {
   saveState();
 }
 
-function createEmployee(form) {
+async function createEmployee(form) {
   const employeeNumber = String(form.get("number") || "").trim().toUpperCase();
   const curp = String(form.get("curp") || "").trim().toUpperCase();
   const rfc = String(form.get("rfc") || "").trim().toUpperCase();
@@ -6906,7 +7102,13 @@ function createEmployee(form) {
   if (rfc.length < 12 || rfc.length > 13) return toast("RFC debe tener 12 o 13 caracteres.", "error");
   if (clabe.length !== 18) return toast("CLABE debe tener 18 dígitos.", "error");
 
-  const id = state.data.employees.length + 1;
+  let profilePhoto;
+  try {
+    profilePhoto = await readEmployeeProfilePhoto(form.get("profilePhoto"));
+  } catch (error) {
+    return toast(error.message, "error");
+  }
+  const id = state.data.employees.reduce((max, item) => Math.max(max, Number(item.id) || 0), 0) + 1;
   const firstName = form.get("firstName");
   const lastName = form.get("lastName");
   const secondLastName = form.get("secondLastName");
@@ -6915,6 +7117,7 @@ function createEmployee(form) {
   const employee = {
     id,
     number: employeeNumber,
+    profilePhoto,
     firstName,
     lastName,
     secondLastName,
@@ -6972,11 +7175,20 @@ function createEmployee(form) {
     documents: selectedDocs.map((name) => ({ name, status: "Completo", date: today() })),
     timeline: [{ date: today(), title: "Alta de empleado", detail: "Registro creado desde RH" }]
   };
+  initializeEmployeeCredential(employee);
   state.data.employees.push(employee);
+  const previousEmployeeId = state.ui.selectedEmployeeId;
   state.ui.selectedEmployeeId = id;
   addAudit("Creó empleado", "Empleados", employee.number, "Sin registro", employee.fullName);
-  toast("Empleado creado y expediente inicial generado.", "success");
-  saveState();
+  try {
+    saveState();
+  } catch {
+    state.data.employees.pop();
+    state.data.audit.shift();
+    state.ui.selectedEmployeeId = previousEmployeeId;
+    return toast("No se pudo guardar el empleado. Revisa el espacio disponible en este navegador.", "error");
+  }
+  toast("Empleado creado con QR y expediente inicial.", "success");
   navigate("employee-profile");
 }
 
@@ -7200,6 +7412,7 @@ function confirmSignContract(rawPayload) {
     };
     state.data.contractCandidateEmployees = (state.data.contractCandidateEmployees || [])
       .filter((item) => String(item.id) !== String(proxyId));
+    initializeEmployeeCredential(employee);
     state.data.employees.unshift(employee);
     contract.employeeId = employee.id;
     moveCandidateToEmployees(contract.sourceCandidateId || employee.sourceCandidateId, employee, contract);

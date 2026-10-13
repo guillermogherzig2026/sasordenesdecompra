@@ -151,11 +151,12 @@ class SuperAdminAgentCenterTest extends TestCase
         $this->assertSame(1, AiAgent::query()->count());
     }
 
-    public function test_non_superadmin_cannot_open_the_agent_center(): void
+    public function test_finance_without_agent_permissions_cannot_open_the_agent_center(): void
     {
         $financeUser = User::factory()->create([
             'role' => 'finance',
             'active' => true,
+            'menu_permissions' => [],
         ]);
 
         $this->actingAs($financeUser)

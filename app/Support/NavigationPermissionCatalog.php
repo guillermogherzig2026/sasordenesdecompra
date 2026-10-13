@@ -9,6 +9,19 @@ final class NavigationPermissionCatalog
 {
     public const HOME_DASHBOARD = 'home.dashboard';
 
+    private const FINANCE_ROLE_CATEGORIES = [
+        'finance',
+        'procurement',
+        'inventory',
+        'services',
+        'human_resources',
+        'construction',
+        'plazas',
+        'government_contracts',
+        'marketing',
+        'security',
+    ];
+
     public static function operationalRolesByCategory(): array
     {
         return [
@@ -54,6 +67,7 @@ final class NavigationPermissionCatalog
                     'finance.companies' => 'Empresas y Negocios',
                     'finance.services.create' => 'Crear servicios',
                     'finance.services.catalog' => 'Servicios',
+                    'finance.agents' => 'Centro de agentes',
                 ],
                 'groups' => [
                     'purchase_orders' => [
@@ -169,7 +183,7 @@ final class NavigationPermissionCatalog
                 'items' => [
                     'services.create' => 'Crear servicios',
                     'services.catalog' => 'Servicios',
-                    'services.months' => 'Vista por Mes',
+                    'services.months' => 'Servicios Mensuales',
                     'services.history' => 'Historial de Servicios',
                 ],
             ],
@@ -238,7 +252,9 @@ final class NavigationPermissionCatalog
             'plazas' => [
                 'label' => 'Administracion de Plazas',
                 'description' => 'Catalogo y administracion operativa de las plazas.',
-                'items' => PlazaNavigation::permissionLabels(),
+                'items' => array_merge(PlazaNavigation::permissionLabels(), [
+                    'plazas.agents' => 'Centro de agentes',
+                ]),
             ],
             'government_contracts' => [
                 'label' => 'Contratos Gobierno',
@@ -280,6 +296,15 @@ final class NavigationPermissionCatalog
         return array_keys(self::categories()[$category]['items'] ?? []);
     }
 
+    public static function financeRolePermissions(): array
+    {
+        return collect(self::FINANCE_ROLE_CATEGORIES)
+            ->flatMap(fn (string $category) => self::categoryKeys($category))
+            ->prepend(self::HOME_DASHBOARD)
+            ->values()
+            ->all();
+    }
+
     public static function normalize(?array $permissions): array
     {
         $allowed = array_flip(self::allKeys());
@@ -301,7 +326,7 @@ final class NavigationPermissionCatalog
         $homePermissions = [self::HOME_DASHBOARD];
 
         if ($role === 'finance') {
-            return array_merge($homePermissions, self::categoryKeys('finance'));
+            return self::financeRolePermissions();
         }
 
         if ($role === 'inventory') {
@@ -420,6 +445,9 @@ final class NavigationPermissionCatalog
         if (Str::startsWith($routeName, 'finance.admin.companies')) {
             return ['finance.companies'];
         }
+        if (Str::startsWith($routeName, 'finance.agents.')) {
+            return ['finance.agents'];
+        }
 
         if (Str::startsWith($routeName, 'buyer.orders.')) {
             if ($request->input('context') === 'construction') {
@@ -496,11 +524,20 @@ final class NavigationPermissionCatalog
         if (in_array($routeName, ['services.create', 'services.store'], true)) {
             return ['services.create', 'finance.services.create'];
         }
+        if (in_array($routeName, ['services.occasional.store', 'services.occasional.payments.store'], true)) {
+            return ['services.create', 'finance.services.create'];
+        }
+        if ($routeName === 'services.occasional.export') {
+            return ['services.catalog', 'finance.services.catalog'];
+        }
         if (in_array($routeName, ['services.catalog', 'services.edit', 'services.update'], true)) {
             return ['services.catalog', 'finance.services.catalog'];
         }
         if ($routeName === 'services.history') {
             return ['services.history', 'finance.services.history'];
+        }
+        if (in_array($routeName, ['services.support-file', 'services.support-file.pdf', 'services.demo-invoice-file', 'services.payment-file', 'services.payment-file.pdf', 'services.demo-payment-file'], true)) {
+            return ['services.history', 'finance.services.history', 'services.months'];
         }
         if (Str::startsWith($routeName, 'services.')) {
             return ['services.months'];
@@ -548,6 +585,9 @@ final class NavigationPermissionCatalog
 
             return [PlazaNavigation::permissionForSection($section)];
         }
+        if (Str::startsWith($routeName, 'superadmin.plazas.agents.')) {
+            return ['plazas.agents'];
+        }
         if (Str::startsWith($routeName, 'superadmin.plazas.')) {
             return [PlazaNavigation::permissionForSection(PlazaNavigation::sectionForRoute($routeName))];
         }
@@ -579,6 +619,10 @@ final class NavigationPermissionCatalog
             }];
         }
         if (Str::startsWith($routeName, 'human-resources.')) {
+            if (Str::startsWith($routeName, 'human-resources.biometric-media.')) {
+                return ['human_resources.employees'];
+            }
+
             $section = (string) ($request->route('section') ?? 'inicio');
 
             return [match ($section) {

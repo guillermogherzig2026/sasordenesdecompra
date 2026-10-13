@@ -99,11 +99,12 @@ class SuperAdminGovernmentContractTest extends TestCase
             ->assertForbidden();
     }
 
-    public function test_government_contracts_rejects_non_superadmin_users(): void
+    public function test_government_contracts_rejects_users_without_permission(): void
     {
         $user = User::factory()->create([
             'role' => 'finance',
             'active' => true,
+            'menu_permissions' => [],
         ]);
 
         $this->actingAs($user)

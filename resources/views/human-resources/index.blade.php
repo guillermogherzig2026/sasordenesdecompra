@@ -8,12 +8,26 @@
                 src="{{ route('human-resources.embed', ['section' => $section]) }}"
                 title="{{ $title }}"
                 data-human-resources-frame
+                data-fill-viewport="{{ $section === 'empleados' ? 'true' : 'false' }}"
                 loading="eager"
                 scrolling="no"
             ></iframe>
         </div>
 
         <style>
+            body:has(.human-resources-frame[data-fill-viewport="true"]) {
+                padding-bottom: 0;
+            }
+
+            .content-shell:has(.human-resources-frame[data-fill-viewport="true"]) {
+                min-height: 0;
+            }
+
+            .view:has(.human-resources-frame[data-fill-viewport="true"]) {
+                min-height: 0;
+                padding-bottom: 0;
+            }
+
             .human-resources-frame-shell {
                 min-width: 0;
                 overflow: visible;
@@ -27,6 +41,10 @@
                 min-height: 680px;
                 border: 0;
                 background: transparent;
+            }
+
+            .human-resources-frame[data-fill-viewport="true"] {
+                min-height: 0;
             }
 
             @media (max-width: 760px) {
@@ -47,6 +65,7 @@
                 let animationFrame;
 
                 const minimumHeight = () => window.matchMedia('(max-width: 760px)').matches ? 620 : 680;
+                const fillViewport = frame.dataset.fillViewport === 'true';
                 const scheduleHeightSync = () => {
                     window.cancelAnimationFrame(animationFrame);
                     animationFrame = window.requestAnimationFrame(() => {
@@ -58,7 +77,11 @@
                             app.scrollHeight,
                             Math.ceil(app.getBoundingClientRect().height)
                         );
-                        const nextHeight = Math.max(contentHeight, minimumHeight());
+                        const viewportHeight = Math.floor(window.innerHeight - frame.getBoundingClientRect().top);
+                        const employeeMinimumHeight = window.matchMedia('(max-width: 760px)').matches ? 820 : 440;
+                        const nextHeight = fillViewport
+                            ? Math.max(viewportHeight, employeeMinimumHeight)
+                            : Math.max(contentHeight, minimumHeight());
 
                         if (Math.abs(frame.getBoundingClientRect().height - nextHeight) > 1) {
                             frame.style.height = `${nextHeight}px`;

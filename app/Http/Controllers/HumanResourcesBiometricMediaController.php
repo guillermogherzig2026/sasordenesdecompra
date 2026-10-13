@@ -19,7 +19,7 @@ class HumanResourcesBiometricMediaController extends Controller
 
     public function index(): JsonResponse
     {
-        $this->ensureSuperAdmin();
+        $this->ensureEmployeeAccess();
 
         return response()->json([
             'items' => EmployeeBiometricMedia::query()
@@ -32,7 +32,7 @@ class HumanResourcesBiometricMediaController extends Controller
 
     public function store(Request $request): JsonResponse
     {
-        $this->ensureSuperAdmin();
+        $this->ensureEmployeeAccess();
         $data = $request->validate([
             'employee_number' => ['required', 'regex:/^EMP-\d{3,8}$/'],
             'files' => ['required', 'array', 'min:1', 'max:5'],
@@ -107,14 +107,14 @@ class HumanResourcesBiometricMediaController extends Controller
             ->header('Cache-Control', 'private, no-store');
     }
 
-    private function ensureSuperAdmin(): void
+    private function ensureEmployeeAccess(): void
     {
-        abort_unless(Auth::user()?->canAccessRole('superadmin'), 403);
+        abort_unless(Auth::user()?->canNavigateTo('human_resources.employees'), 403);
     }
 
     private function ensureOwned(EmployeeBiometricMedia $media): void
     {
-        $this->ensureSuperAdmin();
+        $this->ensureEmployeeAccess();
         abort_unless($media->user_id === Auth::id(), 404);
     }
 

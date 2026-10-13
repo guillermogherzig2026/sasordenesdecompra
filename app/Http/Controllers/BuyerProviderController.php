@@ -19,7 +19,7 @@ class BuyerProviderController extends Controller
 
         $query = trim((string) $request->query('q'));
         $providers = Provider::with(['buyer', 'businessSubcategory'])
-            ->when(Auth::user()?->role !== 'superadmin', fn ($builder) => $builder->where('buyer_id', Auth::id()))
+            ->when(! Auth::user()?->canManageAllRecordsIn('procurement'), fn ($builder) => $builder->where('buyer_id', Auth::id()))
             ->when($query, function ($builder) use ($query) {
                 $builder->where(function ($inner) use ($query) {
                     $inner->where('business_name', 'like', "%{$query}%")
@@ -153,7 +153,7 @@ class BuyerProviderController extends Controller
     {
         $this->ensureBuyer();
 
-        abort_unless(Auth::user()?->role === 'superadmin' || (int) $provider->buyer_id === Auth::id(), 403);
+        abort_unless(Auth::user()?->canManageAllRecordsIn('procurement') || (int) $provider->buyer_id === Auth::id(), 403);
     }
 
     private function isConstructionContext(Request $request): bool

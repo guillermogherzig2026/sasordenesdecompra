@@ -34,7 +34,7 @@
         ? \App\Models\ReimbursementOrder::where('requester_id', auth()->id())->whereIn('status', ['sent', 'approved'])->count()
         : \App\Models\ReimbursementOrder::whereIn('status', ['sent', 'approved'])->count();
     $pendingConstructionPaymentOrderBadgeCount = \App\Models\ConstructionPaymentOrder::query()->pending()->count();
-    $isConstructionPurchaseContext = auth()->user()->role === 'superadmin' && request('context') === 'construction';
+    $isConstructionPurchaseContext = auth()->user()->canManageAllRecordsIn('construction') && request('context') === 'construction';
     $homeDashboardPermission = \App\Support\NavigationPermissionCatalog::HOME_DASHBOARD;
 
     $purchaseNavItems = [
@@ -150,6 +150,7 @@
                     'label' => 'Centro de agentes',
                     'url' => route('superadmin.plazas.agents.index'),
                     'active' => request()->routeIs('superadmin.plazas.agents.*'),
+                    'permission' => 'plazas.agents',
                 ],
                 $item,
             ];
@@ -196,7 +197,7 @@
             ['label' => 'OR Historial', 'url' => route('finance.reimbursement-orders.history'), 'active' => request()->routeIs('finance.reimbursement-orders.history'), 'menu_box' => 'or', 'menu_box_end' => true],
             ['label' => 'Proveedores', 'url' => route('finance.admin.providers'), 'active' => request()->routeIs('finance.admin.providers*')],
             ['label' => 'Empresas y Negocios', 'url' => route('finance.admin.companies'), 'active' => request()->routeIs('finance.admin.companies*')],
-            ['label' => 'Servicios', 'url' => route('services.catalog'), 'active' => request()->routeIs('services.catalog', 'services.create', 'services.edit', 'services.update')],
+            ['label' => 'Servicios', 'url' => route('services.catalog'), 'active' => (request()->routeIs('services.catalog') && !request()->boolean('create_occasional')) || request()->routeIs('services.create', 'services.edit', 'services.update')],
             ['label' => 'Autorizaciones', 'url' => route('finance.admin.users'), 'active' => request()->routeIs('finance.admin.users')],
             ['label' => 'Centro de agentes', 'url' => route('finance.agents.index'), 'active' => request()->routeIs('finance.agents.*')],
         ],
@@ -214,9 +215,10 @@
             ['label' => 'Almacenes', 'url' => route('inventory.warehouses.index'), 'active' => request()->routeIs('inventory.warehouses.*')],
         ],
         'Servicios' => [
-            ['label' => 'Servicios', 'url' => route('services.catalog'), 'active' => request()->routeIs('services.catalog', 'services.create', 'services.edit', 'services.update')],
-            ['label' => 'Vista por Mes', 'url' => route('services.months'), 'active' => request()->routeIs('services.months') || request()->routeIs('services.receipt')],
-            ['label' => 'Historial de Servicios', 'url' => route('services.history'), 'active' => request()->routeIs('services.history')],
+            ['label' => 'Pagar servicio ocasional', 'url' => route('services.months', ['pay_occasional' => 1]), 'active' => request()->routeIs('services.months') && request()->boolean('pay_occasional'), 'permission' => 'services.create', 'alternative_permission' => 'finance.services.create', 'requires_service_months' => true, 'menu_box' => 'services', 'menu_box_start' => true],
+            ['label' => 'Servicios Mensuales', 'url' => route('services.months'), 'active' => (request()->routeIs('services.months') && ! request()->boolean('pay_occasional')) || request()->routeIs('services.receipt'), 'menu_box' => 'services'],
+            ['label' => 'Historial de Servicios', 'url' => route('services.history'), 'active' => request()->routeIs('services.history'), 'menu_box' => 'services', 'menu_box_end' => true],
+            ['label' => 'Servicios', 'url' => route('services.catalog'), 'active' => (request()->routeIs('services.catalog') && !request()->boolean('create_occasional')) || request()->routeIs('services.create', 'services.edit', 'services.update')],
         ],
         'Recursos Humanos' => [
             ['label' => 'Inicio', 'url' => route('human-resources.index'), 'active' => request()->routeIs('human-resources.index') || (request()->routeIs('human-resources.show') && (request()->route('section') ?? 'inicio') === 'inicio')],
@@ -278,6 +280,7 @@
             'Proveedores' => 'finance.providers',
             'Empresas y Negocios' => 'finance.companies',
             'Servicios' => 'finance.services.catalog',
+            'Centro de agentes' => 'finance.agents',
         ],
         'Compras y Suministros' => [
             'Nueva OC' => 'procurement.orders.create',
@@ -301,9 +304,10 @@
             'Almacenes' => 'inventory.warehouses',
         ],
         'Servicios' => [
-            'Servicios' => 'services.catalog',
-            'Vista por Mes' => 'services.months',
+            'Servicios Mensuales' => 'services.months',
             'Historial de Servicios' => 'services.history',
+            'Servicios' => 'services.catalog',
+            'Pagar servicio ocasional' => 'services.create',
         ],
         'Recursos Humanos' => [
             'Inicio' => 'human_resources.dashboard',
@@ -369,15 +373,40 @@
         ? $superAdminNavGroups
         : collect($superAdminNavGroups)
             ->except('Superadministrador')
-            ->map(fn (array $items) => collect($items)
-                ->filter(fn (array $item) => filled($item['permission']) && $currentUser->canNavigateTo($item['permission']))
-                ->map(function (array $item) {
-                    unset($item['menu_box'], $item['menu_box_start'], $item['menu_box_end'], $item['menu_box_title']);
+            ->map(function (array $items, string $groupLabel) use ($currentUser) {
+                $visibleItems = collect($items)
+                    ->filter(fn (array $item) => (
+                        (filled($item['permission']) && $currentUser->canNavigateTo($item['permission']))
+                        || (filled($item['alternative_permission'] ?? null) && $currentUser->canNavigateTo($item['alternative_permission']))
+                    ) && (!($item['requires_service_catalog'] ?? false)
+                        || $currentUser->canNavigateTo('services.catalog')
+                        || $currentUser->canNavigateTo('finance.services.catalog'))
+                        && (!($item['requires_service_months'] ?? false)
+                            || $currentUser->canNavigateTo('services.months')))
+                    ->values()
+                    ->all();
 
-                    return $item;
-                })
-                ->values()
-                ->all())
+                foreach ($visibleItems as $index => &$item) {
+                    if ($currentUser->role !== 'finance' && $groupLabel !== 'Servicios') {
+                        unset($item['menu_box'], $item['menu_box_start'], $item['menu_box_end'], $item['menu_box_title']);
+                        continue;
+                    }
+
+                    $box = $item['menu_box'] ?? null;
+                    if ($box === null) {
+                        continue;
+                    }
+
+                    $item['menu_box_start'] = ($visibleItems[$index - 1]['menu_box'] ?? null) !== $box;
+                    $item['menu_box_end'] = ($visibleItems[$index + 1]['menu_box'] ?? null) !== $box;
+                    if ($item['menu_box_start']) {
+                        $item['menu_box_title'] = collect($items)->firstWhere('menu_box', $box)['menu_box_title'] ?? null;
+                    }
+                }
+                unset($item);
+
+                return $visibleItems;
+            })
             ->filter()
             ->all();
     $suppressGlobalMessages = request()->routeIs('security.index')
