@@ -28,20 +28,20 @@ class ReportController extends Controller
     public function download(string $type): StreamedResponse
     {
         $user = Auth::user();
-        $constructionContext = $user?->role === 'superadmin' && request('context') === 'construction';
+        $constructionContext = $user?->canManageAllRecordsIn('construction') && request('context') === 'construction';
 
         $rows = match ($type) {
             'finance-active' => $this->orderRows(PurchaseOrder::with(['buyer', 'company', 'provider', 'payment', 'items.receiptItems', 'receipts'])->general()->whereIn('status', ['sent', 'approved'])->get()),
             'finance-active-excel' => $this->orderRows(PurchaseOrder::with(['buyer', 'company', 'provider', 'payment', 'items.receiptItems', 'receipts'])->general()->whereIn('status', ['sent', 'approved'])->get()),
             'finance-history' => $this->orderRows($this->sortHistoryOrders(PurchaseOrder::with(['buyer', 'company', 'provider', 'payment', 'items.receiptItems', 'receipts', 'auditLogs'])->general()->whereIn('status', ['paid', 'rejected', 'canceled'])->get())),
             'finance-history-items-excel' => $this->orderItemRows($this->sortHistoryOrders(PurchaseOrder::with(['buyer', 'company', 'provider', 'payment', 'items.receiptItems', 'receipts', 'auditLogs'])->general()->whereIn('status', ['paid', 'rejected', 'canceled'])->get())),
-            'buyer-active' => $this->orderRows(PurchaseOrder::with(['buyer', 'company', 'provider', 'payment', 'items.receiptItems', 'receipts'])->general()->where('buyer_id', $user->id)->whereNotIn('status', ['rejected', 'canceled'])->get()),
+            'buyer-active' => $this->orderRows(PurchaseOrder::with(['buyer', 'company', 'provider', 'payment', 'items.receiptItems', 'receipts'])->general()->when(! $user?->canManageAllRecordsIn('procurement'), fn ($query) => $query->where('buyer_id', $user->id))->whereNotIn('status', ['rejected', 'canceled'])->get()),
             'buyer-items-excel' => $this->orderItemRows(PurchaseOrder::with(['buyer', 'company', 'provider', 'payment', 'items.receiptItems', 'receipts', 'auditLogs'])
                 ->when($constructionContext, fn ($query) => $query->forConstruction(), fn ($query) => $query->general())
-                ->when($user?->role !== 'superadmin', fn ($query) => $query->where('buyer_id', $user->id))
+                ->when(! $user?->canManageAllRecordsIn('procurement'), fn ($query) => $query->where('buyer_id', $user->id))
                 ->latest()
                 ->get()),
-            'buyer-history' => $this->orderRows(PurchaseOrder::with(['buyer', 'company', 'provider', 'payment', 'items.receiptItems', 'receipts'])->general()->where('buyer_id', $user->id)->whereIn('status', ['paid', 'rejected', 'canceled'])->get()),
+            'buyer-history' => $this->orderRows(PurchaseOrder::with(['buyer', 'company', 'provider', 'payment', 'items.receiptItems', 'receipts'])->general()->when(! $user?->canManageAllRecordsIn('procurement'), fn ($query) => $query->where('buyer_id', $user->id))->whereIn('status', ['paid', 'rejected', 'canceled'])->get()),
             'inventory-paid' => $this->orderRows(PurchaseOrder::with(['buyer', 'company', 'provider', 'payment', 'items.receiptItems', 'receipts'])->general()->where('status', 'paid')->where('receipt_status', '!=', 'completed')->get()),
             'inventory-history' => $this->orderRows(PurchaseOrder::with(['buyer', 'company', 'provider', 'payment', 'items.receiptItems', 'receipts'])->general()->where('status', 'paid')->where('receipt_status', 'completed')->get()),
             'audit' => $this->auditRows(),

@@ -651,6 +651,7 @@
             .month-toggle-sign { width: 34px; height: 34px; flex: 0 0 auto; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 8px; background: #fff; color: var(--primary-strong); font-size: 1.35rem; font-weight: 900; line-height: 1; }
             .month-toggle-copy { display: grid; gap: 4px; min-width: 230px; }
             .month-toggle h2, .service-month-header h2 { margin: 0; display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+            .finance-service-month-panel .month-toggle h2 { font-size: 1.15rem; line-height: 1.25; }
             .month-total-inline { color: var(--primary-strong); font-size: .98em; }
             .month-summary-metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; flex: 1 1 auto; min-width: 680px; }
             .compact-metric { padding: 8px 10px; min-height: 0; box-shadow: none; }
@@ -668,11 +669,19 @@
             .service-month-scroll .service-month-table thead th { position: sticky; top: 0; z-index: 8; background: #fff; box-shadow: 0 1px 0 var(--line); }
             .service-month-table {
                 --sticky-title-width: 180px;
-                --sticky-location-width: 130px;
-                --sticky-service-width: 120px;
+                --sticky-location-width: 150px;
+                --sticky-service-width: 150px;
                 border-collapse: separate;
                 border-spacing: 0;
+                width: max-content;
+                min-width: 100%;
             }
+            .service-history-month-panel .service-month-table {
+                --sticky-location-width: 155px;
+                --sticky-service-width: 155px;
+            }
+            .service-month-table .th-filter { min-width: max-content; }
+            .service-month-table .th-filter > span { overflow-wrap: normal; white-space: nowrap; }
             .service-month-table th:nth-child(2),
             .service-month-table td:nth-child(2),
             .service-month-table th:nth-child(3),
@@ -1359,7 +1368,7 @@
                 const tableHtml = (table, title) => {
                     const headers = Array.from(table.querySelectorAll('thead th')).map(headerText);
                     const rows = Array.from(table.tBodies).flatMap((body) => Array.from(body.rows))
-                        .filter((row) => !row.hidden && !row.classList.contains('column-filter-hidden')
+                        .filter((row) => !row.hidden && !row.hasAttribute('data-demo-row') && !row.classList.contains('column-filter-hidden')
                             && row.cells.length > 1 && Array.from(row.cells).every((cell) => cell.colSpan === 1))
                         .map((row) => Array.from(row.cells).map(exportText));
                     let html = `<tr><th colspan="${Math.max(headers.length, 1)}">${escapeHtml(title)}</th></tr>`;

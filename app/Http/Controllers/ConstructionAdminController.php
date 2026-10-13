@@ -1986,7 +1986,7 @@ class ConstructionAdminController extends Controller
 
     private function canManage(User $user): bool
     {
-        return $user->role === 'superadmin';
+        return $user->canManageAllRecordsIn('construction');
     }
 
     private function authorizeProject(Request $request, ConstructionProject $project): void

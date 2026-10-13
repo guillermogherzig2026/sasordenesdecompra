@@ -16,6 +16,12 @@
             'Renta' => ['label' => 'Renta', 'symbol' => '⌂', 'tone' => 'green'],
             'Otros' => ['label' => 'Otros', 'symbol' => '•••', 'tone' => 'slate'],
         ];
+        $occasionalIconChoices = [
+            'parking' => 'Estacionamiento', 'car' => 'Automóvil', 'ticket' => 'Vale',
+            'briefcase' => 'Trabajo', 'wrench' => 'Mantenimiento', 'star' => 'Otro',
+        ];
+        $previewIconKeys = array_unique([...array_keys($occasionalIconChoices), ...$occasionalServices->pluck('icon')->all()]);
+        $selectedFormCategory = old('category_id', $selectedOccasionalService?->id ?? '');
         $periodNames = [30 => 'Mensual', 60 => 'Bimestral', 90 => 'Trimestral', 180 => 'Semestral', 365 => 'Anual'];
     @endphp
 
@@ -31,20 +37,20 @@
                 </div>
             </header>
 
-            <nav class="service-categories" aria-label="Categorías de servicio">
+            <nav class="service-categories" aria-label="Categorías de servicios recurrentes" data-service-carousel-root>
                 <button class="service-carousel-arrow" type="button" title="Categorías anteriores" aria-label="Categorías anteriores" data-service-carousel="previous">‹</button>
                 <div class="service-categories-track" data-service-categories-track>
-                    <a class="service-category-card is-all {{ $category === '' ? 'is-selected' : '' }}"
-                       href="{{ route('services.catalog', request()->except(['category', 'page'])) }}"
-                       @if ($category === '') aria-current="page" @endif>
+                    <a class="service-category-card is-all {{ ! $isOccasionalView && $category === '' ? 'is-selected' : '' }}"
+                       href="{{ route('services.catalog') }}"
+                       @if (! $isOccasionalView && $category === '') aria-current="page" @endif>
                         <span class="service-category-symbol" aria-hidden="true">▦</span>
                         <strong>Todos</strong>
                     </a>
                     @foreach ($categories as $availableCategory)
                         @php $categoryStyle = $categoryStyles[$availableCategory] ?? ['label' => $availableCategory, 'symbol' => '•', 'tone' => 'slate']; @endphp
-                        <a class="service-category-card tone-{{ $categoryStyle['tone'] }} {{ !empty($categoryStyle['wide']) ? 'is-wide' : '' }} {{ $category === $availableCategory ? 'is-selected' : '' }}"
-                           href="{{ route('services.catalog', [...request()->except(['category', 'page']), 'category' => $availableCategory]) }}"
-                           @if ($category === $availableCategory) aria-current="page" @endif>
+                        <a class="service-category-card tone-{{ $categoryStyle['tone'] }} {{ !empty($categoryStyle['wide']) ? 'is-wide' : '' }} {{ ! $isOccasionalView && $category === $availableCategory ? 'is-selected' : '' }}"
+                           href="{{ route('services.catalog', ['category' => $availableCategory]) }}"
+                           @if (! $isOccasionalView && $category === $availableCategory) aria-current="page" @endif>
                             <span class="service-category-symbol" aria-hidden="true">{{ $categoryStyle['symbol'] }}</span>
                             <strong>{{ $categoryStyle['label'] }}</strong>
                         </a>
@@ -53,47 +59,78 @@
                 <button class="service-carousel-arrow" type="button" title="Más categorías" aria-label="Más categorías" data-service-carousel="next">›</button>
             </nav>
 
-            <form class="service-directory-filters" method="GET" action="{{ route('services.catalog') }}" data-service-filters>
-                @if ($category !== '') <input type="hidden" name="category" value="{{ $category }}"> @endif
-                <div class="service-directory-selects">
-                    <label>Empresa
-                        <select name="company" data-service-filter-select data-service-company>
-                            <option value="">Todas</option>
-                            @foreach ($companyOptions as $companyOption)
-                                <option value="{{ $companyOption }}" @selected($company === $companyOption)>{{ $companyOption }}</option>
-                            @endforeach
-                        </select>
-                    </label>
-                    <label>Sucursal / almacén
-                        <select name="branch" data-service-filter-select data-service-branch>
-                            <option value="">Todas las sedes</option>
-                            <option value="__none" @selected($branch === '__none')>Sin sede registrada</option>
-                            @foreach ($branchOptions as $branchOption)
-                                <option value="{{ $branchOption }}" @selected($branch === $branchOption)>{{ $branchOption }}</option>
-                            @endforeach
-                        </select>
-                    </label>
-                    <label>Estado
-                        <select name="status" data-service-filter-select>
-                            <option value="">Todos</option>
-                            <option value="active" @selected($statusFilter === 'active')>Activo</option>
-                            <option value="paused" @selected($statusFilter === 'paused')>Pausado</option>
-                            <option value="inactive" @selected($statusFilter === 'inactive')>Inactivo</option>
-                        </select>
-                    </label>
-                </div>
-                <div class="service-directory-search-row">
-                    <label class="service-directory-search">
-                        <span class="sr-only">Buscar servicio, proveedor, folio o número de servicio</span>
-                        <input type="search" name="q" value="{{ $query }}" placeholder="Buscar servicio, proveedor o folio..." autocomplete="off">
-                    </label>
-                    <button class="button ghost" type="submit">Buscar</button>
-                    @if ($query !== '' || $category !== '' || $company !== '' || $branch !== '' || $statusFilter !== '')
-                        <a class="button ghost" href="{{ route('services.catalog') }}">Limpiar filtros</a>
+            <header class="service-directory-heading occasional-heading">
+                <h2>Servicios Ocasionales</h2>
+                <div class="service-directory-heading-actions">
+                    @if ($canCreateService)
+                        <button class="button primary" type="button" data-occasional-create-open><span aria-hidden="true">+</span> Nuevo servicio</button>
                     @endif
+                    <a class="button ghost" href="{{ route('services.occasional.export') }}">Exportar CSV</a>
                 </div>
-            </form>
+            </header>
 
+            <nav class="service-categories" aria-label="Servicios ocasionales" data-service-carousel-root>
+                <button class="service-carousel-arrow" type="button" title="Servicios anteriores" aria-label="Servicios anteriores" data-service-carousel="previous">‹</button>
+                <div class="service-categories-track" data-service-categories-track>
+                    <a class="service-category-card is-all {{ $isOccasionalView && ! $selectedOccasionalService ? 'is-selected' : '' }}"
+                       href="{{ route('services.catalog', ['view' => 'occasional']) }}"
+                       @if ($isOccasionalView && ! $selectedOccasionalService) aria-current="page" @endif>
+                        <span class="service-category-symbol" aria-hidden="true">▦</span>
+                        <strong>Todos</strong>
+                    </a>
+                    @foreach ($occasionalServices as $occasionalService)
+                        <a class="service-category-card tone-{{ $occasionalService->color }} {{ $isOccasionalView && $selectedOccasionalService?->id === $occasionalService->id ? 'is-selected' : '' }}"
+                           title="{{ $occasionalService->name }}"
+                           href="{{ route('services.catalog', ['occasional' => $occasionalService->id]) }}"
+                           @if ($isOccasionalView && $selectedOccasionalService?->id === $occasionalService->id) aria-current="page" @endif>
+                            <span class="service-category-symbol" aria-hidden="true">@include('services.partials.occasional-icon', ['icon' => $occasionalService->icon])</span>
+                            <strong>{{ $occasionalService->name }}</strong>
+                        </a>
+                    @endforeach
+                </div>
+                <button class="service-carousel-arrow" type="button" title="Más servicios" aria-label="Más servicios" data-service-carousel="next">›</button>
+            </nav>
+
+            @if ($isOccasionalView)
+                <section class="service-directory-list occasional-directory-results" aria-label="Servicios ocasionales seleccionados">
+                    <header class="service-results-heading">
+                        <h3>{{ $selectedOccasionalService?->name ?? 'Todos los servicios ocasionales' }}</h3>
+                    </header>
+                    <div class="service-directory-table-scroll">
+                        <table class="occasional-directory-table">
+                            <thead><tr><th>Servicio</th><th>Categoría</th><th>Número de referencia</th><th>Descripción</th><th>Fecha de alta</th></tr></thead>
+                            <tbody>
+                                @forelse ($occasionalEntries as $entry)
+                                    <tr class="occasional-directory-row">
+                                        <td><strong>{{ $entry->name }}</strong></td>
+                                        <td>{{ $entry->category->name }}</td>
+                                        <td class="occasional-reference">{{ $entry->reference_number }}</td>
+                                        <td>{{ $entry->description ?: '—' }}</td>
+                                        <td>{{ $entry->created_at->format('d/m/Y') }}</td>
+                                    </tr>
+                                @empty
+                                    <tr><td class="service-directory-empty" colspan="5">No hay servicios ocasionales registrados{{ $selectedOccasionalService ? ' en esta categoría' : '' }}.</td></tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
+                    <footer class="service-directory-footer">
+                        <span>Mostrando {{ $occasionalEntries->firstItem() ?? 0 }}–{{ $occasionalEntries->lastItem() ?? 0 }} de {{ $occasionalEntries->total() }} servicios</span>
+                        @if ($occasionalEntries->hasPages())
+                            <nav class="service-directory-pages" aria-label="Páginas de servicios ocasionales">
+                                @if ($occasionalEntries->onFirstPage()) <span aria-disabled="true">‹</span>
+                                @else <a href="{{ $occasionalEntries->previousPageUrl() }}" aria-label="Página anterior">‹</a> @endif
+                                <strong>{{ $occasionalEntries->currentPage() }} de {{ $occasionalEntries->lastPage() }}</strong>
+                                @if ($occasionalEntries->hasMorePages()) <a href="{{ $occasionalEntries->nextPageUrl() }}" aria-label="Página siguiente">›</a>
+                                @else <span aria-disabled="true">›</span> @endif
+                            </nav>
+                        @endif
+                    </footer>
+                </section>
+            @else
+            <div class="service-results-heading" role="status">
+                <h3>{{ $category === '' ? 'Todos los servicios recurrentes' : ($categoryStyles[$category]['label'] ?? $category) }}</h3>
+            </div>
             <section class="service-directory-list" aria-label="Servicios registrados">
                 <div class="service-directory-table-scroll">
                     <table class="service-directory-table">
@@ -198,6 +235,7 @@
                     @endif
                 </footer>
             </section>
+            @endif
         </div>
 
         @if ($canCreateService)
@@ -233,6 +271,90 @@
             @include('services.partials.assets')
         @endif
 
+        @if ($canCreateService)
+            <dialog id="occasional-create-dialog" class="occasional-create-dialog" aria-labelledby="occasional-create-title" data-occasional-create-dialog @if ((old('_service_form') === 'occasional' && $errors->any()) || request()->boolean('create_occasional')) data-auto-open @endif>
+                <form method="POST" action="{{ route('services.occasional.store') }}" data-occasional-form>
+                    @csrf
+                    <input type="hidden" name="_service_form" value="occasional">
+                    <header class="service-create-header">
+                        <div>
+                            <h2 id="occasional-create-title">Nuevo servicio ocasional</h2>
+                        </div>
+                        <button class="service-create-close" type="button" aria-label="Cerrar" data-occasional-create-close>&times;</button>
+                    </header>
+                    <div class="occasional-create-body">
+                        @if (old('_service_form') === 'occasional' && $errors->any())
+                            <div class="service-create-errors occasional-errors" role="alert">
+                                <strong>Revisa los siguientes datos:</strong>
+                                <ul>@foreach ($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul>
+                            </div>
+                        @endif
+                        <div class="occasional-create-fields">
+                            <label for="occasional-category">Categoría
+                                <select id="occasional-category" name="category_id" data-occasional-category>
+                                    <option value="">Nueva categoría</option>
+                                    @foreach ($occasionalServices as $occasionalService)
+                                        <option value="{{ $occasionalService->id }}" data-icon="{{ $occasionalService->icon }}" data-color="{{ $occasionalService->color }}" @selected((string) $selectedFormCategory === (string) $occasionalService->id)>{{ $occasionalService->name }}</option>
+                                    @endforeach
+                                </select>
+                            </label>
+                            <label for="occasional-name"><span>Nombre del servicio/Titular <span class="required-mark">*</span></span>
+                                <input id="occasional-name" name="name" value="{{ old('name', '') }}" maxlength="100" required data-occasional-name>
+                            </label>
+                            <label for="occasional-reference"><span>Número de referencia <span class="required-mark">*</span></span>
+                                <input id="occasional-reference" name="reference_number" value="{{ old('reference_number', '') }}" maxlength="100" required data-occasional-reference>
+                            </label>
+                            <label for="occasional-description">Descripción (opcional)
+                                <textarea id="occasional-description" name="description" maxlength="500" rows="3">{{ old('description', '') }}</textarea>
+                            </label>
+                            <fieldset class="occasional-icon-options" data-occasional-new-category @if (filled($selectedFormCategory)) hidden @endif>
+                                <legend>Selecciona un icono</legend>
+                                <div class="occasional-icon-grid">
+                                    @foreach ($occasionalIconChoices as $iconKey => $iconLabel)
+                                        <label class="occasional-icon-choice" title="{{ $iconLabel }}">
+                                            <input type="radio" name="icon" value="{{ $iconKey }}" @checked(old('icon', 'parking') === $iconKey)>
+                                            <span aria-hidden="true">@include('services.partials.occasional-icon', ['icon' => $iconKey])</span>
+                                            <span class="sr-only">{{ $iconLabel }}</span>
+                                        </label>
+                                    @endforeach
+                                </div>
+                            </fieldset>
+                            <fieldset class="occasional-color-options" data-occasional-new-category @if (filled($selectedFormCategory)) hidden @endif>
+                                <legend>Color del icono</legend>
+                                <div class="occasional-color-grid">
+                                    @foreach (['cyan' => 'Turquesa', 'blue' => 'Azul', 'amber' => 'Amarillo', 'rose' => 'Rojo', 'purple' => 'Morado'] as $colorKey => $colorLabel)
+                                        <label class="occasional-color-choice tone-{{ $colorKey }}" title="{{ $colorLabel }}">
+                                            <input type="radio" name="color" value="{{ $colorKey }}" @checked(old('color', 'cyan') === $colorKey)>
+                                            <span class="sr-only">{{ $colorLabel }}</span>
+                                        </label>
+                                    @endforeach
+                                </div>
+                            </fieldset>
+                        </div>
+                        <aside class="occasional-preview" aria-label="Vista previa del servicio">
+                            <strong>Vista previa</strong>
+                            <div class="occasional-preview-card tone-{{ old('color', 'cyan') }}" data-occasional-preview>
+                                <span class="service-category-symbol" aria-hidden="true">
+                                    @foreach ($previewIconKeys as $iconKey)
+                                        <span data-occasional-preview-icon="{{ $iconKey }}" @if (old('icon', 'parking') !== $iconKey) hidden @endif>@include('services.partials.occasional-icon', ['icon' => $iconKey])</span>
+                                    @endforeach
+                                </span>
+                                <strong data-occasional-preview-name>{{ old('name') ?: 'Nombre del servicio' }}</strong>
+                                <small data-occasional-preview-reference>{{ old('reference_number') ?: 'Número de referencia' }}</small>
+                            </div>
+                            <small data-occasional-preview-category>{{ $selectedOccasionalService?->name ?? 'Nueva categoría' }}</small>
+                        </aside>
+                    </div>
+                    <footer class="occasional-create-footer">
+                        <div class="service-directory-heading-actions">
+                            <button class="button ghost" type="button" data-occasional-create-close>Cancelar</button>
+                            <button class="button primary" type="submit"><span aria-hidden="true">+</span> Guardar servicio</button>
+                        </div>
+                    </footer>
+                </form>
+            </dialog>
+        @endif
+
         <style>
             .service-create-dialog { width: min(1100px, calc(100vw - 32px)); max-width: none; max-height: calc(100dvh - 32px); padding: 0; border: 1px solid var(--line); border-radius: 8px; background: #fff; color: var(--text); box-shadow: 0 20px 60px rgba(14, 39, 56, .24); }
             .service-create-dialog::backdrop { background: rgba(14, 39, 56, .54); }
@@ -262,25 +384,73 @@
             .service-categories-track::-webkit-scrollbar { display: none; }
             .service-category-card { width: 112px; height: 78px; flex: 0 0 112px; padding: 9px 7px; border: 1px solid #d6e3f1; border-radius: 7px; background: #fff; color: #17324a; display: grid; justify-items: center; align-content: center; gap: 5px; text-align: center; text-decoration: none; scroll-snap-align: start; box-shadow: 0 1px 3px rgba(23, 49, 74, .05); }
             .service-category-card.is-wide { width: 188px; flex-basis: 188px; }
-            .service-category-card strong { max-width: 100%; overflow-wrap: anywhere; font-size: .78rem; line-height: 1.15; }
+            .service-category-card strong { max-width: 100%; overflow-wrap: anywhere; font-size: .78rem; line-height: 1.15; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
             .service-category-symbol { color: #24669d; font-size: 1.43rem; line-height: 1; font-style: normal; font-weight: 850; }
+            .service-category-symbol svg, .service-list-symbol svg { width: 22px; height: 22px; display: block; }
             .service-category-card.tone-cyan .service-category-symbol { color: #078fb3; }
             .service-category-card.tone-amber .service-category-symbol { color: #d79515; }
             .service-category-card.tone-indigo .service-category-symbol { color: #5168b9; }
             .service-category-card.tone-green .service-category-symbol { color: #149566; }
             .service-category-card.tone-rose .service-category-symbol { color: #c84d6e; }
             .service-category-card.tone-slate .service-category-symbol { color: #53687a; }
+            .service-category-card.tone-blue .service-category-symbol { color: #2866c7; }
+            .service-category-card.tone-purple .service-category-symbol { color: #873bcb; }
             .service-category-card.is-selected { border-color: #1b6d88; background: #1b6d88; color: #fff; }
             .service-category-card.is-selected .service-category-symbol { color: #fff; }
-            .service-directory-filters { min-width: 0; padding: 12px; border: 1px solid var(--line); border-radius: 7px; background: #fff; display: grid; gap: 10px; }
-            .service-directory-selects { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
-            .service-directory-selects label { min-width: 0; gap: 4px; font-size: .81rem; }
-            .service-directory-selects select { width: 100%; min-width: 0; min-height: 36px; }
-            .service-directory-search-row { min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 8px; }
-            .service-directory-search-row .button { min-height: 36px; }
-            .service-directory-search { min-width: 0; }
-            .service-directory-search .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
-            .service-directory-search input { width: 100%; min-height: 36px; }
+            .occasional-heading { margin-top: 2px; }
+            .service-results-heading h3 { margin: 0; font-size: 1rem; line-height: 1.3; }
+            .occasional-directory-results > .service-results-heading { padding: 13px 16px; border-bottom: 1px solid var(--line); background: #f5f9fc; }
+            .occasional-directory-table { width: 100%; min-width: 760px; table-layout: fixed; border-collapse: collapse; }
+            .occasional-directory-table th { padding: 10px 14px; background: #f5f9fc; color: #344c60; text-align: left; font-size: .77rem; }
+            .occasional-directory-table th:nth-child(1) { width: 22%; }
+            .occasional-directory-table th:nth-child(2) { width: 18%; }
+            .occasional-directory-table th:nth-child(3) { width: 20%; }
+            .occasional-directory-table th:nth-child(4) { width: 28%; }
+            .occasional-directory-table th:nth-child(5) { width: 12%; }
+            .occasional-directory-table td { padding: 12px 14px; border-top: 1px solid var(--line); font-size: .83rem; overflow-wrap: anywhere; }
+            .occasional-directory-table td:last-child { white-space: nowrap; }
+            .occasional-reference { font-variant-numeric: tabular-nums; font-weight: 700; }
+            .service-list-symbol.tone-blue { color: #2866c7; background: #e8f0ff; }
+            .service-list-symbol.tone-purple { color: #873bcb; background: #f2e8ff; }
+            .service-create-close:hover, .service-carousel-arrow:not(:disabled):hover { background: #f1f8fc; }
+            .occasional-create-dialog { width: min(790px, calc(100vw - 24px)); max-width: none; max-height: calc(100dvh - 24px); padding: 0; border: 1px solid var(--line); border-radius: 8px; background: #fff; color: var(--text); box-shadow: 0 20px 60px rgba(14, 39, 56, .24); }
+            .occasional-create-dialog::backdrop { background: rgba(14, 39, 56, .54); }
+            .occasional-create-dialog form { max-height: calc(100dvh - 24px); display: flex; flex-direction: column; }
+            .occasional-create-body { min-height: 0; overflow-y: auto; padding: 22px 24px; display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(220px, .9fr); align-items: start; gap: 22px; }
+            .occasional-errors { grid-column: 1 / -1; margin: 0; }
+            .occasional-create-fields { min-width: 0; display: grid; align-content: start; gap: 16px; }
+            .occasional-create-fields label { gap: 6px; }
+            .occasional-create-dialog .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+            .occasional-create-fields :is(input, select, textarea) { width: 100%; }
+            .occasional-create-fields textarea { min-height: 82px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 6px; resize: vertical; font: inherit; }
+            .required-mark { color: #c72d3b; }
+            .occasional-create-fields fieldset { min-width: 0; margin: 0; padding: 0; border: 0; }
+            .occasional-create-fields legend { margin-bottom: 8px; color: #344054; font-weight: 650; }
+            .occasional-icon-grid, .occasional-color-grid { display: flex; flex-wrap: wrap; gap: 7px; }
+            .occasional-icon-choice { position: relative; width: 57px; height: 54px; border: 1px solid var(--line); border-radius: 6px; display: grid; place-items: center; color: #1f5c86; cursor: pointer; }
+            .occasional-icon-choice > span:first-of-type svg { width: 24px; height: 24px; display: block; }
+            .occasional-icon-choice:has(input:checked) { border-color: #087ca1; background: #eaf7fb; box-shadow: inset 0 0 0 1px #087ca1; }
+            .occasional-icon-choice:focus-within, .occasional-color-choice:focus-within { outline: 2px solid #087ca1; outline-offset: 2px; }
+            .occasional-icon-choice input, .occasional-color-choice input { position: absolute; width: 1px; height: 1px; min-height: 0; opacity: 0; }
+            .occasional-color-choice { --swatch: #0786a6; position: relative; width: 31px; height: 31px; border: 3px solid #fff; border-radius: 50%; background: var(--swatch); box-shadow: 0 0 0 1px transparent; cursor: pointer; }
+            .occasional-color-choice:has(input:checked) { box-shadow: 0 0 0 2px var(--swatch); }
+            .occasional-color-choice.tone-blue { --swatch: #3267e8; }
+            .occasional-color-choice.tone-amber { --swatch: #f5a623; }
+            .occasional-color-choice.tone-rose { --swatch: #ea3253; }
+            .occasional-color-choice.tone-purple { --swatch: #873bcb; }
+            .occasional-preview { min-width: 0; min-height: 250px; padding: 20px; border-radius: 6px; background: #ecf6fc; display: grid; align-content: center; justify-items: center; gap: 18px; text-align: center; }
+            .occasional-preview > strong { justify-self: start; align-self: start; }
+            .occasional-preview > small { color: var(--muted); }
+            .occasional-preview-card { width: min(100%, 188px); min-height: 115px; padding: 15px; border: 1px solid var(--line); border-radius: 6px; background: #fff; display: grid; place-content: center; justify-items: center; gap: 8px; }
+            .occasional-preview-card strong { max-width: 100%; overflow-wrap: anywhere; font-size: .9rem; }
+            .occasional-preview-card small { max-width: 100%; color: var(--muted); overflow-wrap: anywhere; }
+            .occasional-preview-card.tone-cyan .service-category-symbol { color: #0786a6; }
+            .occasional-preview-card.tone-blue .service-category-symbol { color: #3267e8; }
+            .occasional-preview-card.tone-amber .service-category-symbol { color: #d79515; }
+            .occasional-preview-card.tone-rose .service-category-symbol { color: #ea3253; }
+            .occasional-preview-card.tone-purple .service-category-symbol { color: #873bcb; }
+            .occasional-preview-card.tone-green .service-category-symbol { color: #149566; }
+            .occasional-create-footer { padding: 15px 24px; border-top: 1px solid var(--line); display: flex; align-items: center; justify-content: flex-end; gap: 12px; }
             .service-directory-list { min-width: 0; border: 1px solid var(--line); border-radius: 7px; overflow: hidden; background: #fff; }
             .service-directory-table-scroll { min-width: 0; overflow-x: auto; }
             .service-directory-table { width: 100%; min-width: 1190px; table-layout: fixed; border-collapse: collapse; }
@@ -332,19 +502,19 @@
                 .service-detail-facts { grid-template-columns: repeat(3, minmax(0, 1fr)); }
             }
             @media (max-width: 700px) {
+                .occasional-create-body { grid-template-columns: 1fr; padding: 16px; }
+                .occasional-preview { min-height: 190px; }
+                .occasional-create-footer { padding: 14px 16px; flex-wrap: wrap; }
                 .service-create-dialog { width: calc(100vw - 16px); max-height: calc(100dvh - 16px); }
                 .service-create-dialog .service-form { height: calc(100dvh - 16px); max-height: calc(100dvh - 16px); }
                 .service-create-dialog .grid-4 { grid-template-columns: minmax(0, 1fr); }
                 .service-create-header, .service-create-footer { padding: 14px 16px; }
                 .service-create-scroll { padding: 0 16px; }
                 .service-directory-heading { align-items: flex-start; flex-direction: column; }
-                .service-directory-selects { grid-template-columns: 1fr; }
                 .service-detail-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
             }
             @media (max-width: 470px) {
                 .service-directory-heading-actions { flex-wrap: wrap; }
-                .service-directory-search-row { grid-template-columns: 1fr 1fr; }
-                .service-directory-search { grid-column: 1 / -1; }
                 .service-detail-facts { grid-template-columns: 1fr; }
                 .service-directory-footer { flex-wrap: wrap; }
             }
@@ -352,19 +522,21 @@
 
         <script>
             document.addEventListener('DOMContentLoaded', () => {
-                const track = document.querySelector('[data-service-categories-track]');
-                const previous = document.querySelector('[data-service-carousel="previous"]');
-                const next = document.querySelector('[data-service-carousel="next"]');
-                const updateCarousel = () => {
-                    previous.disabled = track.scrollLeft <= 1;
-                    next.disabled = track.scrollLeft + track.clientWidth >= track.scrollWidth - 1;
-                };
-                previous.addEventListener('click', () => track.scrollBy({ left: -Math.max(track.clientWidth * .7, 230), behavior: 'smooth' }));
-                next.addEventListener('click', () => track.scrollBy({ left: Math.max(track.clientWidth * .7, 230), behavior: 'smooth' }));
-                track.addEventListener('scroll', updateCarousel, { passive: true });
-                window.addEventListener('resize', updateCarousel);
-                track.querySelector('[aria-current="page"]')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
-                updateCarousel();
+                document.querySelectorAll('[data-service-carousel-root]').forEach((carousel) => {
+                    const track = carousel.querySelector('[data-service-categories-track]');
+                    const previous = carousel.querySelector('[data-service-carousel="previous"]');
+                    const next = carousel.querySelector('[data-service-carousel="next"]');
+                    const updateCarousel = () => {
+                        previous.disabled = track.scrollLeft <= 1;
+                        next.disabled = track.scrollLeft + track.clientWidth >= track.scrollWidth - 1;
+                    };
+                    previous.addEventListener('click', () => track.scrollBy({ left: -Math.max(track.clientWidth * .7, 230), behavior: 'smooth' }));
+                    next.addEventListener('click', () => track.scrollBy({ left: Math.max(track.clientWidth * .7, 230), behavior: 'smooth' }));
+                    track.addEventListener('scroll', updateCarousel, { passive: true });
+                    window.addEventListener('resize', updateCarousel);
+                    track.querySelector('[aria-current="page"]')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+                    updateCarousel();
+                });
 
                 document.querySelectorAll('[data-service-detail-toggle]').forEach((button) => {
                     button.addEventListener('click', () => {
@@ -374,15 +546,17 @@
                     });
                 });
 
-                const filters = document.querySelector('[data-service-filters]');
-                const companySelect = filters.querySelector('[data-service-company]');
-                companySelect.addEventListener('change', () => {
-                    filters.querySelector('[data-service-branch]').value = '';
-                    filters.requestSubmit();
-                });
-                filters.querySelectorAll('[data-service-filter-select]:not([data-service-company])').forEach((select) => {
-                    select.addEventListener('change', () => filters.requestSubmit());
-                });
+                const clearCreateQueryFlag = (flag) => {
+                    const currentUrl = new URL(window.location.href);
+                    if (!currentUrl.searchParams.has(flag)) return;
+                    currentUrl.searchParams.delete(flag);
+                    window.history.replaceState(null, '', currentUrl);
+                    document.querySelectorAll('.sub-nav-button[href]').forEach((link) => {
+                        const linkUrl = new URL(link.href);
+                        if (linkUrl.pathname !== currentUrl.pathname) return;
+                        link.classList.toggle('active', !linkUrl.searchParams.has('create') && !linkUrl.searchParams.has('create_occasional'));
+                    });
+                };
 
                 const createDialog = document.querySelector('[data-service-create-dialog]');
                 if (createDialog) {
@@ -401,18 +575,46 @@
                     createDialog.addEventListener('click', (event) => {
                         if (event.target === createDialog) createDialog.close();
                     });
-                    createDialog.addEventListener('close', () => {
-                        const currentUrl = new URL(window.location.href);
-                        if (!currentUrl.searchParams.has('create')) return;
-                        currentUrl.searchParams.delete('create');
-                        window.history.replaceState(null, '', currentUrl);
-                        document.querySelectorAll('.sub-nav-button[href]').forEach((link) => {
-                            const linkUrl = new URL(link.href);
-                            if (linkUrl.pathname !== currentUrl.pathname) return;
-                            link.classList.toggle('active', !linkUrl.searchParams.has('create'));
-                        });
-                    });
+                    createDialog.addEventListener('close', () => clearCreateQueryFlag('create'));
                     if (createDialog.hasAttribute('data-auto-open')) openCreateDialog();
+                }
+
+                const occasionalDialog = document.querySelector('[data-occasional-create-dialog]');
+                if (occasionalDialog) {
+                    const openOccasionalDialog = () => {
+                        occasionalDialog.showModal();
+                        occasionalDialog.querySelector('[name="name"]')?.focus({ preventScroll: true });
+                    };
+                    document.querySelector('[data-occasional-create-open]')?.addEventListener('click', openOccasionalDialog);
+                    occasionalDialog.querySelectorAll('[data-occasional-create-close]').forEach((button) => {
+                        button.addEventListener('click', () => occasionalDialog.close());
+                    });
+                    occasionalDialog.addEventListener('click', (event) => {
+                        if (event.target === occasionalDialog) occasionalDialog.close();
+                    });
+                    occasionalDialog.addEventListener('close', () => clearCreateQueryFlag('create_occasional'));
+                    const form = occasionalDialog.querySelector('[data-occasional-form]');
+                    const preview = form.querySelector('[data-occasional-preview]');
+                    const category = form.querySelector('[data-occasional-category]');
+                    const updatePreview = () => {
+                        const isNewCategory = !category.value;
+                        form.querySelectorAll('[data-occasional-new-category]').forEach((fieldset) => {
+                            fieldset.hidden = !isNewCategory;
+                        });
+                        form.querySelector('[data-occasional-preview-name]').textContent = form.querySelector('[data-occasional-name]').value.trim() || 'Nombre del servicio';
+                        form.querySelector('[data-occasional-preview-reference]').textContent = form.querySelector('[data-occasional-reference]').value.trim() || 'Número de referencia';
+                        form.querySelector('[data-occasional-preview-category]').textContent = isNewCategory ? 'Nueva categoría' : category.selectedOptions[0].textContent.trim();
+                        const selectedIcon = isNewCategory ? form.querySelector('[name="icon"]:checked')?.value || 'parking' : category.selectedOptions[0].dataset.icon;
+                        const selectedColor = isNewCategory ? form.querySelector('[name="color"]:checked')?.value || 'cyan' : category.selectedOptions[0].dataset.color;
+                        form.querySelectorAll('[data-occasional-preview-icon]').forEach((icon) => {
+                            icon.hidden = icon.dataset.occasionalPreviewIcon !== selectedIcon;
+                        });
+                        preview.className = `occasional-preview-card tone-${selectedColor}`;
+                    };
+                    form.addEventListener('input', updatePreview);
+                    form.addEventListener('change', updatePreview);
+                    updatePreview();
+                    if (occasionalDialog.hasAttribute('data-auto-open')) openOccasionalDialog();
                 }
             });
         </script>

@@ -13,7 +13,7 @@ class ServiceCatalogDirectoryTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_catalog_filters_real_services_by_category_company_branch_status_and_search(): void
+    public function test_catalog_keeps_deep_link_filters_without_showing_the_removed_filter_panel(): void
     {
         $this->actingAs($this->superAdmin());
         $phone = $this->service('SRV-001', [
@@ -36,8 +36,9 @@ class ServiceCatalogDirectoryTest extends TestCase
             ->assertSee('id="service-'.$water->id.'"', false)
             ->assertDontSee('id="service-'.$phone->id.'"', false)
             ->assertDontSee('id="service-'.$other->id.'"', false)
-            ->assertSee('value="Empresa Norte" selected', false)
-            ->assertSee('value="Norte" selected', false)
+            ->assertDontSee('class="service-directory-filters"', false)
+            ->assertDontSee('data-service-filters', false)
+            ->assertSee('href="'.route('services.catalog', ['category' => 'Agua']).'"', false)
             ->assertSee('aria-current="page"', false);
 
         $this->get(route('services.catalog', ['branch' => '__none']))
@@ -188,7 +189,7 @@ class ServiceCatalogDirectoryTest extends TestCase
             ->assertSee('Internet');
         $this->get(route('services.catalog', ['create' => 1]))->assertOk()
             ->assertSee('data-auto-open', false)
-            ->assertSee(route('services.catalog', ['create' => 1]));
+            ->assertDontSee('href="'.route('services.catalog', ['create' => 1]).'"', false);
         $this->get(route('services.create'))->assertOk()
             ->assertSee('value="Recoleccion de basura"', false)
             ->assertSee('value="Internet"', false);

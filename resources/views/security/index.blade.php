@@ -383,11 +383,6 @@
                         @endphp
 
                         <div class="security-camera-preview" data-security-camera-preview>
-                            <header class="security-camera-catalog-heading">
-                                <h2>Catálogo de cámaras</h2>
-                                <p>Administra la información y conexión de tus cámaras.</p>
-                            </header>
-
                             @if (session('camera_registered') || session('camera_updated'))
                                 <span class="security-camera-registered">{{ session('camera_registered') ? 'Cámara conectada' : (session('camera_connection_saved') ? 'Cambios guardados. La señal RTSP aún no se ha verificado.' : 'Cámara actualizada') }}</span>
                             @endif
@@ -1549,10 +1544,6 @@
             .security-branch-camera-results { min-width: 0; }
             .security-branch-camera-hint { margin: 0; color: var(--muted); font-size: .82rem; font-weight: 750; }
             .security-camera-preview { min-width: 0; display: grid; gap: 14px; }
-            .security-camera-catalog-heading h2,
-            .security-camera-catalog-heading p { margin: 0; }
-            .security-camera-catalog-heading h2 { font-size: 1.4rem; }
-            .security-camera-catalog-heading p { margin-top: 4px; color: var(--muted); font-size: .8rem; }
             .security-camera-catalog-toolbar { min-width: 0; display: grid; grid-template-columns: minmax(180px, 1.25fr) minmax(150px, .7fr) auto auto auto; align-items: center; gap: 9px; }
             .security-camera-catalog-toolbar > input,
             .security-camera-catalog-toolbar > select { width: 100%; min-width: 0; min-height: 40px; }

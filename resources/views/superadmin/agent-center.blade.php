@@ -108,7 +108,7 @@
                                 <h3>{{ $agent->name }}</h3>
                                 <form
                                     method="POST"
-                                    action="{{ route('superadmin.agents.toggle', $agent) }}"
+                                    action="{{ route($actionRoutePrefix.'.toggle', $agent) }}"
                                     class="agent-activation"
                                     data-active="{{ $agent->is_active ? 'true' : 'false' }}"
                                 >
@@ -156,12 +156,12 @@
         <dialog
             class="agent-modal"
             data-agent-modal
-            data-store-url="{{ route('superadmin.agents.store') }}"
-            data-update-url="{{ route('superadmin.agents.update', ['aiAgent' => '__AGENT__']) }}"
+            data-store-url="{{ route($actionRoutePrefix.'.store') }}"
+            data-update-url="{{ route($actionRoutePrefix.'.update', ['aiAgent' => '__AGENT__']) }}"
             data-open-on-load="{{ $openAgentForm ? 'true' : 'false' }}"
             data-editing-id="{{ old('editing_agent_id', '') }}"
         >
-            <form method="POST" action="{{ route('superadmin.agents.store') }}" data-agent-form>
+            <form method="POST" action="{{ route($actionRoutePrefix.'.store') }}" data-agent-form>
                 @csrf
                 <input type="hidden" name="_method" value="PUT" data-agent-method disabled>
                 <input type="hidden" name="context" value="{{ old('context', $context) }}">

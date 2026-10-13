@@ -109,7 +109,7 @@ class ConstructionProject extends Model
 
     public function scopeVisibleTo(Builder $query, User $user): Builder
     {
-        if ($user->role === 'superadmin') {
+        if ($user->canManageAllRecordsIn('construction')) {
             return $query;
         }
 

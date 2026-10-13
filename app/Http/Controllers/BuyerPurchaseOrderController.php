@@ -360,7 +360,7 @@ class BuyerPurchaseOrderController extends Controller
 
     private function buyerOrders(Request $request)
     {
-        $orders = $this->isSuperAdmin()
+        $orders = $this->canManageAllOrders()
             ? PurchaseOrder::query()
             : PurchaseOrder::where('buyer_id', Auth::id());
 
@@ -383,7 +383,7 @@ class BuyerPurchaseOrderController extends Controller
 
     private function allowedCompanies()
     {
-        if ($this->isSuperAdmin()) {
+        if ($this->canManageAllOrders()) {
             return Company::orderBy('name')->get();
         }
 
@@ -399,19 +399,19 @@ class BuyerPurchaseOrderController extends Controller
     private function providersForCurrentUser()
     {
         return Provider::query()
-            ->when(! $this->isSuperAdmin(), fn ($builder) => $builder->where('buyer_id', Auth::id()))
+            ->when(! $this->canManageAllOrders(), fn ($builder) => $builder->where('buyer_id', Auth::id()))
             ->orderBy('business_name')
             ->get();
     }
 
-    private function isSuperAdmin(): bool
+    private function canManageAllOrders(): bool
     {
-        return Auth::user()?->role === 'superadmin';
+        return Auth::user()?->canManageAllRecordsIn('procurement') ?? false;
     }
 
     private function isConstructionContext(Request $request): bool
     {
-        return $this->isSuperAdmin() && $request->query('context') === 'construction';
+        return $this->canManageAllOrders() && $request->query('context') === 'construction';
     }
 
     private function contextRouteParameters(Request $request): array
@@ -447,6 +447,6 @@ class BuyerPurchaseOrderController extends Controller
     private function ensureOwner(PurchaseOrder $order): void
     {
         $this->ensureBuyer();
-        abort_unless($this->isSuperAdmin() || (int) $order->buyer_id === Auth::id(), 403);
+        abort_unless($this->canManageAllOrders() || (int) $order->buyer_id === Auth::id(), 403);
     }
 }

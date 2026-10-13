@@ -13,6 +13,7 @@
             'next_week' => 'Monto a pagar la proxima semana',
             'pending' => 'Monto pendiente por pagar',
         ];
+        $expandedMonthKey = request()->query('month');
     @endphp
 
     <x-app-shell :title="$pageTitle">
@@ -24,12 +25,14 @@
         @foreach ($months as $month)
             @php
                 $monthDetailId = 'service-month-detail-' . $month['month_key'];
+                $showDemoPayment = $historyMode && ($demoPaymentMonth ?? null) === $month['month_key'];
+                $isExpanded = $expandedMonthKey ? $month['month_key'] === $expandedMonthKey : $loop->first;
             @endphp
-            <section class="panel service-month-panel" data-month-panel data-month-key="{{ $month['month_key'] }}">
+            <section @class(['panel service-month-panel', 'service-history-month-panel' => $historyMode]) data-month-panel data-month-key="{{ $month['month_key'] }}">
                 <div class="panel-header service-month-header service-month-header-compact">
                     <button class="month-toggle" type="button" data-month-toggle
-                        aria-controls="{{ $monthDetailId }}" aria-expanded="{{ $loop->first ? 'true' : 'false' }}">
-                        <span class="month-toggle-sign" aria-hidden="true">{{ $loop->first ? '-' : '+' }}</span>
+                        aria-controls="{{ $monthDetailId }}" aria-expanded="{{ $isExpanded ? 'true' : 'false' }}">
+                        <span class="month-toggle-sign" aria-hidden="true">{{ $isExpanded ? '-' : '+' }}</span>
                         <span class="month-toggle-copy">
                             <h2>{{ $month['label'] }} <span class="month-total-inline">Total:
                                     ${{ number_format((float) $month['total'], 0) }}</span></h2>
@@ -59,7 +62,10 @@
                     </div>
                 </div>
 
-                <div id="{{ $monthDetailId }}" class="service-month-detail" @if (! $loop->first) hidden @endif>
+                <div id="{{ $monthDetailId }}" class="service-month-detail" @if (! $isExpanded) hidden @endif>
+                    @if ($showDemoPayment)
+                        <p class="service-demo-notice">Pago de demostracion. No es un movimiento real y no se incluye en los totales ni reportes.</p>
+                    @endif
                     <div class="table-scroll service-month-scroll">
                         <table class="service-month-table" data-column-filter-table>
                             <thead>
@@ -82,6 +88,80 @@
                                 </tr>
                             </thead>
                             <tbody>
+                                @if ($showDemoPayment)
+                                    <tr class="service-row-locked service-demo-payment-row" data-filter-row data-demo-row>
+                                        <td data-filter-value="DEMO-SEP-2026"><strong>DEMO-SEP-2026</strong></td>
+                                        <td data-filter-value="Empresa de ejemplo">Empresa de ejemplo</td>
+                                        <td data-filter-value="Sucursal demo">Sucursal demo</td>
+                                        <td data-filter-value="Internet empresarial (demo)">Internet empresarial (demo)</td>
+                                        <td data-filter-value="Banco de ejemplo">Banco de ejemplo</td>
+                                        <td data-filter-value="No aplica">No aplica</td>
+                                        <td data-filter-value="Proveedor de ejemplo">Proveedor de ejemplo</td>
+                                        <td data-filter-value="DEMO-001">DEMO-001</td>
+                                        <td data-filter-value="01/08/2026 al 31/08/2026">01/08 al 31/08</td>
+                                        <td data-filter-value="18/09/2026" data-filter-date="2026-09-18">18/09/2026</td>
+                                        <td data-filter-value="$1,250.00">$1,250.00</td>
+                                        <td data-filter-value="PAGO-DEMO-SEP-2026">PAGO-DEMO-SEP-2026</td>
+                                        <td data-filter-value="Pagado (demo)">
+                                            <button class="status primary service-payment-trigger" type="button"
+                                                data-payment-preview
+                                                data-dialog-title="Comprobante de pago"
+                                                data-payment-title="Internet empresarial (demo)"
+                                                data-preview-kind="demo"
+                                                data-preview-url="{{ route('services.demo-payment-file') }}"
+                                                data-download-url="{{ route('services.demo-payment-file', ['download' => 1]) }}">
+                                                Pagado (demo)
+                                            </button>
+                                        </td>
+                                        <td data-filter-value="Ver">
+                                            <button class="attachment-pill service-payment-trigger" type="button"
+                                                data-payment-preview
+                                                data-dialog-title="Factura"
+                                                aria-label="Ver factura de ejemplo"
+                                                title="Factura de ejemplo"
+                                                data-payment-title="Internet empresarial (demo)"
+                                                data-preview-kind="invoice-demo"
+                                                data-preview-url="{{ route('services.demo-invoice-file') }}"
+                                                data-download-url="{{ route('services.demo-invoice-file', ['download' => 1]) }}">
+                                                Ver
+                                            </button>
+                                        </td>
+                                        <td data-filter-value="Ver">
+                                            <button class="attachment-pill service-payment-trigger" type="button"
+                                                data-payment-preview
+                                                data-dialog-title="Comprobante de pago"
+                                                aria-label="Ver comprobante de pago de ejemplo"
+                                                title="Comprobante de ejemplo"
+                                                data-payment-title="Internet empresarial (demo)"
+                                                data-preview-kind="demo"
+                                                data-preview-url="{{ route('services.demo-payment-file') }}"
+                                                data-download-url="{{ route('services.demo-payment-file', ['download' => 1]) }}">
+                                                Ver
+                                            </button>
+                                        </td>
+                                    </tr>
+                                @endif
+                                @unless ($historyMode)
+                                    @foreach ($month['occasional_payments'] as $payment)
+                                        <tr data-filter-row class="service-occasional-payment-row">
+                                            <td data-filter-value="OCP-{{ $payment->id }}"><strong>OCP-{{ str_pad($payment->id, 5, '0', STR_PAD_LEFT) }}</strong></td>
+                                            <td data-filter-value="{{ $payment->entry->name }}">{{ $payment->entry->name }}</td>
+                                            <td data-filter-value="Sin sucursal">-</td>
+                                            <td data-filter-value="{{ $payment->entry->category->name }} (ocasional)">{{ $payment->entry->category->name }} (ocasional)</td>
+                                            <td data-filter-value="Sin banco">-</td>
+                                            <td data-filter-value="Sin cuenta">-</td>
+                                            <td data-filter-value="Sin proveedor">-</td>
+                                            <td data-filter-value="{{ $payment->entry->reference_number }}">{{ $payment->entry->reference_number }}</td>
+                                            <td data-filter-value="Pago único">Pago único</td>
+                                            <td data-filter-value="{{ $payment->due_date->format('d/m/Y') }}" data-filter-date="{{ $payment->due_date->toDateString() }}">{{ $payment->due_date->format('d/m/Y') }}</td>
+                                            <td data-filter-value="${{ number_format((float) $payment->amount, 2) }}">${{ number_format((float) $payment->amount, 2) }}</td>
+                                            <td data-filter-value="{{ $payment->entry->reference_number }}">{{ $payment->entry->reference_number }}</td>
+                                            <td data-filter-value="Pendiente"><span class="status pending">Pendiente</span></td>
+                                            <td data-filter-value="Sin Archivo">Sin Archivo</td>
+                                            <td data-filter-value="Sin Archivo">Sin Archivo</td>
+                                        </tr>
+                                    @endforeach
+                                @endunless
                                 @forelse ($month['items'] as $item)
                                     @php
                                         $service = $item['service'];
@@ -104,6 +184,12 @@
                                                     ? 'approved'
                                                     : 'pending'));
                                         $periodAmount = (float) ($receipt?->amount ?? $service->cost);
+                                        $paymentFilename = $receipt?->payment_original_name ?: ($receipt?->payment_file_path ?? '');
+                                        $paymentExtension = strtolower(pathinfo($paymentFilename, PATHINFO_EXTENSION));
+                                        $paymentPreviewKind = $paymentExtension === 'pdf' ? 'pdf' : (in_array($paymentExtension, ['jpg', 'jpeg', 'png', 'webp'], true) ? 'image' : 'other');
+                                        $supportFilename = $receipt?->support_original_name ?: ($receipt?->support_file_path ?? '');
+                                        $supportExtension = strtolower(pathinfo($supportFilename, PATHINFO_EXTENSION));
+                                        $supportPreviewKind = $supportExtension === 'pdf' ? 'pdf' : (in_array($supportExtension, ['jpg', 'jpeg', 'png', 'webp'], true) ? 'image' : 'other');
                                         $paymentDueDate = \Illuminate\Support\Carbon::parse(
                                             $item['payment_due_date'] ?? $item['due_date'],
                                         );
@@ -152,22 +238,41 @@
                                         <td data-filter-value="{{ $item['service']->reference }}">
                                             {{ $item['service']->reference }}</td>
                                         <td data-filter-value="{{ $statusText }}">
-                                            <details class="status-menu">
-                                                <summary class="status {{ $statusClass }}">{{ $statusText }}</summary>
-                                                <div class="status-menu-panel">
-                                                    <span
-                                                        class="fine-print">{{ $isDomiciled ? 'Pago domiciliado automatico' : ($paid ? 'Bloqueado por pago' : 'Estado de factura') }}</span>
-                                                </div>
-                                            </details>
+                                            @if ($paid && ! $isDomiciled)
+                                                <button class="status paid service-payment-trigger" type="button"
+                                                    data-payment-preview
+                                                    data-dialog-title="Comprobante de pago"
+                                                    data-payment-title="{{ $service->service_name }}"
+                                                    data-payment-filename="{{ $paymentFilename }}"
+                                                    data-preview-kind="{{ $paymentPreviewKind }}"
+                                                    data-preview-url="{{ route('services.payment-file', $receipt) }}"
+                                                    data-download-url="{{ route('services.payment-file.pdf', $receipt) }}">
+                                                    Pagado
+                                                </button>
+                                            @else
+                                                <details class="status-menu">
+                                                    <summary class="status {{ $statusClass }}">{{ $statusText }}</summary>
+                                                    <div class="status-menu-panel">
+                                                        <span
+                                                            class="fine-print">{{ $isDomiciled ? 'Pago domiciliado automatico' : ($paid ? 'Bloqueado por pago' : 'Estado de factura') }}</span>
+                                                    </div>
+                                                </details>
+                                            @endif
                                         </td>
 
-                                        <td data-filter-value="{{ $receipt?->support_original_name ?: 'Pendiente' }}">
-                                            @if ($receipt?->support_original_name)
+                                        <td data-filter-value="{{ $supportFilename ?: 'Sin Archivo' }}">
+                                            @if ($hasSupport)
                                                 <div class="item-actions">
-                                                    <a class="attachment-pill"
-                                                        href="{{ route('services.support-file', $receipt) }}"
-                                                        target="_blank"
-                                                        rel="noopener"><span>Adjunto</span>{{ $receipt->support_original_name }}</a>
+                                                    <button class="attachment-pill service-payment-trigger" type="button"
+                                                        data-payment-preview
+                                                        data-dialog-title="Factura"
+                                                        aria-label="Ver factura {{ $supportFilename }}"
+                                                        title="{{ $supportFilename }}"
+                                                        data-payment-title="{{ $service->service_name }}"
+                                                        data-payment-filename="{{ $supportFilename }}"
+                                                        data-preview-kind="{{ $supportPreviewKind }}"
+                                                        data-preview-url="{{ route('services.support-file', $receipt) }}"
+                                                        data-download-url="{{ route('services.support-file.pdf', $receipt) }}">Ver</button>
                                                     @if (! $historyMode && $item['service']->status !== 'inactive' && (!$paid || $isDomiciled))
                                                         <a class="button ghost small"
                                                             href="{{ route('services.receipt', [$item['service'], $item['due_date']]) }}">Cambiar
@@ -182,27 +287,33 @@
                                                         href="{{ route('services.receipt', [$item['service'], $item['due_date']]) }}">Subir
                                                         factura</a>
                                                 @else
-                                                    Pendiente
+                                                    Sin Archivo
                                                 @endif
                                             @endif
                                         </td>
-                                        <td
-                                            data-filter-value="{{ $isDomiciled ? 'DOM' : $receipt?->payment_original_name ?? 'Pendiente' }}">
-                                            @if ($isDomiciled)
-                                                DOM
-                                            @elseif ($receipt?->payment_file_path)
-                                                <a class="attachment-pill"
-                                                    href="{{ route('services.payment-file', $receipt) }}" target="_blank"
-                                                    rel="noopener"><span>Adjunto</span>{{ $receipt->payment_original_name ?: 'Comprobante' }}</a>
+                                        <td data-filter-value="{{ $paid ? $paymentFilename : 'Sin Archivo' }}">
+                                            @if ($paid)
+                                                <button class="attachment-pill service-payment-trigger" type="button"
+                                                    data-payment-preview
+                                                    data-dialog-title="Comprobante de pago"
+                                                    aria-label="Ver comprobante de pago {{ $paymentFilename }}"
+                                                    title="{{ $paymentFilename }}"
+                                                    data-payment-title="{{ $service->service_name }}"
+                                                    data-payment-filename="{{ $paymentFilename }}"
+                                                    data-preview-kind="{{ $paymentPreviewKind }}"
+                                                    data-preview-url="{{ route('services.payment-file', $receipt) }}"
+                                                    data-download-url="{{ route('services.payment-file.pdf', $receipt) }}">Ver</button>
                                             @else
-                                                Pendiente
+                                                Sin Archivo
                                             @endif
                                         </td>
                                     </tr>
                                 @empty
-                                    <tr>
-                                        <td colspan="15">{{ $emptyMessage }}</td>
-                                    </tr>
+                                    @unless ($showDemoPayment || (! $historyMode && $month['occasional_payments']->isNotEmpty()))
+                                        <tr>
+                                            <td colspan="15">{{ $emptyMessage }}</td>
+                                        </tr>
+                                    @endunless
                                 @endforelse
                             </tbody>
                         </table>
@@ -212,7 +323,196 @@
         @endforeach
     </x-app-shell>
 
+    @if (! $historyMode && $canCreateOccasionalPayment)
+        <dialog class="occasional-payment-dialog" data-occasional-payment-dialog aria-labelledby="occasional-payment-title"
+            @if (request()->boolean('pay_occasional') || (old('_service_form') === 'occasional_payment' && $errors->any())) data-auto-open @endif>
+            <form method="POST" action="{{ route('services.occasional.payments.store') }}">
+                @csrf
+                <input type="hidden" name="_service_form" value="occasional_payment">
+                <header class="service-payment-dialog-header">
+                    <h2 id="occasional-payment-title">Pagar servicio ocasional</h2>
+                    <button class="service-payment-close" type="button" data-occasional-payment-close aria-label="Cerrar" title="Cerrar">&times;</button>
+                </header>
+                <div class="occasional-payment-fields">
+                    @if (old('_service_form') === 'occasional_payment' && $errors->any())
+                        <div class="error-list" role="alert">
+                            <strong>Revisa los datos capturados.</strong>
+                            <ul>@foreach ($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul>
+                        </div>
+                    @endif
+                    @php $paymentMode = old('mode') === 'new' || $occasional_entries->isEmpty() ? 'new' : 'existing'; @endphp
+                    <div class="occasional-payment-modes" role="group" aria-label="Origen del servicio ocasional">
+                        <label>
+                            <input type="radio" name="mode" value="existing" @checked($paymentMode === 'existing') @disabled($occasional_entries->isEmpty())>
+                            <span>Registrado</span>
+                        </label>
+                        <label>
+                            <input type="radio" name="mode" value="new" @checked($paymentMode === 'new')>
+                            <span>Nuevo servicio</span>
+                        </label>
+                    </div>
+                    <fieldset class="occasional-payment-source" data-payment-existing @if ($paymentMode === 'new') hidden disabled @endif>
+                        <label for="occasional-payment-entry">Servicio ocasional
+                            <select id="occasional-payment-entry" name="occasional_service_entry_id" required>
+                                <option value="">Seleccionar servicio</option>
+                                @foreach ($occasional_entries as $entry)
+                                    <option value="{{ $entry->id }}" @selected((string) old('occasional_service_entry_id') === (string) $entry->id)>{{ $entry->category->name }} - {{ $entry->name }} - {{ $entry->reference_number }}</option>
+                                @endforeach
+                            </select>
+                        </label>
+                    </fieldset>
+                    <fieldset class="occasional-payment-source" data-payment-new @if ($paymentMode === 'existing') hidden disabled @endif>
+                        <label for="occasional-payment-category">Categoría
+                            <select id="occasional-payment-category" name="category_id" required>
+                                <option value="">Seleccionar categoría</option>
+                                @foreach ($occasional_categories as $category)
+                                    <option value="{{ $category->id }}" @selected((string) old('category_id') === (string) $category->id)>{{ $category->name }}</option>
+                                @endforeach
+                            </select>
+                        </label>
+                        <label for="occasional-payment-name">Nombre del servicio/Titular
+                            <input id="occasional-payment-name" name="name" maxlength="100" value="{{ old('name') }}" required>
+                        </label>
+                        <label for="occasional-payment-reference">Número de referencia
+                            <input id="occasional-payment-reference" name="reference_number" maxlength="100" value="{{ old('reference_number') }}" required>
+                        </label>
+                    </fieldset>
+                    <div class="occasional-payment-grid">
+                        <label for="occasional-payment-amount">Monto (MXN)
+                            <input id="occasional-payment-amount" name="amount" type="number" min="0.01" max="9999999999.99" step="0.01" value="{{ old('amount') }}" required>
+                        </label>
+                        <label for="occasional-payment-date">Fecha prevista de pago
+                            <input id="occasional-payment-date" name="due_date" type="date" min="{{ now()->toDateString() }}" max="{{ now()->addMonthsNoOverflow(12)->endOfMonth()->toDateString() }}" value="{{ old('due_date', now()->toDateString()) }}" required>
+                        </label>
+                    </div>
+                </div>
+                <footer class="service-payment-dialog-footer">
+                    <button class="button ghost" type="button" data-occasional-payment-close>Cancelar</button>
+                    <button class="button primary" type="submit" @disabled($occasional_entries->isEmpty() && $occasional_categories->isEmpty())>Agregar a Servicios Mensuales</button>
+                </footer>
+            </form>
+        </dialog>
+    @endif
+
+    <dialog class="service-payment-dialog" data-payment-dialog aria-labelledby="service-payment-dialog-title">
+        <header class="service-payment-dialog-header">
+            <div>
+                <h2 id="service-payment-dialog-title">Comprobante de pago</h2>
+                <p class="fine-print" data-payment-dialog-subtitle></p>
+            </div>
+            <button class="service-payment-close" type="button" data-payment-close aria-label="Cerrar ventana" title="Cerrar">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+            </button>
+        </header>
+        <div class="service-payment-preview">
+            <div class="service-payment-original" data-payment-original-bar hidden>
+                <span data-payment-original-name></span>
+                <a data-payment-original-link href="#" target="_blank" rel="noopener">Abrir archivo original</a>
+            </div>
+            @if ($historyMode && filled($demoPaymentMonth ?? null))
+                <div class="service-payment-demo" data-invoice-demo hidden>
+                    <div class="service-payment-demo-mark">OC System</div>
+                    <h3>Factura de ejemplo</h3>
+                    <p class="service-payment-demo-warning">DEMOSTRACIÓN - NO ES CFDI NI TIENE VALIDEZ FISCAL</p>
+                    <dl>
+                        <div><dt>Folio de servicio</dt><dd>DEMO-SEP-2026</dd></div>
+                        <div><dt>Titular</dt><dd>Empresa de ejemplo</dd></div>
+                        <div><dt>Sucursal</dt><dd>Sucursal demo</dd></div>
+                        <div><dt>Servicio</dt><dd>Internet empresarial (demo)</dd></div>
+                        <div><dt>Proveedor</dt><dd>Proveedor de ejemplo</dd></div>
+                        <div><dt>Vencimiento</dt><dd>18/09/2026</dd></div>
+                        <div><dt>Monto</dt><dd>$1,250.00 MXN</dd></div>
+                    </dl>
+                    <p class="fine-print">Esta vista es una muestra visual. No sustituye una factura emitida por el proveedor.</p>
+                </div>
+                <div class="service-payment-demo" data-payment-demo hidden>
+                    <div class="service-payment-demo-mark">OC System</div>
+                    <h3>Comprobante de pago</h3>
+                    <p class="service-payment-demo-warning">DEMOSTRACIÓN - SIN VALIDEZ COMO COMPROBANTE DE PAGO</p>
+                    <dl>
+                        <div><dt>Folio</dt><dd>DEMO-SEP-2026</dd></div>
+                        <div><dt>Titular</dt><dd>Empresa de ejemplo</dd></div>
+                        <div><dt>Sucursal</dt><dd>Sucursal demo</dd></div>
+                        <div><dt>Servicio</dt><dd>Internet empresarial (demo)</dd></div>
+                        <div><dt>Proveedor</dt><dd>Proveedor de ejemplo</dd></div>
+                        <div><dt>Fecha de pago</dt><dd>18/09/2026</dd></div>
+                        <div><dt>Referencia</dt><dd>PAGO-DEMO-SEP-2026</dd></div>
+                        <div><dt>Monto</dt><dd>$1,250.00 MXN</dd></div>
+                    </dl>
+                    <p class="fine-print">Este documento es únicamente una muestra. No registra ni acredita un pago real.</p>
+                </div>
+            @endif
+            <iframe data-payment-frame title="Vista previa del documento" hidden></iframe>
+            <img data-payment-image alt="Documento adjunto" hidden>
+            <p data-payment-unavailable hidden>No hay vista previa disponible para este tipo de archivo. Puedes abrir el archivo original o descargar un resumen en PDF.</p>
+        </div>
+        <footer class="service-payment-dialog-footer">
+            <a class="button primary" data-payment-download href="#" title="Descargar PDF" aria-label="Descargar PDF">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></svg>
+                Descargar PDF
+            </a>
+        </footer>
+    </dialog>
+
     <style>
+        .service-month-panel:not(.service-history-month-panel) .month-toggle h2 { font-size: 1.2rem; }
+        .occasional-payment-dialog { border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 24px 64px rgba(16, 43, 58, .24); color: var(--text); max-height: calc(100dvh - 32px); padding: 0; width: min(560px, calc(100vw - 32px)); }
+        .occasional-payment-dialog::backdrop { background: rgba(16, 43, 58, .55); }
+        .occasional-payment-dialog form { display: flex; flex-direction: column; max-height: calc(100dvh - 32px); }
+        .occasional-payment-fields { display: grid; gap: 16px; overflow-y: auto; padding: 20px; }
+        .occasional-payment-fields label { display: grid; gap: 6px; font-size: .88rem; font-weight: 800; min-width: 0; }
+        .occasional-payment-fields input, .occasional-payment-fields select { background: #fff; border: 1px solid var(--line); border-radius: 6px; color: var(--text); font: inherit; font-weight: 500; min-height: 40px; min-width: 0; padding: 8px 10px; width: 100%; }
+        .occasional-payment-modes { border: 1px solid var(--line); border-radius: 6px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 3px; }
+        .occasional-payment-modes label { cursor: pointer; display: block; }
+        .occasional-payment-modes input { position: absolute; opacity: 0; width: 1px; height: 1px; min-height: 0; }
+        .occasional-payment-modes span { border-radius: 4px; display: block; padding: 8px; text-align: center; }
+        .occasional-payment-modes input:checked + span { background: #e5f3f7; color: var(--primary-strong); }
+        .occasional-payment-modes input:focus-visible + span { outline: 2px solid var(--primary); }
+        .occasional-payment-modes input:disabled + span { color: var(--muted); cursor: not-allowed; opacity: .6; }
+        .occasional-payment-source { border: 0; display: grid; gap: 14px; margin: 0; min-width: 0; padding: 0; }
+        .occasional-payment-grid { display: grid; gap: 14px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .occasional-payment-dialog .service-payment-dialog-footer { gap: 8px; }
+        .occasional-payment-dialog button:disabled { cursor: not-allowed; opacity: .55; }
+        @media (max-width: 560px) { .occasional-payment-grid { grid-template-columns: 1fr; } .occasional-payment-dialog .service-payment-dialog-footer { flex-wrap: wrap; } }
+        .service-payment-trigger { cursor: pointer; font-family: inherit; }
+        .service-payment-trigger:hover { filter: brightness(.96); }
+        .service-payment-trigger:focus-visible, .service-payment-close:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+        button.attachment-pill { cursor: pointer; font: inherit; font-weight: 800; text-align: left; }
+        .service-payment-dialog { border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 24px 64px rgba(16, 43, 58, .24); color: var(--text); max-height: calc(100dvh - 32px); padding: 0; width: min(900px, calc(100vw - 32px)); }
+        .service-payment-dialog[open] { display: flex; flex-direction: column; }
+        .service-payment-dialog::backdrop { background: rgba(16, 43, 58, .55); }
+        .service-payment-dialog-header { align-items: flex-start; border-bottom: 1px solid var(--line); display: flex; gap: 16px; justify-content: space-between; padding: 16px 20px; }
+        .service-payment-dialog-header h2 { font-size: 1.15rem; margin: 0; }
+        .service-payment-dialog-header p { margin: 4px 0 0; }
+        .service-payment-close { align-items: center; background: #fff; border: 1px solid var(--line); border-radius: 6px; color: var(--text); cursor: pointer; display: inline-flex; flex: 0 0 auto; height: 34px; justify-content: center; padding: 0; width: 34px; }
+        .service-payment-preview { align-items: center; background: #f1f5f9; display: flex; flex-direction: column; height: min(68dvh, 680px); justify-content: center; min-height: 280px; overflow: auto; }
+        .service-payment-preview iframe { border: 0; flex: 1; min-height: 0; width: 100%; }
+        .service-payment-preview img { height: auto; max-height: 100%; max-width: 100%; object-fit: contain; }
+        .service-payment-preview p { color: var(--muted); max-width: 420px; padding: 24px; text-align: center; }
+        .service-payment-original { align-items: center; background: #fff; border-bottom: 1px solid var(--line); color: var(--muted); display: flex; flex: 0 0 auto; font-size: .86rem; gap: 16px; justify-content: space-between; padding: 10px 16px; width: 100%; }
+        .service-payment-original span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .service-payment-original a { color: var(--primary-strong); flex: 0 0 auto; font-weight: 800; }
+        .service-payment-demo { align-self: center; background: #fff; border: 1px solid var(--line); margin: 20px; max-width: 100%; overflow: auto; padding: 28px 36px; width: 640px; }
+        .service-payment-demo-mark { color: var(--primary); font-size: .82rem; font-weight: 900; text-transform: uppercase; }
+        .service-payment-demo h3 { font-size: 1.55rem; margin: 8px 0 16px; }
+        .service-payment-preview .service-payment-demo-warning { background: #eaf5f8; border: 1px solid var(--primary); color: var(--primary-strong); font-size: .85rem; font-weight: 850; margin: 0 0 16px; max-width: none; padding: 12px; text-align: center; }
+        .service-payment-demo dl { margin: 0; }
+        .service-payment-demo dl div { border-bottom: 1px solid var(--line); display: grid; gap: 12px; grid-template-columns: minmax(110px, 38%) minmax(0, 1fr); padding: 10px 0; }
+        .service-payment-demo dt { color: var(--muted); }
+        .service-payment-demo dd { font-weight: 800; margin: 0; overflow-wrap: anywhere; }
+        .service-payment-preview .service-payment-demo .fine-print { margin: 16px 0 0; max-width: none; padding: 0; text-align: left; }
+        .service-payment-dialog-footer { border-top: 1px solid var(--line); display: flex; justify-content: flex-end; padding: 14px 20px; }
+        @media (max-width: 600px) { .service-payment-demo { margin: 12px; padding: 18px; } .service-payment-demo dl div { grid-template-columns: 1fr; gap: 3px; } }
+
+        .service-demo-notice {
+            margin: 0;
+            padding: 9px 20px;
+            border-bottom: 1px solid var(--line);
+            background: #eaf5f8;
+            color: var(--primary-strong);
+            font-size: .84rem;
+        }
+
         .service-month-table .column-filter summary {
             align-items: center;
             border-radius: 50%;
@@ -359,6 +659,77 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
+            const occasionalPaymentDialog = document.querySelector('[data-occasional-payment-dialog]');
+            const paymentModes = occasionalPaymentDialog?.querySelectorAll('input[name="mode"]') ?? [];
+            const syncPaymentMode = () => {
+                const isNew = occasionalPaymentDialog?.querySelector('input[name="mode"]:checked')?.value === 'new';
+                const existingFields = occasionalPaymentDialog?.querySelector('[data-payment-existing]');
+                const newFields = occasionalPaymentDialog?.querySelector('[data-payment-new]');
+                if (!existingFields || !newFields) return;
+                existingFields.hidden = isNew;
+                existingFields.disabled = isNew;
+                newFields.hidden = !isNew;
+                newFields.disabled = !isNew;
+            };
+            paymentModes.forEach((mode) => mode.addEventListener('change', syncPaymentMode));
+            syncPaymentMode();
+            if (occasionalPaymentDialog?.hasAttribute('data-auto-open')) occasionalPaymentDialog.showModal();
+            occasionalPaymentDialog?.querySelectorAll('[data-occasional-payment-close]').forEach((button) => {
+                button.addEventListener('click', () => occasionalPaymentDialog.close());
+            });
+            occasionalPaymentDialog?.addEventListener('click', (event) => {
+                if (event.target === occasionalPaymentDialog) occasionalPaymentDialog.close();
+            });
+            occasionalPaymentDialog?.addEventListener('close', () => {
+                const url = new URL(window.location.href);
+                if (url.searchParams.has('pay_occasional')) {
+                    url.searchParams.delete('pay_occasional');
+                    window.history.replaceState(null, '', url);
+                }
+            });
+            const paymentDialog = document.querySelector('[data-payment-dialog]');
+            const paymentFrame = paymentDialog?.querySelector('[data-payment-frame]');
+            const paymentImage = paymentDialog?.querySelector('[data-payment-image]');
+            const paymentUnavailable = paymentDialog?.querySelector('[data-payment-unavailable]');
+            const paymentDownload = paymentDialog?.querySelector('[data-payment-download]');
+            const paymentDemo = paymentDialog?.querySelector('[data-payment-demo]');
+            const invoiceDemo = paymentDialog?.querySelector('[data-invoice-demo]');
+            const paymentOriginalBar = paymentDialog?.querySelector('[data-payment-original-bar]');
+            const paymentOriginalLink = paymentDialog?.querySelector('[data-payment-original-link]');
+
+            document.querySelectorAll('[data-payment-preview]').forEach((trigger) => {
+                trigger.addEventListener('click', () => {
+                    if (!paymentDialog || !trigger.dataset.previewUrl || !trigger.dataset.downloadUrl) return;
+
+                    const kind = trigger.dataset.previewKind;
+                    paymentDialog.querySelector('#service-payment-dialog-title').textContent = trigger.dataset.dialogTitle || 'Comprobante de pago';
+                    paymentDialog.querySelector('[data-payment-dialog-subtitle]').textContent = trigger.dataset.paymentTitle || '';
+                    paymentDownload.href = trigger.dataset.downloadUrl;
+                    if (paymentDemo) paymentDemo.hidden = kind !== 'demo';
+                    if (invoiceDemo) invoiceDemo.hidden = kind !== 'invoice-demo';
+                    paymentFrame.hidden = kind !== 'pdf';
+                    paymentImage.hidden = kind !== 'image';
+                    paymentUnavailable.hidden = kind !== 'other';
+                    paymentOriginalBar.hidden = kind === 'demo' || kind === 'invoice-demo';
+                    paymentOriginalBar.querySelector('[data-payment-original-name]').textContent = trigger.dataset.paymentFilename || 'Documento adjunto';
+                    paymentOriginalLink.href = trigger.dataset.previewUrl;
+                    if (kind === 'pdf') paymentFrame.src = trigger.dataset.previewUrl;
+                    if (kind === 'image') paymentImage.src = trigger.dataset.previewUrl;
+                    paymentDialog.showModal();
+                });
+            });
+
+            paymentDialog?.querySelector('[data-payment-close]')?.addEventListener('click', () => paymentDialog.close());
+            paymentDialog?.addEventListener('click', (event) => {
+                if (event.target === paymentDialog) paymentDialog.close();
+            });
+            paymentDialog?.addEventListener('close', () => {
+                paymentFrame.src = 'about:blank';
+                paymentImage.removeAttribute('src');
+                paymentDownload.removeAttribute('href');
+                paymentOriginalLink.removeAttribute('href');
+            });
+
             document.querySelectorAll('[data-month-toggle]').forEach((toggle) => {
                 toggle.addEventListener('click', () => {
                     const panel = toggle.closest('[data-month-panel]');

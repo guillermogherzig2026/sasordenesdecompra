@@ -19,7 +19,7 @@ class AgentCenterController extends Controller
 
     public function index(Request $request): View|RedirectResponse
     {
-        $this->authorizeAccess();
+        $this->authorizeAccess($request);
 
         if ($request->routeIs('superadmin.agents.index') && $request->query('area') === 'finanzas') {
             return redirect()->route('finance.agents.index');
@@ -39,14 +39,16 @@ class AgentCenterController extends Controller
         return view('superadmin.agent-center', [
             'agents' => $agents,
             'context' => $this->contextForRequest($request),
+            'actionRoutePrefix' => $this->actionRoutePrefix($request),
             'selected' => $selected,
         ]);
     }
 
     public function store(Request $request): RedirectResponse
     {
-        $this->authorizeAccess();
+        $this->authorizeAccess($request);
         $validated = $this->validateAgent($request);
+        $this->authorizeContext($request, $validated['context']);
 
         $agent = AiAgent::create([
             'name' => trim($validated['name']),
@@ -61,8 +63,9 @@ class AgentCenterController extends Controller
 
     public function update(Request $request, AiAgent $aiAgent): RedirectResponse
     {
-        $this->authorizeAccess();
+        $this->authorizeAccess($request);
         $validated = $this->validateAgent($request, $aiAgent);
+        $this->authorizeContext($request, $validated['context']);
 
         $aiAgent->update([
             'name' => trim($validated['name']),
@@ -76,12 +79,13 @@ class AgentCenterController extends Controller
 
     public function toggle(Request $request, AiAgent $aiAgent): RedirectResponse
     {
-        $this->authorizeAccess();
+        $this->authorizeAccess($request);
         $validated = $request->validate([
             'context' => ['required', Rule::in(array_keys(self::CONTEXT_ROUTES))],
             'is_active' => ['required', 'boolean'],
             'selected' => ['nullable', 'string', 'max:20'],
         ]);
+        $this->authorizeContext($request, $validated['context']);
 
         $aiAgent->update(['is_active' => (bool) $validated['is_active']]);
 
@@ -117,6 +121,15 @@ class AgentCenterController extends Controller
         };
     }
 
+    private function actionRoutePrefix(Request $request): string
+    {
+        return match (true) {
+            $request->routeIs('finance.agents.*') => 'finance.agents',
+            $request->routeIs('superadmin.plazas.agents.*') => 'superadmin.plazas.agents',
+            default => 'superadmin.agents',
+        };
+    }
+
     private function redirectToContext(string $context, string $selected = ''): RedirectResponse
     {
         $parameters = $selected !== '' ? ['selected' => $selected] : [];
@@ -131,8 +144,24 @@ class AgentCenterController extends Controller
         return $value === '' ? null : $value;
     }
 
-    private function authorizeAccess(): void
+    private function authorizeAccess(Request $request): void
     {
-        abort_unless(Auth::user()?->canAccessRole('superadmin'), 403);
+        $user = Auth::user();
+        if ($user?->canAccessRole('superadmin')) {
+            return;
+        }
+
+        $permission = match (true) {
+            $request->routeIs('finance.agents.*') => 'finance.agents',
+            $request->routeIs('superadmin.plazas.agents.*') => 'plazas.agents',
+            default => null,
+        };
+
+        abort_unless($permission !== null && $user?->canNavigateTo($permission), 403);
+    }
+
+    private function authorizeContext(Request $request, string $context): void
+    {
+        abort_unless($request->user()->role === 'superadmin' || $context === $this->contextForRequest($request), 403);
     }
 }

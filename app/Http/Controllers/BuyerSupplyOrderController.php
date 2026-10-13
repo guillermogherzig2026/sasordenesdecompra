@@ -24,7 +24,7 @@ class BuyerSupplyOrderController extends Controller
 
         $orders = SupplyOrder::with(['company', 'items.catalogItem'])
             ->with('requester')
-            ->when(! $this->isSuperAdmin(), fn ($builder) => $builder->where('requester_id', Auth::id()))
+            ->when(! $this->canManageAllOrders(), fn ($builder) => $builder->where('requester_id', Auth::id()))
             ->when(
                 $panel === 'history',
                 fn ($builder) => $builder->whereIn('status', ['delivered', 'rejected', 'canceled']),
@@ -148,7 +148,7 @@ class BuyerSupplyOrderController extends Controller
     public function remission(SupplyOrder $supplyOrder)
     {
         $this->ensureSupplies();
-        abort_unless($this->isSuperAdmin() || (int) $supplyOrder->requester_id === Auth::id(), 403);
+        abort_unless($this->canManageAllOrders() || (int) $supplyOrder->requester_id === Auth::id(), 403);
         abort_unless(in_array($supplyOrder->status, ['remitted', 'delivered'], true), 404);
 
         return view('inventory.supply-orders.remission', [
@@ -169,7 +169,7 @@ class BuyerSupplyOrderController extends Controller
 
     private function allowedCompanies()
     {
-        if ($this->isSuperAdmin()) {
+        if ($this->canManageAllOrders()) {
             return Company::orderBy('name')->get();
         }
 
@@ -193,9 +193,9 @@ class BuyerSupplyOrderController extends Controller
         ]);
     }
 
-    private function isSuperAdmin(): bool
+    private function canManageAllOrders(): bool
     {
-        return Auth::user()?->role === 'superadmin';
+        return Auth::user()?->canManageAllRecordsIn('procurement') ?? false;
     }
 
     private function ensureSupplies(): void

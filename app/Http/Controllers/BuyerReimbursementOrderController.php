@@ -20,7 +20,7 @@ class BuyerReimbursementOrderController extends Controller
         $query = trim((string) $request->query('q'));
 
         $orders = ReimbursementOrder::with('company')
-            ->when(! $this->isSuperAdmin(), fn ($builder) => $builder->where('requester_id', Auth::id()))
+            ->when(! $this->canManageAllOrders(), fn ($builder) => $builder->where('requester_id', Auth::id()))
             ->when(
                 $panel === 'history',
                 fn ($builder) => $builder->whereIn('status', ['paid', 'rejected', 'canceled']),
@@ -101,7 +101,7 @@ class BuyerReimbursementOrderController extends Controller
     public function uploadSupport(Request $request, ReimbursementOrder $reimbursementOrder)
     {
         $this->ensureReimbursements();
-        abort_unless($this->isSuperAdmin() || (int) $reimbursementOrder->requester_id === Auth::id(), 403);
+        abort_unless($this->canManageAllOrders() || (int) $reimbursementOrder->requester_id === Auth::id(), 403);
         abort_unless(! in_array($reimbursementOrder->status, ['paid', 'rejected', 'canceled'], true), 403);
 
         $validated = $request->validate([
@@ -154,7 +154,7 @@ class BuyerReimbursementOrderController extends Controller
 
     private function allowedCompanies()
     {
-        if ($this->isSuperAdmin()) {
+        if ($this->canManageAllOrders()) {
             return Company::orderBy('name')->get();
         }
 
@@ -181,12 +181,12 @@ class BuyerReimbursementOrderController extends Controller
     private function ensureOwner(ReimbursementOrder $order): void
     {
         $this->ensureReimbursements();
-        abort_unless($this->isSuperAdmin() || (int) $order->requester_id === Auth::id(), 403);
+        abort_unless($this->canManageAllOrders() || (int) $order->requester_id === Auth::id(), 403);
     }
 
-    private function isSuperAdmin(): bool
+    private function canManageAllOrders(): bool
     {
-        return Auth::user()?->role === 'superadmin';
+        return Auth::user()?->canManageAllRecordsIn('procurement') ?? false;
     }
 
     private function ensureReimbursements(): void
