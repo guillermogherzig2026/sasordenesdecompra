@@ -76,6 +76,55 @@ class ServiceHistoryMonthlyTest extends TestCase
         $this->assertStringContainsString('$800.00', $julyPanel);
     }
 
+    public function test_general_history_shows_paid_services_from_all_months_in_one_table(): void
+    {
+        Carbon::setTestNow('2026-09-04 10:00:00');
+
+        $finance = User::factory()->create(['role' => 'finance', 'active' => true]);
+        $augustService = $this->service($finance, ['folio' => 'SRV-GENERAL-AUG']);
+        $julyService = $this->service($finance, ['folio' => 'SRV-GENERAL-JUL']);
+        $this->paidReceipt($augustService, $finance, '2026-08-10', 1250.50);
+        $this->paidReceipt($julyService, $finance, '2026-07-12', 800);
+
+        $response = $this->actingAs($finance)->get(route('services.history.general'));
+
+        $response->assertOk()
+            ->assertSee('Historial general')
+            ->assertSee('Historial de Servicios por mes')
+            ->assertSee(route('services.history.general'))
+            ->assertDontSee('Descarga para filtrar')
+            ->assertSeeInOrder(['SRV-GENERAL-AUG', 'SRV-GENERAL-JUL'])
+            ->assertSee('$1,250.50')
+            ->assertSee('$800.00')
+            ->assertSee(route('services.payment-file', $augustService->receipts()->first()));
+
+        $html = $response->getContent();
+        $this->assertStringContainsString('service-general-history-panel', $html);
+        $this->assertSame(1, preg_match_all('/<table[^>]*data-column-filter-table/', $html));
+        $this->assertSame(2, preg_match_all('/<tr[^>]*data-filter-row/', $html));
+        $this->assertSame(0, preg_match_all('/<button[^>]*data-month-toggle/', $html));
+        $this->assertSame(0, preg_match_all('/<section[^>]*data-month-key/', $html));
+    }
+
+    public function test_general_history_uses_the_existing_history_permission(): void
+    {
+        $allowed = User::factory()->create([
+            'role' => 'finance',
+            'active' => true,
+            'menu_permissions' => ['finance.services.history'],
+        ]);
+        $restricted = User::factory()->create([
+            'role' => 'finance',
+            'active' => true,
+            'menu_permissions' => ['services.months'],
+        ]);
+
+        $this->actingAs($allowed)->get(route('services.history.general'))
+            ->assertOk()
+            ->assertSee('Historial general');
+        $this->actingAs($restricted)->get(route('services.history.general'))->assertForbidden();
+    }
+
     public function test_local_demo_payment_is_visible_in_september_without_creating_a_real_payment(): void
     {
         Carbon::setTestNow('2026-10-12 10:00:00');

@@ -366,6 +366,8 @@ Route::middleware(['auth', EnforceNavigationPermission::class])->prefix('finanza
     Route::get('/ordenes/{purchaseOrder}/pdf', [FinancePurchaseOrderController::class, 'print'])->name('orders.print');
     Route::get('/historial', [FinancePurchaseOrderController::class, 'history'])->name('orders.history');
     Route::get('/pago-servicios', [FinanceServicePaymentController::class, 'index'])->name('services.index');
+    Route::get('/pago-servicios/ocasionales/{payment}', [FinanceServicePaymentController::class, 'occasionalPaymentForm'])->name('services.occasional.payment');
+    Route::post('/pago-servicios/ocasionales/{payment}', [FinanceServicePaymentController::class, 'storeOccasionalPayment'])->name('services.occasional.payment.store');
     Route::get('/pago-servicios/{service}/{dueDate}', [FinanceServicePaymentController::class, 'paymentForm'])->name('services.payment');
     Route::post('/pago-servicios/{service}/{dueDate}', [FinanceServicePaymentController::class, 'storePayment'])->name('services.payment.store');
     Route::get('/pago-servicios/recibos/{receipt}/factura', [FinanceServicePaymentController::class, 'supportFile'])->name('services.support-file');
@@ -446,10 +448,14 @@ Route::middleware(['auth', EnforceNavigationPermission::class])->prefix('servici
     Route::post('/alta', [ServiceController::class, 'store'])->name('store');
     Route::get('/catalogo', [ServiceController::class, 'catalog'])->name('catalog');
     Route::post('/ocasionales', [OccasionalServiceController::class, 'store'])->name('occasional.store');
+    Route::put('/ocasionales/{entry}', [OccasionalServiceController::class, 'update'])->name('occasional.update');
     Route::post('/ocasionales/pagos', [OccasionalServiceController::class, 'storePayment'])->name('occasional.payments.store');
+    Route::get('/ocasionales/pagos/{payment}/comprobante', [ServiceController::class, 'occasionalPaymentFile'])->name('occasional.payments.file');
+    Route::get('/ocasionales/pagos/{payment}/comprobante/pdf', [ServiceController::class, 'downloadOccasionalPaymentPdf'])->name('occasional.payments.file.pdf');
     Route::get('/ocasionales/exportar', [OccasionalServiceController::class, 'export'])->name('occasional.export');
     Route::get('/meses', [ServiceController::class, 'months'])->name('months');
     Route::get('/historial', [ServiceController::class, 'history'])->name('history');
+    Route::get('/historial-general', [ServiceController::class, 'generalHistory'])->name('history.general');
     Route::get('/{service}/editar', [ServiceController::class, 'edit'])->name('edit');
     Route::put('/{service}', [ServiceController::class, 'update'])->name('update');
     Route::get('/{service}/{dueDate}/recibo', [ServiceController::class, 'receiptForm'])->name('receipt');
