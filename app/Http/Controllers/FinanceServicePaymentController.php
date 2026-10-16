@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\AuditLog;
+use App\Models\OccasionalServicePayment;
 use App\Models\RecurringService;
 use App\Models\RecurringServiceReceipt;
 use App\Support\StoredFileResponse;
@@ -10,6 +11,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class FinanceServicePaymentController extends Controller
 {
@@ -98,6 +100,50 @@ class FinanceServicePaymentController extends Controller
         return StoredFileResponse::inline($receipt->payment_file_path, $receipt->payment_original_name);
     }
 
+    public function occasionalPaymentForm(OccasionalServicePayment $payment)
+    {
+        $this->ensureFinance();
+        abort_if($payment->payment_paid_on, 403);
+
+        return view('finance.services.occasional-payment', [
+            'payment' => $payment->load('entry.category', 'allocations'),
+        ]);
+    }
+
+    public function storeOccasionalPayment(Request $request, OccasionalServicePayment $payment)
+    {
+        $this->ensureFinance();
+
+        $validated = $request->validate([
+            'payment_file' => ['required', 'file', 'mimes:pdf,jpg,jpeg,png,webp', 'max:10240'],
+            'payment_paid_on' => ['required', 'date', 'before_or_equal:today'],
+        ]);
+
+        DB::transaction(function () use ($request, $payment, $validated) {
+            $lockedPayment = OccasionalServicePayment::query()->lockForUpdate()->findOrFail($payment->id);
+            abort_if($lockedPayment->payment_paid_on, 409);
+
+            $file = $request->file('payment_file');
+            $lockedPayment->update([
+                'payment_file_path' => $file->store('service-payments'),
+                'payment_original_name' => $file->getClientOriginalName(),
+                'payment_paid_on' => $validated['payment_paid_on'],
+                'paid_by' => Auth::id(),
+            ]);
+
+            AuditLog::create([
+                'user_id' => Auth::id(),
+                'auditable_type' => OccasionalServicePayment::class,
+                'auditable_id' => $lockedPayment->id,
+                'action' => 'occasional_service_paid',
+                'description' => "Pago ocasional OCP-{$lockedPayment->id} registrado como pagado.",
+            ]);
+        });
+
+        return redirect()->route('finance.services.index')
+            ->with('status', 'Pago ocasional registrado en el historial de servicios.');
+    }
+
     public function updateStatus(RecurringService $service, string $status)
     {
         $this->ensureFinance();
@@ -119,9 +165,17 @@ class FinanceServicePaymentController extends Controller
     private function monthsPayload(): array
     {
         $start = now()->startOfMonth();
+        $occasionalPayments = OccasionalServicePayment::with('entry.category', 'allocations')
+            ->whereNull('payment_paid_on')
+            ->whereDate('due_date', '<=', $start->copy()->addMonthsNoOverflow(12)->endOfMonth()->toDateString())
+            ->get()
+            ->groupBy(fn (OccasionalServicePayment $payment) => $payment->due_date->lt($start)
+                ? $start->format('Y-m') : $payment->due_date->format('Y-m'));
 
-        return collect(range(0, 12))->map(function (int $offset) use ($start) {
+        return collect(range(0, 12))->map(function (int $offset) use ($start, $occasionalPayments) {
             $month = $start->copy()->addMonths($offset);
+            $oneTimePayments = $occasionalPayments->get($month->format('Y-m'), collect())
+                ->sortBy('due_date')->values();
             $items = RecurringService::with('receipts')
                 ->where('status', '!=', 'inactive')
                 ->get()
@@ -129,12 +183,17 @@ class FinanceServicePaymentController extends Controller
                 ->filter(fn (array $item) => ! $item['service']->is_domiciled && ! filled($item['receipt']?->payment_file_path))
                 ->sortBy(fn (array $item) => $item['due_date'])
                 ->values();
+            $totals = $this->monthTotals($items);
+            $oneTimeTotal = $oneTimePayments->sum(fn (OccasionalServicePayment $payment) => (float) $payment->amount);
 
             return [
                 'month_key' => $month->format('Y-m'),
                 'label' => $this->monthLabel($month),
                 'items' => $items,
-                ...$this->monthTotals($items),
+                'occasional_payments' => $oneTimePayments,
+                'total' => $totals['total'] + $oneTimeTotal,
+                'paid_total' => $totals['paid_total'],
+                'pending_total' => $totals['pending_total'] + $oneTimeTotal,
             ];
         })->all();
     }

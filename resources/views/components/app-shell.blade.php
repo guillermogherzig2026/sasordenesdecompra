@@ -190,7 +190,7 @@
             ['label' => 'OP Pendientes', 'url' => route('finance.construction-payment-orders.active'), 'active' => request()->routeIs('finance.construction-payment-orders.active'), 'badge_count' => $pendingConstructionPaymentOrderBadgeCount, 'menu_box' => 'op', 'menu_box_start' => true, 'menu_box_title' => 'Ordenes de Pago de Obra'],
             ['label' => 'OP Historial', 'url' => route('finance.construction-payment-orders.history'), 'active' => request()->routeIs('finance.construction-payment-orders.history'), 'menu_box' => 'op', 'menu_box_end' => true],
             ['label' => 'Pago Servicios', 'url' => route('finance.services.index'), 'active' => request()->routeIs('finance.services.*'), 'menu_box' => 'services', 'menu_box_start' => true, 'menu_box_title' => 'Servicios'],
-            ['label' => 'Historial de Servicios', 'url' => route('services.history'), 'active' => request()->routeIs('services.history'), 'menu_box' => 'services', 'menu_box_end' => true],
+            ['label' => 'Historial de Servicios por mes', 'url' => route('services.history'), 'active' => request()->routeIs('services.history'), 'menu_box' => 'services', 'menu_box_end' => true],
             ['label' => 'OS Vigentes', 'url' => route('finance.supply-orders.active'), 'active' => request()->routeIs('finance.supply-orders.active'), 'badge_count' => $pendingSupplyBadgeCount, 'menu_box' => 'os', 'menu_box_start' => true, 'menu_box_title' => 'Ordenes de suministro'],
             ['label' => 'OS Historial', 'url' => route('finance.supply-orders.history'), 'active' => request()->routeIs('finance.supply-orders.history'), 'menu_box' => 'os', 'menu_box_end' => true],
             ['label' => 'OR Vigentes', 'url' => route('finance.reimbursement-orders.active'), 'active' => request()->routeIs('finance.reimbursement-orders.active'), 'badge_count' => $pendingReimbursementBadgeCount, 'menu_box' => 'or', 'menu_box_start' => true, 'menu_box_title' => 'Ordenes de reembolso'],
@@ -217,7 +217,8 @@
         'Servicios' => [
             ['label' => 'Pagar servicio ocasional', 'url' => route('services.months', ['pay_occasional' => 1]), 'active' => request()->routeIs('services.months') && request()->boolean('pay_occasional'), 'permission' => 'services.create', 'alternative_permission' => 'finance.services.create', 'requires_service_months' => true, 'menu_box' => 'services', 'menu_box_start' => true],
             ['label' => 'Servicios Mensuales', 'url' => route('services.months'), 'active' => (request()->routeIs('services.months') && ! request()->boolean('pay_occasional')) || request()->routeIs('services.receipt'), 'menu_box' => 'services'],
-            ['label' => 'Historial de Servicios', 'url' => route('services.history'), 'active' => request()->routeIs('services.history'), 'menu_box' => 'services', 'menu_box_end' => true],
+            ['label' => 'Historial de Servicios por mes', 'url' => route('services.history'), 'active' => request()->routeIs('services.history'), 'alternative_permission' => 'finance.services.history', 'menu_box' => 'services'],
+            ['label' => 'Historial general', 'url' => route('services.history.general'), 'active' => request()->routeIs('services.history.general'), 'permission' => 'services.history', 'alternative_permission' => 'finance.services.history', 'menu_box' => 'services', 'menu_box_end' => true],
             ['label' => 'Servicios', 'url' => route('services.catalog'), 'active' => (request()->routeIs('services.catalog') && !request()->boolean('create_occasional')) || request()->routeIs('services.create', 'services.edit', 'services.update')],
         ],
         'Recursos Humanos' => [
@@ -271,7 +272,7 @@
             'OP Pendientes' => 'finance.construction.active',
             'OP Historial' => 'finance.construction.history',
             'Pago Servicios' => 'finance.services.payments',
-            'Historial de Servicios' => 'finance.services.history',
+            'Historial de Servicios por mes' => 'finance.services.history',
             'OS Vigentes' => 'finance.supply.active',
             'OS Historial' => 'finance.supply.history',
             'OR Vigentes' => 'finance.reimbursements.active',
@@ -305,7 +306,7 @@
         ],
         'Servicios' => [
             'Servicios Mensuales' => 'services.months',
-            'Historial de Servicios' => 'services.history',
+            'Historial de Servicios por mes' => 'services.history',
             'Servicios' => 'services.catalog',
             'Pagar servicio ocasional' => 'services.create',
         ],

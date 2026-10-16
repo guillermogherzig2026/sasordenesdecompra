@@ -87,6 +87,7 @@ class ServiceController extends Controller
         $status = in_array($status, ['active', 'paused', 'inactive'], true) ? $status : '';
         $companies = Company::query()->orderBy('name')->get(['id', 'name']);
         $occasionalServices = OccasionalService::query()->orderBy('id')->get();
+        $fuelCategoryId = $occasionalServices->firstWhere('name', 'Vale de Gasolina')?->id;
         $selectedOccasionalService = $occasionalServices->firstWhere('id', (int) $request->query('occasional'));
         $isOccasionalView = $request->query('view') === 'occasional' || $selectedOccasionalService !== null;
         if ($isOccasionalView) {
@@ -94,7 +95,15 @@ class ServiceController extends Controller
         }
 
         $occasionalEntries = $isOccasionalView ? OccasionalServiceEntry::query()
-            ->with('category')
+            ->when($fuelCategoryId, fn ($builder) => $builder->where(fn ($inner) => $inner
+                ->where('occasional_service_id', '!=', $fuelCategoryId)
+                ->orWhere('reference_number', '!=', OccasionalServiceEntry::FUEL_PROVIDER_REFERENCE)))
+            ->with([
+                'category',
+                'payments' => fn ($builder) => $builder
+                    ->whereDate('due_date', '>=', today()->toDateString())
+                    ->orderBy('due_date'),
+            ])
             ->when($selectedOccasionalService, fn ($builder) => $builder->where('occasional_service_id', $selectedOccasionalService->id))
             ->latest()
             ->paginate(20)
@@ -133,6 +142,8 @@ class ServiceController extends Controller
             'companies' => $companies,
             'canCreateService' => $request->user()->canNavigateTo('services.create')
                 || $request->user()->canNavigateTo('finance.services.create'),
+            'canEditOccasionalService' => $request->user()->canNavigateTo('services.catalog')
+                || $request->user()->canNavigateTo('finance.services.catalog'),
         ]);
     }
 
@@ -167,7 +178,7 @@ class ServiceController extends Controller
         return view('services.months', [
             'months' => $this->historyMonthsPayload($demoPaymentMonth),
             'next_week_total' => 0,
-            'title' => 'Historial de Servicios',
+            'title' => 'Historial de Servicios por mes',
             'downloadReport' => null,
             'monthSubtitle' => 'Servicios pagados durante este mes.',
             'emptyMessage' => 'No hay servicios pagados durante este mes.',
@@ -179,6 +190,34 @@ class ServiceController extends Controller
                 'next_week' => 'Pagos pendientes esta semana',
                 'pending' => 'Monto pendiente por pagar',
             ],
+        ]);
+    }
+
+    public function generalHistory(Request $request)
+    {
+        $this->ensureServiceHistory();
+        $demoPaymentMonth = app()->environment('local') ? Carbon::create(2026, 9, 1) : null;
+        $historyMonths = $this->historyMonthsPayload($demoPaymentMonth);
+        $items = collect($historyMonths)
+            ->flatMap(fn (array $month) => $month['items'])
+            ->sortByDesc(fn (array $item) => isset($item['occasional_payment'])
+                ? $item['occasional_payment']->payment_paid_on->toDateString()
+                : ($item['receipt']?->payment_paid_on?->toDateString() ?? ($item['payment_due_date'] ?? $item['due_date'])))
+            ->values();
+
+        return view('services.months', [
+            'months' => [[
+                'month_key' => 'general',
+                'items' => $items,
+            ]],
+            'title' => 'Historial general',
+            'downloadReport' => null,
+            'emptyMessage' => 'No hay servicios pagados.',
+            'historyMode' => true,
+            'generalHistory' => true,
+            'demoPaymentMonth' => $demoPaymentMonth?->lte(now()->startOfMonth())
+                ? $demoPaymentMonth->format('Y-m')
+                : null,
         ]);
     }
 
@@ -268,6 +307,42 @@ class ServiceController extends Controller
         $this->ensureServices();
 
         return StoredFileResponse::inline($receipt->payment_file_path, $receipt->payment_original_name);
+    }
+
+    public function occasionalPaymentFile(OccasionalServicePayment $payment)
+    {
+        $this->ensureServiceHistory();
+        abort_unless($payment->payment_paid_on, 404);
+
+        return StoredFileResponse::inline($payment->payment_file_path, $payment->payment_original_name);
+    }
+
+    public function downloadOccasionalPaymentPdf(OccasionalServicePayment $payment)
+    {
+        $this->ensureServiceHistory();
+        abort_unless($payment->payment_paid_on && filled($payment->payment_file_path), 404);
+
+        $filename = $payment->payment_original_name ?: $payment->payment_file_path;
+        if (strtolower(pathinfo($filename, PATHINFO_EXTENSION)) === 'pdf') {
+            return StoredFileResponse::download($payment->payment_file_path, $payment->payment_original_name);
+        }
+
+        $payment->loadMissing('entry.category');
+
+        return $this->paymentPdfResponse([
+            'type' => 'payment',
+            'demo' => false,
+            'folio' => 'OCP-'.str_pad($payment->id, 5, '0', STR_PAD_LEFT),
+            'holder' => $payment->entry->name,
+            'branch' => '-',
+            'service' => $payment->entry->category->name.' (ocasional)',
+            'provider' => $payment->entry->name,
+            'reference' => $payment->entry->reference_number,
+            'paidOn' => $payment->payment_paid_on->format('d/m/Y'),
+            'amount' => (float) $payment->amount,
+            'originalName' => $payment->payment_original_name,
+            'imageData' => $this->paymentImageData($payment->payment_file_path),
+        ], 'comprobante-servicio-ocasional-'.$payment->id.'.pdf', true);
     }
 
     public function downloadPaymentPdf(RecurringServiceReceipt $receipt)
@@ -427,10 +502,12 @@ class ServiceController extends Controller
     private function monthsPayload(): array
     {
         $start = now()->startOfMonth();
-        $occasionalPayments = OccasionalServicePayment::with('entry.category')
-            ->whereBetween('due_date', [$start->toDateString(), $start->copy()->addMonthsNoOverflow(12)->endOfMonth()->toDateString()])
+        $occasionalPayments = OccasionalServicePayment::with('entry.category', 'allocations')
+            ->whereNull('payment_paid_on')
+            ->whereDate('due_date', '<=', $start->copy()->addMonthsNoOverflow(12)->endOfMonth()->toDateString())
             ->get()
-            ->groupBy(fn (OccasionalServicePayment $payment) => $payment->due_date->format('Y-m'));
+            ->groupBy(fn (OccasionalServicePayment $payment) => $payment->due_date->lt($start)
+                ? $start->format('Y-m') : $payment->due_date->format('Y-m'));
         $monthNames = [
             1 => 'enero',
             2 => 'febrero',
@@ -481,23 +558,45 @@ class ServiceController extends Controller
             ->whereNotNull('payment_paid_on')
             ->get()
             ->filter(fn (RecurringServiceReceipt $receipt) => $receipt->recurringService);
+        $paidOccasionalPayments = OccasionalServicePayment::with('entry.category', 'allocations')
+            ->whereNotNull('payment_paid_on')
+            ->get();
         $domiciledServices = RecurringService::with('receipts')
             ->where('status', '!=', 'inactive')
             ->where('is_domiciled', true)
             ->get();
-        $earliestMonth = $this->earliestHistoryMonth($latestMonth, $paidReceipts, $domiciledServices);
+        $earliestMonth = $this->earliestHistoryMonth($latestMonth, $paidReceipts, $domiciledServices, $paidOccasionalPayments);
         if ($demoPaymentMonth?->lte($latestMonth) && $demoPaymentMonth->lt($earliestMonth)) {
             $earliestMonth = $demoPaymentMonth->copy();
         }
         $months = [];
 
         for ($month = $latestMonth->copy(); $month->gte($earliestMonth); $month->subMonthNoOverflow()) {
-            $items = $this->paidHistoryItemsForMonth($month, $paidReceipts, $domiciledServices);
+            $recurringItems = $this->paidHistoryItemsForMonth($month, $paidReceipts, $domiciledServices);
+            $occasionalForMonth = $paidOccasionalPayments
+                ->filter(fn (OccasionalServicePayment $payment) => $payment->payment_paid_on->format('Y-m') === $month->format('Y-m'));
+            $occasionalItems = $occasionalForMonth->flatMap(function (OccasionalServicePayment $payment) {
+                $allocations = $payment->allocations->isNotEmpty() ? $payment->allocations : collect([null]);
+
+                return $allocations->map(fn ($allocation) => [
+                    'occasional_payment' => $payment,
+                    'allocation' => $allocation,
+                ]);
+            });
+            $items = $recurringItems->concat($occasionalItems)
+                ->sortBy(fn (array $item) => isset($item['occasional_payment'])
+                    ? $item['occasional_payment']->payment_paid_on->toDateString()
+                    : ($item['receipt']?->payment_paid_on?->toDateString() ?? ($item['payment_due_date'] ?? $item['due_date'])))
+                ->values();
+            $totals = $this->monthTotals($recurringItems);
+            $occasionalTotal = $occasionalForMonth->sum(fn (OccasionalServicePayment $payment) => (float) $payment->amount);
             $months[] = [
                 'month_key' => $month->format('Y-m'),
                 'label' => $this->monthLabel($month),
                 'items' => $items,
-                ...$this->monthTotals($items),
+                'total' => $totals['total'] + $occasionalTotal,
+                'paid_total' => $totals['paid_total'] + $occasionalTotal,
+                'pending_total' => $totals['pending_total'],
             ];
         }
 
@@ -508,9 +607,11 @@ class ServiceController extends Controller
         Carbon $latestMonth,
         Collection $paidReceipts,
         Collection $domiciledServices,
+        Collection $paidOccasionalPayments,
     ): Carbon
     {
         $dates = $paidReceipts->pluck('payment_paid_on');
+        $paidOccasionalPayments->each(fn (OccasionalServicePayment $payment) => $dates->push($payment->payment_paid_on));
 
         $domiciledServices->each(function (RecurringService $service) use ($dates): void {
             $dates->push($this->firstDomiciledPaymentDate($service));

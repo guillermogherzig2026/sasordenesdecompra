@@ -75,7 +75,7 @@ class ServiceCatalogDirectoryTest extends TestCase
             'reference' => 'Referencia original', 'service_location' => 'Sucursal central',
         ]);
 
-        $this->get(route('services.catalog'))
+        $response = $this->get(route('services.catalog'))
             ->assertOk()
             ->assertSee(route('services.create'))
             ->assertSee(route('services.edit', $service))
@@ -86,6 +86,7 @@ class ServiceCatalogDirectoryTest extends TestCase
             ->assertSee('123456')
             ->assertSee('Referencia original')
             ->assertSee('Sucursal central');
+        $this->assertMatchesRegularExpression('/<tr class="service-directory-row"[^>]*>.*?<td class="service-directory-banking">Banco de prueba<\/td>\s*<td class="service-directory-banking">123456<\/td>/s', $response->getContent());
 
         $this->patch(route('services.status', [$service, 'paused']))->assertRedirect();
         $this->assertSame('paused', $service->fresh()->status);

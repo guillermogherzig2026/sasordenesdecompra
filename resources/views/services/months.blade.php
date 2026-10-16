@@ -3,10 +3,11 @@
 @section('body')
     @php
         $pageTitle = $title ?? 'Servicios por mes';
-        $downloadReport = $downloadReport ?? 'services-months-excel';
         $monthSubtitle = $monthSubtitle ?? 'Servicios ordenados de la fecha de corte mas proxima a la mas tardia.';
         $emptyMessage = $emptyMessage ?? 'No hay servicios programados para este mes.';
         $historyMode = $historyMode ?? false;
+        $downloadReport = $historyMode ? null : ($downloadReport ?? 'services-months-excel');
+        $generalHistory = $generalHistory ?? false;
         $metricLabels = $metricLabels ?? [
             'total' => 'Monto total mensual',
             'paid' => 'Monto total pagado',
@@ -25,10 +26,11 @@
         @foreach ($months as $month)
             @php
                 $monthDetailId = 'service-month-detail-' . $month['month_key'];
-                $showDemoPayment = $historyMode && ($demoPaymentMonth ?? null) === $month['month_key'];
+                $showDemoPayment = $historyMode && ($generalHistory || ($demoPaymentMonth ?? null) === $month['month_key']) && filled($demoPaymentMonth ?? null);
                 $isExpanded = $expandedMonthKey ? $month['month_key'] === $expandedMonthKey : $loop->first;
             @endphp
-            <section @class(['panel service-month-panel', 'service-history-month-panel' => $historyMode]) data-month-panel data-month-key="{{ $month['month_key'] }}">
+            <section @class(['panel service-month-panel', 'service-history-month-panel' => $historyMode, 'service-general-history-panel' => $generalHistory]) @unless ($generalHistory) data-month-panel data-month-key="{{ $month['month_key'] }}" @endunless>
+                @unless ($generalHistory)
                 <div class="panel-header service-month-header service-month-header-compact">
                     <button class="month-toggle" type="button" data-month-toggle
                         aria-controls="{{ $monthDetailId }}" aria-expanded="{{ $isExpanded ? 'true' : 'false' }}">
@@ -61,8 +63,9 @@
                         </article>
                     </div>
                 </div>
+                @endunless
 
-                <div id="{{ $monthDetailId }}" class="service-month-detail" @if (! $isExpanded) hidden @endif>
+                <div id="{{ $monthDetailId }}" class="service-month-detail" @if (! $generalHistory && ! $isExpanded) hidden @endif>
                     @if ($showDemoPayment)
                         <p class="service-demo-notice">Pago de demostracion. No es un movimiento real y no se incluye en los totales ni reportes.</p>
                     @endif
@@ -148,14 +151,20 @@
                                             <td data-filter-value="{{ $payment->entry->name }}">{{ $payment->entry->name }}</td>
                                             <td data-filter-value="Sin sucursal">-</td>
                                             <td data-filter-value="{{ $payment->entry->category->name }} (ocasional)">{{ $payment->entry->category->name }} (ocasional)</td>
-                                            <td data-filter-value="Sin banco">-</td>
-                                            <td data-filter-value="Sin cuenta">-</td>
-                                            <td data-filter-value="Sin proveedor">-</td>
-                                            <td data-filter-value="{{ $payment->entry->reference_number }}">{{ $payment->entry->reference_number }}</td>
+                                            <td data-filter-value="{{ $payment->entry->bank ?: 'Sin banco' }}">{{ $payment->entry->bank ?: '-' }}</td>
+                                            <td data-filter-value="{{ $payment->entry->payer_account ?: 'Sin cuenta' }}">{{ $payment->entry->payer_account ?: '-' }}</td>
+                                            <td data-filter-value="{{ $payment->entry->name }}">{{ $payment->entry->name }}</td>
+                                            <td data-filter-value="{{ $payment->allocations->isNotEmpty() ? 'Varios' : $payment->entry->reference_number }}">
+                                                @if ($payment->allocations->isNotEmpty())
+                                                    <button class="button ghost small" type="button" data-fuel-breakdown="{{ $payment->id }}" aria-label="Ver asignaciones del pago OCP-{{ $payment->id }}">Varios</button>
+                                                @else
+                                                    {{ $payment->entry->reference_number }}
+                                                @endif
+                                            </td>
                                             <td data-filter-value="Pago único">Pago único</td>
                                             <td data-filter-value="{{ $payment->due_date->format('d/m/Y') }}" data-filter-date="{{ $payment->due_date->toDateString() }}">{{ $payment->due_date->format('d/m/Y') }}</td>
                                             <td data-filter-value="${{ number_format((float) $payment->amount, 2) }}">${{ number_format((float) $payment->amount, 2) }}</td>
-                                            <td data-filter-value="{{ $payment->entry->reference_number }}">{{ $payment->entry->reference_number }}</td>
+                                            <td data-filter-value="{{ $payment->allocations->isNotEmpty() ? 'Varios' : $payment->entry->reference_number }}">{{ $payment->allocations->isNotEmpty() ? 'Varios' : $payment->entry->reference_number }}</td>
                                             <td data-filter-value="Pendiente"><span class="status pending">Pendiente</span></td>
                                             <td data-filter-value="Sin Archivo">Sin Archivo</td>
                                             <td data-filter-value="Sin Archivo">Sin Archivo</td>
@@ -163,6 +172,43 @@
                                     @endforeach
                                 @endunless
                                 @forelse ($month['items'] as $item)
+                                    @if (isset($item['occasional_payment']))
+                                        @php
+                                            $payment = $item['occasional_payment'];
+                                            $allocation = $item['allocation'];
+                                            $holder = $allocation?->recipient_name ?? $payment->entry->name;
+                                            $reference = $allocation?->reference_number ?? $payment->entry->reference_number;
+                                            $amount = (float) ($allocation?->amount ?? $payment->amount);
+                                            $paymentFilename = $payment->payment_original_name ?: $payment->payment_file_path;
+                                            $paymentExtension = strtolower(pathinfo($paymentFilename, PATHINFO_EXTENSION));
+                                            $paymentPreviewKind = $paymentExtension === 'pdf' ? 'pdf' : (in_array($paymentExtension, ['jpg', 'jpeg', 'png', 'webp'], true) ? 'image' : 'other');
+                                        @endphp
+                                        <tr data-filter-row class="service-row-locked service-occasional-payment-row">
+                                            <td data-filter-value="OCP-{{ $payment->id }}"><strong>OCP-{{ str_pad($payment->id, 5, '0', STR_PAD_LEFT) }}</strong></td>
+                                            <td data-filter-value="{{ $holder }}">{{ $holder }}</td>
+                                            <td data-filter-value="Sin sucursal">-</td>
+                                            <td data-filter-value="{{ $payment->entry->category->name }} (ocasional)">{{ $payment->entry->category->name }} (ocasional)</td>
+                                            <td data-filter-value="{{ $payment->entry->bank ?: 'Sin banco' }}">{{ $payment->entry->bank ?: '-' }}</td>
+                                            <td data-filter-value="{{ $payment->entry->payer_account ?: 'Sin cuenta' }}">{{ $payment->entry->payer_account ?: '-' }}</td>
+                                            <td data-filter-value="{{ $payment->entry->name }}">{{ $payment->entry->name }}</td>
+                                            <td data-filter-value="{{ $reference }}">{{ $reference }}</td>
+                                            <td data-filter-value="Pago único">Pago único</td>
+                                            <td data-filter-value="{{ $payment->payment_paid_on->format('d/m/Y') }}" data-filter-date="{{ $payment->payment_paid_on->toDateString() }}">{{ $payment->payment_paid_on->format('d/m/Y') }}</td>
+                                            <td data-filter-value="${{ number_format($amount, 2) }}">${{ number_format($amount, 2) }}</td>
+                                            <td data-filter-value="{{ $reference }}">{{ $reference }}</td>
+                                            <td data-filter-value="Pagado"><span class="status paid">Pagado</span></td>
+                                            <td data-filter-value="Sin Archivo">Sin Archivo</td>
+                                            <td data-filter-value="{{ $paymentFilename }}">
+                                                <button class="attachment-pill service-payment-trigger" type="button"
+                                                    data-payment-preview data-dialog-title="Comprobante de pago"
+                                                    data-payment-title="{{ $payment->entry->category->name }} - {{ $holder }}"
+                                                    data-payment-filename="{{ $paymentFilename }}"
+                                                    data-preview-kind="{{ $paymentPreviewKind }}"
+                                                    data-preview-url="{{ route('services.occasional.payments.file', $payment) }}"
+                                                    data-download-url="{{ route('services.occasional.payments.file.pdf', $payment) }}">Ver</button>
+                                            </td>
+                                        </tr>
+                                    @else
                                     @php
                                         $service = $item['service'];
                                         $receipt = $item['receipt'];
@@ -308,6 +354,7 @@
                                             @endif
                                         </td>
                                     </tr>
+                                    @endif
                                 @empty
                                     @unless ($showDemoPayment || (! $historyMode && $month['occasional_payments']->isNotEmpty()))
                                         <tr>
@@ -323,8 +370,17 @@
         @endforeach
     </x-app-shell>
 
+    @unless ($historyMode)
+        @php
+            $fuelPreviewPayments = collect($months)->flatMap(fn (array $month) => $month['occasional_payments'])
+                ->filter(fn ($payment) => $payment->allocations->isNotEmpty());
+        @endphp
+        @include('services.partials.fuel-allocation-preview', ['payments' => $fuelPreviewPayments])
+    @endunless
+
     @if (! $historyMode && $canCreateOccasionalPayment)
-        <dialog class="occasional-payment-dialog" data-occasional-payment-dialog aria-labelledby="occasional-payment-title"
+        @php $fuelCategory = $occasional_categories->firstWhere('name', 'Vale de Gasolina'); @endphp
+        <dialog class="occasional-payment-dialog" data-occasional-payment-dialog data-fuel-category-id="{{ $fuelCategory?->id }}" aria-labelledby="occasional-payment-title"
             @if (request()->boolean('pay_occasional') || (old('_service_form') === 'occasional_payment' && $errors->any())) data-auto-open @endif>
             <form method="POST" action="{{ route('services.occasional.payments.store') }}">
                 @csrf
@@ -352,11 +408,28 @@
                         </label>
                     </div>
                     <fieldset class="occasional-payment-source" data-payment-existing @if ($paymentMode === 'new') hidden disabled @endif>
-                        <label for="occasional-payment-entry">Servicio ocasional
+                        <nav class="occasional-payment-carousel" aria-label="Filtrar servicios ocasionales" data-payment-carousel>
+                            <button class="occasional-payment-carousel-arrow" type="button" data-payment-carousel-direction="previous" aria-label="Servicios anteriores" title="Servicios anteriores">&lsaquo;</button>
+                            <div class="occasional-payment-carousel-track" data-payment-carousel-track>
+                                <button class="occasional-payment-category is-selected" type="button" data-payment-category="" aria-pressed="true" aria-controls="occasional-payment-entry">
+                                    <span class="occasional-payment-category-icon" aria-hidden="true">&#9638;</span>
+                                    <span>Todos</span>
+                                </button>
+                                @foreach ($occasional_categories as $category)
+                                    <button class="occasional-payment-category" type="button" data-payment-category="{{ $category->id }}" aria-pressed="false" aria-controls="occasional-payment-entry" title="{{ $category->name }}">
+                                        <span class="occasional-payment-category-icon" aria-hidden="true">@include('services.partials.occasional-icon', ['icon' => $category->icon])</span>
+                                        <span>{{ $category->name }}</span>
+                                    </button>
+                                @endforeach
+                            </div>
+                            <button class="occasional-payment-carousel-arrow" type="button" data-payment-carousel-direction="next" aria-label="Más servicios" title="Más servicios">&rsaquo;</button>
+                        </nav>
+                        <label for="occasional-payment-entry"><span data-payment-entry-label>Servicio ocasional</span>
                             <select id="occasional-payment-entry" name="occasional_service_entry_id" required>
                                 <option value="">Seleccionar servicio</option>
                                 @foreach ($occasional_entries as $entry)
-                                    <option value="{{ $entry->id }}" @selected((string) old('occasional_service_entry_id') === (string) $entry->id)>{{ $entry->category->name }} - {{ $entry->name }} - {{ $entry->reference_number }}</option>
+                                    @continue($entry->category->name === 'Vale de Gasolina' && $entry->reference_number !== \App\Models\OccasionalServiceEntry::FUEL_PROVIDER_REFERENCE)
+                                    <option value="{{ $entry->id }}" data-payment-entry-category="{{ $entry->occasional_service_id }}" @selected((string) old('occasional_service_entry_id') === (string) $entry->id)>{{ $entry->reference_number === \App\Models\OccasionalServiceEntry::FUEL_PROVIDER_REFERENCE ? 'Efectivale' : $entry->category->name.' - '.$entry->name.' - '.$entry->reference_number }}</option>
                                 @endforeach
                             </select>
                         </label>
@@ -366,15 +439,22 @@
                             <select id="occasional-payment-category" name="category_id" required>
                                 <option value="">Seleccionar categoría</option>
                                 @foreach ($occasional_categories as $category)
+                                    @continue($category->name === 'Vale de Gasolina')
                                     <option value="{{ $category->id }}" @selected((string) old('category_id') === (string) $category->id)>{{ $category->name }}</option>
                                 @endforeach
                             </select>
                         </label>
-                        <label for="occasional-payment-name">Nombre del servicio/Titular
+                        <label for="occasional-payment-name"><span data-payment-new-name-label>Nombre del servicio/Titular</span>
                             <input id="occasional-payment-name" name="name" maxlength="100" value="{{ old('name') }}" required>
                         </label>
                         <label for="occasional-payment-reference">Número de referencia
                             <input id="occasional-payment-reference" name="reference_number" maxlength="100" value="{{ old('reference_number') }}" required>
+                        </label>
+                        <label for="occasional-payment-bank">Banco (opcional)
+                            <input id="occasional-payment-bank" name="bank" maxlength="120" value="{{ old('bank') }}">
+                        </label>
+                        <label for="occasional-payment-payer-account">Cuenta pagadora (opcional)
+                            <input id="occasional-payment-payer-account" name="payer_account" maxlength="80" value="{{ old('payer_account') }}">
                         </label>
                     </fieldset>
                     <div class="occasional-payment-grid">
@@ -385,12 +465,63 @@
                             <input id="occasional-payment-date" name="due_date" type="date" min="{{ now()->toDateString() }}" max="{{ now()->addMonthsNoOverflow(12)->endOfMonth()->toDateString() }}" value="{{ old('due_date', now()->toDateString()) }}" required>
                         </label>
                     </div>
+                    <fieldset class="fuel-allocation-panel" data-fuel-allocation aria-label="Asignar monto a tarjetas" hidden disabled>
+                        <div class="fuel-allocation-heading">
+                            <div>
+                                <h3>Asignar monto a tarjetas</h3>
+                                <p>Distribuye el monto entre las referencias o usuarios de la empresa.</p>
+                            </div>
+                            <button class="button ghost small" type="button" data-add-fuel-allocation>+ Agregar tarjeta</button>
+                        </div>
+                        <div class="fuel-allocation-table-wrap">
+                            <table class="fuel-allocation-table">
+                                <thead><tr><th>Referencia / tarjeta</th><th>Usuario</th><th>Monto asignado (MXN)</th><th><span class="fuel-allocation-visually-hidden">Quitar</span></th></tr></thead>
+                                <tbody data-fuel-allocation-rows></tbody>
+                            </table>
+                        </div>
+                        <div class="fuel-allocation-totals">
+                            <div><span>Monto del pago</span><strong data-fuel-payment-total>$0.00</strong></div>
+                            <div><span>Total asignado</span><strong data-fuel-assigned-total>$0.00</strong></div>
+                            <div><span data-fuel-difference-label>Diferencia</span><strong data-fuel-difference>$0.00</strong></div>
+                        </div>
+                        <p class="fuel-allocation-feedback" data-fuel-allocation-feedback role="status" aria-live="polite"></p>
+                        <p class="fuel-allocation-note">El pago se envía al proveedor. La dispersión se realiza en su portal.</p>
+                    </fieldset>
                 </div>
+                <section class="fuel-allocation-review" data-fuel-review hidden aria-label="Resumen del pago ocasional">
+                    <h3>Resumen del pago</h3>
+                    <dl>
+                        <div><dt>Cuenta concentradora</dt><dd data-fuel-review-account></dd></div>
+                        <div><dt>Monto a transferir</dt><dd data-fuel-review-amount></dd></div>
+                        <div><dt>Fecha prevista</dt><dd data-fuel-review-date></dd></div>
+                    </dl>
+                    <h4>Asignación a tarjetas</h4>
+                    <ul data-fuel-review-list></ul>
+                    <p>La asignación registrada debe aplicarse en el portal del proveedor.</p>
+                </section>
                 <footer class="service-payment-dialog-footer">
                     <button class="button ghost" type="button" data-occasional-payment-close>Cancelar</button>
-                    <button class="button primary" type="submit" @disabled($occasional_entries->isEmpty() && $occasional_categories->isEmpty())>Agregar a Servicios Mensuales</button>
+                    <button class="button ghost" type="button" data-fuel-review-back hidden>Volver</button>
+                    <button class="button primary" type="button" data-fuel-review-next hidden disabled>Continuar al resumen</button>
+                    <button class="button primary" type="submit" data-payment-submit @disabled($occasional_entries->isEmpty() && $occasional_categories->isEmpty())>Agregar a Servicios Mensuales</button>
                 </footer>
             </form>
+            <template data-fuel-allocation-template>
+                <tr>
+                    <td>
+                        <select data-fuel-recipient required aria-label="Tarjeta o referencia">
+                            <option value="">Seleccionar tarjeta</option>
+                            @foreach ($occasional_entries->where('occasional_service_id', $fuelCategory?->id) as $entry)
+                                @continue($entry->reference_number === \App\Models\OccasionalServiceEntry::FUEL_PROVIDER_REFERENCE)
+                                <option value="{{ $entry->id }}" data-recipient-name="{{ $entry->name }}" data-reference-number="{{ $entry->reference_number }}">{{ $entry->name }} - {{ $entry->reference_number }}</option>
+                            @endforeach
+                        </select>
+                    </td>
+                    <td><span data-fuel-recipient-name>—</span></td>
+                    <td><input data-fuel-recipient-amount type="number" min="0.01" max="9999999999.99" step="0.01" required aria-label="Monto asignado en MXN"></td>
+                    <td><button class="fuel-allocation-remove" type="button" data-remove-fuel-allocation aria-label="Quitar tarjeta" title="Quitar tarjeta">&times;</button></td>
+                </tr>
+            </template>
         </dialog>
     @endif
 
@@ -456,7 +587,35 @@
 
     <style>
         .service-month-panel:not(.service-history-month-panel) .month-toggle h2 { font-size: 1.2rem; }
-        .occasional-payment-dialog { border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 24px 64px rgba(16, 43, 58, .24); color: var(--text); max-height: calc(100dvh - 32px); padding: 0; width: min(560px, calc(100vw - 32px)); }
+        @media (min-width: 901px) {
+            body:has(.service-general-history-panel) { padding-bottom: 0; }
+            .content-shell:has(.service-general-history-panel) { height: 100dvh; min-height: 0; }
+            .content-shell:has(.service-general-history-panel) > .view {
+                flex: 1 1 auto;
+                min-height: 0;
+                grid-template-rows: minmax(0, 1fr);
+                padding-bottom: 14px;
+            }
+            .view > .service-general-history-panel:last-child {
+                min-height: 0;
+                max-height: none;
+                display: flex;
+                flex-direction: column;
+                gap: 0;
+            }
+            .service-general-history-panel .service-month-detail {
+                flex: 1 1 auto;
+                min-height: 0;
+                display: flex;
+                flex-direction: column;
+            }
+            .service-general-history-panel .service-month-scroll {
+                flex: 1 1 auto;
+                min-height: 0;
+                max-height: none;
+            }
+        }
+        .occasional-payment-dialog { border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 24px 64px rgba(16, 43, 58, .24); color: var(--text); max-height: calc(100dvh - 32px); overflow: hidden; padding: 0; width: min(700px, calc(100vw - 32px)); }
         .occasional-payment-dialog::backdrop { background: rgba(16, 43, 58, .55); }
         .occasional-payment-dialog form { display: flex; flex-direction: column; max-height: calc(100dvh - 32px); }
         .occasional-payment-fields { display: grid; gap: 16px; overflow-y: auto; padding: 20px; }
@@ -470,10 +629,60 @@
         .occasional-payment-modes input:focus-visible + span { outline: 2px solid var(--primary); }
         .occasional-payment-modes input:disabled + span { color: var(--muted); cursor: not-allowed; opacity: .6; }
         .occasional-payment-source { border: 0; display: grid; gap: 14px; margin: 0; min-width: 0; padding: 0; }
+        .occasional-payment-source[hidden] { display: none; }
+        .occasional-payment-carousel { align-items: center; display: flex; gap: 6px; min-width: 0; }
+        .occasional-payment-carousel-arrow { align-items: center; background: #fff; border: 1px solid var(--line); border-radius: 50%; color: var(--primary-strong); cursor: pointer; display: inline-flex; flex: 0 0 28px; font-size: 1.3rem; height: 28px; justify-content: center; padding: 0; }
+        .occasional-payment-carousel-track { display: flex; flex: 1 1 auto; gap: 6px; min-width: 0; overflow-x: auto; padding: 2px; scrollbar-width: none; scroll-behavior: smooth; scroll-snap-type: x mandatory; }
+        .occasional-payment-carousel-track::-webkit-scrollbar { display: none; }
+        .occasional-payment-category { align-items: center; background: #fff; border: 1px solid var(--line); border-radius: 6px; color: var(--text); cursor: pointer; display: flex; flex: 0 0 102px; flex-direction: column; font: inherit; font-size: .72rem; font-weight: 800; gap: 4px; height: 70px; justify-content: center; line-height: 1.15; overflow-wrap: anywhere; padding: 6px; scroll-snap-align: start; text-align: center; }
+        .occasional-payment-category-icon { align-items: center; color: var(--primary-strong); display: inline-flex; font-size: 1.3rem; height: 22px; justify-content: center; }
+        .occasional-payment-category-icon svg { height: 20px; width: 20px; }
+        .occasional-payment-category.is-selected { background: var(--primary-strong); border-color: var(--primary-strong); color: #fff; }
+        .occasional-payment-category.is-selected .occasional-payment-category-icon { color: #fff; }
+        .occasional-payment-carousel button:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
         .occasional-payment-grid { display: grid; gap: 14px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .occasional-payment-dialog [hidden] { display: none !important; }
+        .fuel-allocation-panel { background: #f4f9fc; border: 1px solid var(--line); border-radius: 6px; margin: 0; min-width: 0; padding: 12px; }
+        .fuel-allocation-heading { align-items: flex-start; display: flex; gap: 12px; justify-content: space-between; margin-bottom: 10px; }
+        .fuel-allocation-heading h3, .fuel-allocation-review h3 { font-size: .98rem; margin: 0; }
+        .fuel-allocation-heading p, .fuel-allocation-note, .fuel-allocation-review > p { color: var(--muted); font-size: .78rem; margin: 3px 0 0; }
+        .fuel-allocation-heading button { flex: 0 0 auto; }
+        .fuel-allocation-table-wrap { border: 1px solid var(--line); border-radius: 5px; overflow-x: auto; }
+        .fuel-allocation-table { border-collapse: collapse; min-width: 570px; table-layout: fixed; width: 100%; }
+        .fuel-allocation-table th, .fuel-allocation-table td { border-bottom: 1px solid var(--line); font-size: .76rem; padding: 5px 7px; text-align: left; }
+        .fuel-allocation-table th { background: #e8f3f8; font-size: .7rem; }
+        .fuel-allocation-table tr:last-child td { border-bottom: 0; }
+        .fuel-allocation-table th:nth-child(1) { width: 36%; }
+        .fuel-allocation-table th:nth-child(2) { width: 28%; }
+        .fuel-allocation-table th:nth-child(3) { width: 29%; }
+        .fuel-allocation-table th:nth-child(4) { width: 7%; }
+        .fuel-allocation-table select, .fuel-allocation-table input { font-size: .77rem !important; min-height: 32px !important; padding: 4px 6px !important; }
+        .fuel-allocation-remove { align-items: center; background: transparent; border: 0; color: var(--text); cursor: pointer; display: inline-flex; font-size: 1.4rem; height: 30px; justify-content: center; width: 30px; }
+        .fuel-allocation-visually-hidden { clip: rect(0, 0, 0, 0); clip-path: inset(50%); height: 1px; overflow: hidden; position: absolute; white-space: nowrap; width: 1px; }
+        .fuel-allocation-totals { background: #fff; border: 1px solid var(--line); border-radius: 5px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin-top: 8px; padding: 8px 0; }
+        .fuel-allocation-totals > div { display: grid; gap: 2px; padding: 0 8px; text-align: center; }
+        .fuel-allocation-totals > div + div { border-left: 1px solid var(--line); }
+        .fuel-allocation-totals span { color: var(--muted); font-size: .68rem; }
+        .fuel-allocation-totals strong { font-size: .85rem; }
+        .fuel-allocation-feedback { border-radius: 4px; font-size: .76rem; margin: 6px 0 0; padding: 8px 10px; }
+        .fuel-allocation-feedback[data-state="error"] { background: #fff0f0; color: #a91e28; }
+        .fuel-allocation-feedback[data-state="success"] { background: #e8f8ee; color: #17673b; }
+        .fuel-allocation-feedback[data-state="neutral"] { background: #e8f3f8; color: var(--primary-strong); }
+        .fuel-allocation-note { margin-top: 7px; }
+        .fuel-allocation-review { overflow-y: auto; padding: 20px; }
+        .fuel-allocation-review dl { border: 1px solid var(--line); border-radius: 5px; margin: 12px 0; }
+        .fuel-allocation-review dl div { display: flex; gap: 12px; justify-content: space-between; padding: 9px 12px; }
+        .fuel-allocation-review dl div + div { border-top: 1px solid var(--line); }
+        .fuel-allocation-review dt { color: var(--muted); }
+        .fuel-allocation-review dd { font-weight: 800; margin: 0; text-align: right; }
+        .fuel-allocation-review h4 { font-size: .85rem; margin: 14px 0 6px; }
+        .fuel-allocation-review ul { list-style: none; margin: 0; padding: 0; }
+        .fuel-allocation-review li { border-bottom: 1px solid var(--line); display: flex; gap: 12px; justify-content: space-between; padding: 8px 0; }
+        .fuel-allocation-review li span { overflow-wrap: anywhere; }
+        .fuel-allocation-review li strong { flex: 0 0 auto; }
         .occasional-payment-dialog .service-payment-dialog-footer { gap: 8px; }
         .occasional-payment-dialog button:disabled { cursor: not-allowed; opacity: .55; }
-        @media (max-width: 560px) { .occasional-payment-grid { grid-template-columns: 1fr; } .occasional-payment-dialog .service-payment-dialog-footer { flex-wrap: wrap; } }
+        @media (max-width: 560px) { .occasional-payment-grid { grid-template-columns: 1fr; } .occasional-payment-dialog .service-payment-dialog-footer, .fuel-allocation-heading { flex-wrap: wrap; } .fuel-allocation-totals strong { font-size: .75rem; } }
         .service-payment-trigger { cursor: pointer; font-family: inherit; }
         .service-payment-trigger:hover { filter: brightness(.96); }
         .service-payment-trigger:focus-visible, .service-payment-close:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
@@ -673,6 +882,212 @@
             };
             paymentModes.forEach((mode) => mode.addEventListener('change', syncPaymentMode));
             syncPaymentMode();
+            const paymentCarousel = occasionalPaymentDialog?.querySelector('[data-payment-carousel]');
+            const paymentCarouselTrack = paymentCarousel?.querySelector('[data-payment-carousel-track]');
+            const paymentEntrySelect = occasionalPaymentDialog?.querySelector('#occasional-payment-entry');
+            if (paymentCarousel && paymentCarouselTrack && paymentEntrySelect) {
+                const categoryButtons = [...paymentCarousel.querySelectorAll('[data-payment-category]')];
+                const entryOptions = [...paymentEntrySelect.querySelectorAll('[data-payment-entry-category]')];
+                const placeholderOption = paymentEntrySelect.options[0];
+                const selectCategory = (categoryId) => {
+                    const currentValue = paymentEntrySelect.value;
+                    const matchingOptions = entryOptions.filter((option) => !categoryId || option.dataset.paymentEntryCategory === categoryId);
+                    placeholderOption.textContent = matchingOptions.length ? 'Seleccionar servicio' : 'No hay servicios registrados en esta categoría';
+                    paymentEntrySelect.replaceChildren(placeholderOption, ...matchingOptions);
+                    paymentEntrySelect.value = matchingOptions.some((option) => option.value === currentValue) ? currentValue : '';
+                    categoryButtons.forEach((button) => {
+                        const selected = button.dataset.paymentCategory === categoryId;
+                        button.classList.toggle('is-selected', selected);
+                        button.setAttribute('aria-pressed', String(selected));
+                    });
+                };
+                categoryButtons.forEach((button) => button.addEventListener('click', () => {
+                    selectCategory(button.dataset.paymentCategory);
+                    syncFuelAllocation();
+                }));
+
+                const carouselArrows = [...paymentCarousel.querySelectorAll('[data-payment-carousel-direction]')];
+                const syncCarouselArrows = () => {
+                    const maxScroll = paymentCarouselTrack.scrollWidth - paymentCarouselTrack.clientWidth;
+                    carouselArrows.forEach((arrow) => {
+                        arrow.disabled = arrow.dataset.paymentCarouselDirection === 'previous'
+                            ? paymentCarouselTrack.scrollLeft <= 1
+                            : paymentCarouselTrack.scrollLeft >= maxScroll - 1;
+                    });
+                };
+                carouselArrows.forEach((arrow) => arrow.addEventListener('click', () => {
+                    paymentCarouselTrack.scrollBy({ left: (arrow.dataset.paymentCarouselDirection === 'previous' ? -1 : 1) * paymentCarouselTrack.clientWidth * .75, behavior: 'smooth' });
+                }));
+                paymentCarouselTrack.addEventListener('scroll', syncCarouselArrows, { passive: true });
+                window.addEventListener('resize', syncCarouselArrows);
+                occasionalPaymentDialog.addEventListener('toggle', syncCarouselArrows);
+                syncCarouselArrows();
+            }
+            const paymentForm = occasionalPaymentDialog?.querySelector('form');
+            const paymentFields = occasionalPaymentDialog?.querySelector('.occasional-payment-fields');
+            const newCategorySelect = occasionalPaymentDialog?.querySelector('#occasional-payment-category');
+            const amountInput = occasionalPaymentDialog?.querySelector('#occasional-payment-amount');
+            const allocationPanel = occasionalPaymentDialog?.querySelector('[data-fuel-allocation]');
+            const allocationRows = allocationPanel?.querySelector('[data-fuel-allocation-rows]');
+            const allocationTemplate = occasionalPaymentDialog?.querySelector('[data-fuel-allocation-template]');
+            const reviewPanel = occasionalPaymentDialog?.querySelector('[data-fuel-review]');
+            const reviewNext = occasionalPaymentDialog?.querySelector('[data-fuel-review-next]');
+            const reviewBack = occasionalPaymentDialog?.querySelector('[data-fuel-review-back]');
+            const paymentSubmit = occasionalPaymentDialog?.querySelector('[data-payment-submit]');
+            const fuelCategoryId = occasionalPaymentDialog?.dataset.fuelCategoryId;
+            const savedAllocations = {{ \Illuminate\Support\Js::from(old('allocations', [])) }};
+            const currency = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' });
+            let allocationIndex = 0;
+            let wasFuelPayment = false;
+            let isReviewingFuel = false;
+
+            const cents = (value) => {
+                const text = String(value ?? '');
+                if (!/^\d+(?:\.\d{1,2})?$/.test(text)) return null;
+                const [whole, fraction = ''] = text.split('.');
+                return Number(whole) * 100 + Number(fraction.padEnd(2, '0'));
+            };
+            const formatCents = (value) => currency.format(value / 100);
+            const isFuelPayment = () => {
+                if (!fuelCategoryId) return false;
+                const isNew = occasionalPaymentDialog?.querySelector('input[name="mode"]:checked')?.value === 'new';
+                const categoryId = isNew
+                    ? newCategorySelect?.value
+                    : (paymentEntrySelect?.selectedOptions[0]?.dataset.paymentEntryCategory
+                        || paymentCarousel?.querySelector('[data-payment-category][aria-pressed="true"]')?.dataset.paymentCategory);
+                return categoryId === fuelCategoryId;
+            };
+            const updateRecipient = (row) => {
+                const option = row.querySelector('[data-fuel-recipient]').selectedOptions[0];
+                row.querySelector('[data-fuel-recipient-name]').textContent = option?.dataset.recipientName || '—';
+            };
+            const addAllocation = (entryId = '', amount = '') => {
+                const row = allocationTemplate.content.firstElementChild.cloneNode(true);
+                row.querySelector('[data-fuel-recipient]').name = `allocations[${allocationIndex}][entry_id]`;
+                row.querySelector('[data-fuel-recipient-amount]').name = `allocations[${allocationIndex}][amount]`;
+                allocationIndex++;
+                allocationRows.appendChild(row);
+                row.querySelector('[data-fuel-recipient]').value = String(entryId ?? '');
+                row.querySelector('[data-fuel-recipient-amount]').value = amount ?? '';
+                updateRecipient(row);
+            };
+            const syncFuelAllocation = () => {
+                if (!allocationPanel) return;
+                const fuel = isFuelPayment();
+                if (fuel && !wasFuelPayment && !allocationRows.children.length) addAllocation();
+                wasFuelPayment = fuel;
+                allocationPanel.hidden = !fuel;
+                allocationPanel.disabled = !fuel;
+                occasionalPaymentDialog.querySelector('[data-payment-entry-label]').textContent = fuel ? 'Cuenta concentradora / proveedor' : 'Servicio ocasional';
+                occasionalPaymentDialog.querySelector('[data-payment-new-name-label]').textContent = fuel ? 'Proveedor / cuenta concentradora' : 'Nombre del servicio/Titular';
+
+                const accountId = occasionalPaymentDialog.querySelector('input[name="mode"]:checked')?.value === 'existing'
+                    ? paymentEntrySelect?.value : '';
+                const rows = [...allocationRows.querySelectorAll('tr')];
+                rows.forEach((row) => {
+                    const select = row.querySelector('[data-fuel-recipient]');
+                    [...select.options].forEach((option) => { option.disabled = Boolean(accountId && option.value === accountId); });
+                    if (select.value === accountId) select.value = '';
+                    updateRecipient(row);
+                });
+
+                if (!fuel) {
+                    reviewNext.hidden = true;
+                    reviewBack.hidden = true;
+                    paymentSubmit.hidden = false;
+                    return;
+                }
+
+                const paymentCents = cents(amountInput.value);
+                const amounts = rows.map((row) => cents(row.querySelector('[data-fuel-recipient-amount]').value));
+                const assignedCents = amounts.reduce((sum, value) => sum + (value ?? 0), 0);
+                const selectedIds = rows.map((row) => row.querySelector('[data-fuel-recipient]').value);
+                const validRows = rows.length > 0 && amounts.every((value) => value !== null && value > 0)
+                    && selectedIds.every(Boolean) && new Set(selectedIds).size === selectedIds.length;
+                const difference = paymentCents === null ? 0 : paymentCents - assignedCents;
+                const balanced = paymentCents !== null && paymentCents > 0 && validRows && difference === 0;
+                allocationPanel.querySelector('[data-fuel-payment-total]').textContent = formatCents(paymentCents ?? 0);
+                allocationPanel.querySelector('[data-fuel-assigned-total]').textContent = formatCents(assignedCents);
+                allocationPanel.querySelector('[data-fuel-difference]').textContent = formatCents(Math.abs(difference));
+                allocationPanel.querySelector('[data-fuel-difference-label]').textContent = difference < 0 ? 'Excedente' : (difference > 0 ? 'Por asignar' : 'Diferencia');
+
+                const feedback = allocationPanel.querySelector('[data-fuel-allocation-feedback]');
+                const availableCards = [...allocationTemplate.content.querySelectorAll('[data-fuel-recipient] option')]
+                    .filter((option) => option.value && option.value !== accountId).length;
+                if (!availableCards) {
+                    feedback.textContent = 'Registra primero las tarjetas o referencias de Vale de Gasolina en el catálogo de Servicios.';
+                } else if (paymentCents === null || paymentCents <= 0) {
+                    feedback.textContent = 'Ingresa el monto que se transferirá a la cuenta concentradora.';
+                } else if (new Set(selectedIds.filter(Boolean)).size !== selectedIds.filter(Boolean).length) {
+                    feedback.textContent = 'Cada tarjeta o referencia solo puede recibir una asignación por pago.';
+                } else if (!validRows) {
+                    feedback.textContent = 'Selecciona cada tarjeta e ingresa un monto mayor que cero.';
+                } else if (difference !== 0) {
+                    feedback.textContent = difference < 0
+                        ? `El total asignado excede el pago por ${formatCents(-difference)}.`
+                        : `Faltan ${formatCents(difference)} por asignar.`;
+                } else {
+                    feedback.textContent = 'El total asignado coincide con el monto del pago.';
+                }
+                feedback.dataset.state = balanced ? 'success' : (difference < 0 ? 'error' : 'neutral');
+                reviewNext.disabled = !balanced || !paymentForm.checkValidity();
+                reviewNext.hidden = isReviewingFuel;
+                reviewBack.hidden = !isReviewingFuel;
+                paymentSubmit.hidden = !isReviewingFuel;
+            };
+
+            if (allocationPanel) {
+                if (Array.isArray(savedAllocations)) savedAllocations.forEach((row) => addAllocation(row.entry_id, row.amount));
+                allocationPanel.querySelector('[data-add-fuel-allocation]').addEventListener('click', () => {
+                    addAllocation();
+                    syncFuelAllocation();
+                });
+                allocationRows.addEventListener('click', (event) => {
+                    const remove = event.target.closest('[data-remove-fuel-allocation]');
+                    if (!remove) return;
+                    remove.closest('tr').remove();
+                    syncFuelAllocation();
+                });
+                paymentForm.addEventListener('input', syncFuelAllocation);
+                paymentForm.addEventListener('change', syncFuelAllocation);
+                reviewNext.addEventListener('click', () => {
+                    syncFuelAllocation();
+                    if (reviewNext.disabled) return;
+                    const isNew = occasionalPaymentDialog.querySelector('input[name="mode"]:checked')?.value === 'new';
+                    reviewPanel.querySelector('[data-fuel-review-account]').textContent = isNew
+                        ? `${occasionalPaymentDialog.querySelector('#occasional-payment-name').value} - ${occasionalPaymentDialog.querySelector('#occasional-payment-reference').value}`
+                        : paymentEntrySelect.selectedOptions[0].textContent;
+                    reviewPanel.querySelector('[data-fuel-review-amount]').textContent = formatCents(cents(amountInput.value));
+                    reviewPanel.querySelector('[data-fuel-review-date]').textContent = occasionalPaymentDialog.querySelector('#occasional-payment-date').value.split('-').reverse().join('/');
+                    const list = reviewPanel.querySelector('[data-fuel-review-list]');
+                    list.replaceChildren();
+                    [...allocationRows.querySelectorAll('tr')].forEach((row) => {
+                        const option = row.querySelector('[data-fuel-recipient]').selectedOptions[0];
+                        const item = document.createElement('li');
+                        const recipient = document.createElement('span');
+                        const amount = document.createElement('strong');
+                        recipient.textContent = `${option.dataset.recipientName} - ${option.dataset.referenceNumber}`;
+                        amount.textContent = formatCents(cents(row.querySelector('[data-fuel-recipient-amount]').value));
+                        item.append(recipient, amount);
+                        list.append(item);
+                    });
+                    isReviewingFuel = true;
+                    paymentFields.hidden = true;
+                    reviewPanel.hidden = false;
+                    syncFuelAllocation();
+                });
+                reviewBack.addEventListener('click', () => {
+                    isReviewingFuel = false;
+                    paymentFields.hidden = false;
+                    reviewPanel.hidden = true;
+                    syncFuelAllocation();
+                });
+                paymentForm.addEventListener('submit', (event) => {
+                    syncFuelAllocation();
+                    if (isFuelPayment() && (!isReviewingFuel || !paymentForm.checkValidity())) event.preventDefault();
+                });
+                syncFuelAllocation();
+            }
             if (occasionalPaymentDialog?.hasAttribute('data-auto-open')) occasionalPaymentDialog.showModal();
             occasionalPaymentDialog?.querySelectorAll('[data-occasional-payment-close]').forEach((button) => {
                 button.addEventListener('click', () => occasionalPaymentDialog.close());

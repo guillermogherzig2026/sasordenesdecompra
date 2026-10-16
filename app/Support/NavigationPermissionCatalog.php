@@ -57,7 +57,7 @@ final class NavigationPermissionCatalog
                     'finance.construction.active' => 'OP Pendientes',
                     'finance.construction.history' => 'OP Historial',
                     'finance.services.payments' => 'Pago Servicios',
-                    'finance.services.history' => 'Historial de Servicios',
+                    'finance.services.history' => 'Historial de Servicios por mes',
                     'finance.supply.active' => 'OS Vigentes',
                     'finance.supply.history' => 'OS Historial',
                     'finance.reimbursements.active' => 'OR Vigentes',
@@ -184,7 +184,7 @@ final class NavigationPermissionCatalog
                     'services.create' => 'Crear servicios',
                     'services.catalog' => 'Servicios',
                     'services.months' => 'Servicios Mensuales',
-                    'services.history' => 'Historial de Servicios',
+                    'services.history' => 'Historial de Servicios por mes',
                 ],
             ],
             'human_resources' => [
@@ -530,13 +530,13 @@ final class NavigationPermissionCatalog
         if ($routeName === 'services.occasional.export') {
             return ['services.catalog', 'finance.services.catalog'];
         }
-        if (in_array($routeName, ['services.catalog', 'services.edit', 'services.update'], true)) {
+        if (in_array($routeName, ['services.catalog', 'services.edit', 'services.update', 'services.occasional.update'], true)) {
             return ['services.catalog', 'finance.services.catalog'];
         }
-        if ($routeName === 'services.history') {
+        if (in_array($routeName, ['services.history', 'services.history.general'], true)) {
             return ['services.history', 'finance.services.history'];
         }
-        if (in_array($routeName, ['services.support-file', 'services.support-file.pdf', 'services.demo-invoice-file', 'services.payment-file', 'services.payment-file.pdf', 'services.demo-payment-file'], true)) {
+        if (in_array($routeName, ['services.support-file', 'services.support-file.pdf', 'services.demo-invoice-file', 'services.payment-file', 'services.payment-file.pdf', 'services.demo-payment-file', 'services.occasional.payments.file', 'services.occasional.payments.file.pdf'], true)) {
             return ['services.history', 'finance.services.history', 'services.months'];
         }
         if (Str::startsWith($routeName, 'services.')) {

@@ -8,9 +8,13 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class OccasionalServiceEntry extends Model
 {
+    public const FUEL_PROVIDER_REFERENCE = 'EFECTIVALE-CONCENTRADORA';
+
     protected $fillable = [
         'name',
         'reference_number',
+        'bank',
+        'payer_account',
         'description',
         'created_by',
     ];

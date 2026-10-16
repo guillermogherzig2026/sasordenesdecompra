@@ -97,19 +97,68 @@
                         <h3>{{ $selectedOccasionalService?->name ?? 'Todos los servicios ocasionales' }}</h3>
                     </header>
                     <div class="service-directory-table-scroll">
-                        <table class="occasional-directory-table">
-                            <thead><tr><th>Servicio</th><th>Categoría</th><th>Número de referencia</th><th>Descripción</th><th>Fecha de alta</th></tr></thead>
+                        <table class="service-directory-table occasional-directory-table">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Servicio</th>
+                                    <th scope="col">Empresa y sede</th>
+                                    <th scope="col">Banco</th>
+                                    <th scope="col">Cuenta pagadora</th>
+                                    <th scope="col">Periodicidad</th>
+                                    <th scope="col">Importe estimado</th>
+                                    <th scope="col">Próximo pago</th>
+                                    <th scope="col">Estado</th>
+                                    <th scope="col" data-no-filter>Ver información</th>
+                                    <th scope="col" data-no-filter>Editar información</th>
+                                </tr>
+                            </thead>
                             <tbody>
                                 @forelse ($occasionalEntries as $entry)
+                                    @php
+                                        $nextOccasionalPayment = $entry->payments->first();
+                                        $detailId = 'occasional-detail-'.$entry->id;
+                                    @endphp
                                     <tr class="occasional-directory-row">
-                                        <td><strong>{{ $entry->name }}</strong></td>
-                                        <td>{{ $entry->category->name }}</td>
-                                        <td class="occasional-reference">{{ $entry->reference_number }}</td>
-                                        <td>{{ $entry->description ?: '—' }}</td>
-                                        <td>{{ $entry->created_at->format('d/m/Y') }}</td>
+                                        <td data-filter-value="{{ $entry->name }}">
+                                            <div class="service-directory-identity">
+                                                <span class="service-list-symbol tone-{{ $entry->category->color }}" aria-hidden="true">@include('services.partials.occasional-icon', ['icon' => $entry->category->icon])</span>
+                                                <span class="service-directory-name"><strong>{{ $entry->name }}</strong><small>{{ $entry->category->name }}</small></span>
+                                            </div>
+                                        </td>
+                                        <td data-filter-value="Sin empresa ni sede">—</td>
+                                        <td class="service-directory-banking">{{ $entry->bank ?: '—' }}</td>
+                                        <td class="service-directory-banking">{{ $entry->payer_account ?: '—' }}</td>
+                                        <td><span class="service-period">Pago único</span></td>
+                                        <td class="service-directory-money" data-filter-value="{{ $nextOccasionalPayment?->amount ?? 'Sin importe' }}">{{ $nextOccasionalPayment ? '$'.number_format((float) $nextOccasionalPayment->amount, 2).' MXN' : '—' }}</td>
+                                        <td data-filter-date="{{ $nextOccasionalPayment?->due_date?->format('Y-m-d') }}">{{ $nextOccasionalPayment?->due_date?->format('d/m/Y') ?? '—' }}</td>
+                                        <td><span class="status {{ $nextOccasionalPayment ? 'partial' : '' }}">{{ $nextOccasionalPayment ? 'Pendiente' : 'Sin pago programado' }}</span></td>
+                                        <td class="occasional-action-cell">
+                                            <button class="button ghost small" type="button" title="Ver información" aria-label="Ver información de {{ $entry->name }}" aria-controls="{{ $detailId }}" aria-expanded="false" data-service-detail-toggle data-occasional-detail-toggle data-entry-name="{{ $entry->name }}">Ver</button>
+                                        </td>
+                                        <td class="occasional-action-cell">
+                                            @if ($canEditOccasionalService)
+                                                <button class="button ghost small" type="button" title="Editar información" aria-label="Editar información de {{ $entry->name }}"
+                                                    data-occasional-edit-open data-edit-id="{{ $entry->id }}" data-edit-url="{{ route('services.occasional.update', $entry) }}"
+                                                    data-edit-category="{{ $entry->occasional_service_id }}" data-edit-name="{{ $entry->name }}"
+                                                    data-edit-reference="{{ $entry->reference_number }}" data-edit-bank="{{ $entry->bank }}"
+                                                    data-edit-payer-account="{{ $entry->payer_account }}" data-edit-description="{{ $entry->description }}">Editar</button>
+                                            @else
+                                                —
+                                            @endif
+                                        </td>
+                                    </tr>
+                                    <tr class="service-directory-detail" id="{{ $detailId }}" hidden>
+                                        <td colspan="10">
+                                            <dl class="service-detail-facts">
+                                                <div><dt>Categoría</dt><dd>{{ $entry->category->name }}</dd></div>
+                                                <div><dt>Número de referencia</dt><dd class="occasional-reference">{{ $entry->reference_number }}</dd></div>
+                                                <div><dt>Fecha de alta</dt><dd>{{ $entry->created_at->format('d/m/Y') }}</dd></div>
+                                                <div class="service-detail-notes"><dt>Descripción</dt><dd>{{ $entry->description ?: '—' }}</dd></div>
+                                            </dl>
+                                        </td>
                                     </tr>
                                 @empty
-                                    <tr><td class="service-directory-empty" colspan="5">No hay servicios ocasionales registrados{{ $selectedOccasionalService ? ' en esta categoría' : '' }}.</td></tr>
+                                    <tr><td class="service-directory-empty" colspan="10">No hay servicios ocasionales registrados{{ $selectedOccasionalService ? ' en esta categoría' : '' }}.</td></tr>
                                 @endforelse
                             </tbody>
                         </table>
@@ -138,6 +187,8 @@
                             <tr>
                                 <th scope="col">Servicio</th>
                                 <th scope="col">Empresa y sede</th>
+                                <th scope="col">Banco</th>
+                                <th scope="col">Cuenta pagadora</th>
                                 <th scope="col">Periodicidad</th>
                                 <th scope="col">Importe estimado</th>
                                 <th scope="col">Próximo pago</th>
@@ -167,6 +218,8 @@
                                     <td data-filter-value="{{ $service->company_name }}">
                                         <span class="service-directory-company"><strong>{{ $service->company_name }}</strong><small>{{ $service->display_branch }}</small></span>
                                     </td>
+                                    <td class="service-directory-banking">{{ $service->bank ?: '—' }}</td>
+                                    <td class="service-directory-banking">{{ $service->payer_account ?: '—' }}</td>
                                     <td><span class="service-period">{{ $periodName }}</span></td>
                                     <td class="service-directory-money">${{ number_format((float) $service->cost, 2) }} MXN</td>
                                     <td data-filter-date="{{ $nextPayment?->format('Y-m-d') }}">{{ $nextPayment?->format('d/m/Y') ?? '—' }}</td>
@@ -179,7 +232,7 @@
                                     </td>
                                 </tr>
                                 <tr class="service-directory-detail" id="{{ $detailId }}" hidden>
-                                    <td colspan="7">
+                                    <td colspan="9">
                                         <dl class="service-detail-facts">
                                             <div><dt>Folio</dt><dd>{{ $service->folio }}</dd></div>
                                             <div><dt>Titular</dt><dd>{{ $service->holder ?: $service->company_name }}</dd></div>
@@ -217,7 +270,7 @@
                                     </td>
                                 </tr>
                             @empty
-                                <tr><td class="service-directory-empty" colspan="7">No hay servicios que coincidan con los filtros.</td></tr>
+                                <tr><td class="service-directory-empty" colspan="9">No hay servicios que coincidan con los filtros.</td></tr>
                             @endforelse
                         </tbody>
                     </table>
@@ -304,6 +357,12 @@
                             <label for="occasional-reference"><span>Número de referencia <span class="required-mark">*</span></span>
                                 <input id="occasional-reference" name="reference_number" value="{{ old('reference_number', '') }}" maxlength="100" required data-occasional-reference>
                             </label>
+                            <label for="occasional-bank">Banco (opcional)
+                                <input id="occasional-bank" name="bank" value="{{ old('bank', '') }}" maxlength="120">
+                            </label>
+                            <label for="occasional-payer-account">Cuenta pagadora (opcional)
+                                <input id="occasional-payer-account" name="payer_account" value="{{ old('payer_account', '') }}" maxlength="80">
+                            </label>
                             <label for="occasional-description">Descripción (opcional)
                                 <textarea id="occasional-description" name="description" maxlength="500" rows="3">{{ old('description', '') }}</textarea>
                             </label>
@@ -355,6 +414,56 @@
             </dialog>
         @endif
 
+        @if ($isOccasionalView && $canEditOccasionalService)
+            <dialog id="occasional-edit-dialog" class="occasional-create-dialog occasional-edit-dialog" aria-labelledby="occasional-edit-title"
+                data-occasional-edit-dialog @if (old('_service_form') === 'occasional_edit' && $errors->any()) data-auto-open-entry="{{ old('entry_id') }}" @endif>
+                <form method="POST" data-occasional-edit-form>
+                    @csrf
+                    @method('PUT')
+                    <input type="hidden" name="_service_form" value="occasional_edit">
+                    <input type="hidden" name="entry_id" value="{{ old('entry_id') }}">
+                    <header class="service-create-header">
+                        <h2 id="occasional-edit-title">Editar información</h2>
+                        <button class="service-create-close" type="button" aria-label="Cerrar" data-occasional-edit-close>&times;</button>
+                    </header>
+                    <div class="occasional-create-fields occasional-edit-body">
+                        @if (old('_service_form') === 'occasional_edit' && $errors->any())
+                            <div class="service-create-errors occasional-errors" role="alert">
+                                <strong>Revisa los siguientes datos:</strong>
+                                <ul>@foreach ($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul>
+                            </div>
+                        @endif
+                        <label for="occasional-edit-category">Categoría
+                            <select id="occasional-edit-category" name="category_id" required>
+                                @foreach ($occasionalServices as $occasionalService)
+                                    <option value="{{ $occasionalService->id }}" @selected(old('_service_form') === 'occasional_edit' && (string) old('category_id') === (string) $occasionalService->id)>{{ $occasionalService->name }}</option>
+                                @endforeach
+                            </select>
+                        </label>
+                        <label for="occasional-edit-name">Nombre del servicio/Titular
+                            <input id="occasional-edit-name" name="name" maxlength="100" value="{{ old('_service_form') === 'occasional_edit' ? old('name') : '' }}" required>
+                        </label>
+                        <label for="occasional-edit-reference">Número de referencia
+                            <input id="occasional-edit-reference" name="reference_number" maxlength="100" value="{{ old('_service_form') === 'occasional_edit' ? old('reference_number') : '' }}" required>
+                        </label>
+                        <label for="occasional-edit-bank">Banco (opcional)
+                            <input id="occasional-edit-bank" name="bank" maxlength="120" value="{{ old('_service_form') === 'occasional_edit' ? old('bank') : '' }}">
+                        </label>
+                        <label for="occasional-edit-payer-account">Cuenta pagadora (opcional)
+                            <input id="occasional-edit-payer-account" name="payer_account" maxlength="80" value="{{ old('_service_form') === 'occasional_edit' ? old('payer_account') : '' }}">
+                        </label>
+                        <label for="occasional-edit-description">Descripción (opcional)
+                            <textarea id="occasional-edit-description" name="description" maxlength="500" rows="3">{{ old('_service_form') === 'occasional_edit' ? old('description') : '' }}</textarea>
+                        </label>
+                    </div>
+                    <footer class="occasional-create-footer">
+                        <button class="button ghost" type="button" data-occasional-edit-close>Cancelar</button>
+                        <button class="button primary" type="submit">Guardar cambios</button>
+                    </footer>
+                </form>
+            </dialog>
+        @endif
+
         <style>
             .service-create-dialog { width: min(1100px, calc(100vw - 32px)); max-width: none; max-height: calc(100dvh - 32px); padding: 0; border: 1px solid var(--line); border-radius: 8px; background: #fff; color: var(--text); box-shadow: 0 20px 60px rgba(14, 39, 56, .24); }
             .service-create-dialog::backdrop { background: rgba(14, 39, 56, .54); }
@@ -400,15 +509,6 @@
             .occasional-heading { margin-top: 2px; }
             .service-results-heading h3 { margin: 0; font-size: 1rem; line-height: 1.3; }
             .occasional-directory-results > .service-results-heading { padding: 13px 16px; border-bottom: 1px solid var(--line); background: #f5f9fc; }
-            .occasional-directory-table { width: 100%; min-width: 760px; table-layout: fixed; border-collapse: collapse; }
-            .occasional-directory-table th { padding: 10px 14px; background: #f5f9fc; color: #344c60; text-align: left; font-size: .77rem; }
-            .occasional-directory-table th:nth-child(1) { width: 22%; }
-            .occasional-directory-table th:nth-child(2) { width: 18%; }
-            .occasional-directory-table th:nth-child(3) { width: 20%; }
-            .occasional-directory-table th:nth-child(4) { width: 28%; }
-            .occasional-directory-table th:nth-child(5) { width: 12%; }
-            .occasional-directory-table td { padding: 12px 14px; border-top: 1px solid var(--line); font-size: .83rem; overflow-wrap: anywhere; }
-            .occasional-directory-table td:last-child { white-space: nowrap; }
             .occasional-reference { font-variant-numeric: tabular-nums; font-weight: 700; }
             .service-list-symbol.tone-blue { color: #2866c7; background: #e8f0ff; }
             .service-list-symbol.tone-purple { color: #873bcb; background: #f2e8ff; }
@@ -451,17 +551,33 @@
             .occasional-preview-card.tone-purple .service-category-symbol { color: #873bcb; }
             .occasional-preview-card.tone-green .service-category-symbol { color: #149566; }
             .occasional-create-footer { padding: 15px 24px; border-top: 1px solid var(--line); display: flex; align-items: center; justify-content: flex-end; gap: 12px; }
+            .occasional-edit-dialog { width: min(520px, calc(100vw - 24px)); }
+            .occasional-edit-body { max-height: calc(100dvh - 160px); overflow-y: auto; padding: 20px 24px; }
             .service-directory-list { min-width: 0; border: 1px solid var(--line); border-radius: 7px; overflow: hidden; background: #fff; }
             .service-directory-table-scroll { min-width: 0; overflow-x: auto; }
-            .service-directory-table { width: 100%; min-width: 1190px; table-layout: fixed; border-collapse: collapse; }
+            .service-directory-table { width: 100%; min-width: 1500px; table-layout: fixed; border-collapse: collapse; }
             .service-directory-table th { padding: 10px 12px; background: #f5f9fc; color: #344c60; text-align: left; font-size: .77rem; }
-            .service-directory-table th:nth-child(1) { width: 20%; }
-            .service-directory-table th:nth-child(2) { width: 20%; }
-            .service-directory-table th:nth-child(3) { width: 14%; }
-            .service-directory-table th:nth-child(4) { width: 15%; }
-            .service-directory-table th:nth-child(5) { width: 12%; }
-            .service-directory-table th:nth-child(6) { width: 10%; }
-            .service-directory-table th:nth-child(7) { width: 9%; }
+            .service-directory-table th:nth-child(1) { width: 18%; }
+            .service-directory-table th:nth-child(2) { width: 17%; }
+            .service-directory-table th:nth-child(3) { width: 9%; }
+            .service-directory-table th:nth-child(4) { width: 11%; }
+            .service-directory-table th:nth-child(5) { width: 9%; }
+            .service-directory-table th:nth-child(6) { width: 11%; }
+            .service-directory-table th:nth-child(7) { width: 10%; }
+            .service-directory-table th:nth-child(8) { width: 7%; }
+            .service-directory-table th:nth-child(9) { width: 8%; }
+            .occasional-directory-table { min-width: 1580px; }
+            .occasional-directory-table th:nth-child(1) { width: 17%; }
+            .occasional-directory-table th:nth-child(2) { width: 12%; }
+            .occasional-directory-table th:nth-child(3) { width: 9%; }
+            .occasional-directory-table th:nth-child(4) { width: 11%; }
+            .occasional-directory-table th:nth-child(5) { width: 8%; }
+            .occasional-directory-table th:nth-child(6) { width: 11%; }
+            .occasional-directory-table th:nth-child(7) { width: 10%; }
+            .occasional-directory-table th:nth-child(8) { width: 10%; }
+            .occasional-directory-table th:nth-child(9), .occasional-directory-table th:nth-child(10) { width: 6%; }
+            .occasional-directory-table :is(th, td):nth-child(n+9) { text-align: center; }
+            .occasional-action-cell .button { min-width: 62px; justify-content: center; }
             .service-directory-table td { padding: 10px 12px; border-top: 1px solid var(--line); vertical-align: middle; font-size: .83rem; }
             .service-directory-row:has(+ .service-directory-detail:not([hidden])) td { background: #f7fbfd; }
             .service-directory-identity { min-width: 0; display: flex; align-items: center; gap: 9px; }
@@ -475,6 +591,7 @@
             .service-directory-name, .service-directory-company { min-width: 0; display: grid; gap: 2px; }
             .service-directory-name strong, .service-directory-company strong { overflow-wrap: anywhere; line-height: 1.25; }
             .service-directory-name small, .service-directory-company small { color: var(--muted); }
+            .service-directory-banking { font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
             .service-directory-name em { width: fit-content; padding: 2px 6px; border-radius: 5px; background: #e1f7ec; color: #167954; font-size: .69rem; font-style: normal; font-weight: 700; }
             .service-period { padding: 4px 8px; border-radius: 5px; background: #e9f3fb; color: #195f85; font-size: .76rem; font-weight: 700; white-space: nowrap; }
             .service-directory-money { font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; }
@@ -503,6 +620,7 @@
             }
             @media (max-width: 700px) {
                 .occasional-create-body { grid-template-columns: 1fr; padding: 16px; }
+                .occasional-edit-body { padding: 16px; }
                 .occasional-preview { min-height: 190px; }
                 .occasional-create-footer { padding: 14px 16px; flex-wrap: wrap; }
                 .service-create-dialog { width: calc(100vw - 16px); max-height: calc(100dvh - 16px); }
@@ -543,6 +661,12 @@
                         const detail = document.getElementById(button.getAttribute('aria-controls'));
                         detail.hidden = !detail.hidden;
                         button.setAttribute('aria-expanded', String(!detail.hidden));
+                        if (button.hasAttribute('data-occasional-detail-toggle')) {
+                            const action = detail.hidden ? 'Ver' : 'Ocultar';
+                            button.textContent = action;
+                            button.title = `${action} información`;
+                            button.setAttribute('aria-label', `${action} información de ${button.dataset.entryName}`);
+                        }
                     });
                 });
 
@@ -615,6 +739,36 @@
                     form.addEventListener('change', updatePreview);
                     updatePreview();
                     if (occasionalDialog.hasAttribute('data-auto-open')) openOccasionalDialog();
+                }
+
+                const editDialog = document.querySelector('[data-occasional-edit-dialog]');
+                if (editDialog) {
+                    const editForm = editDialog.querySelector('[data-occasional-edit-form]');
+                    const editButtons = [...document.querySelectorAll('[data-occasional-edit-open]')];
+                    const openEditDialog = (button, preserveInput = false) => {
+                        editForm.action = button.dataset.editUrl;
+                        editForm.querySelector('[name="entry_id"]').value = button.dataset.editId;
+                        if (!preserveInput) {
+                            editForm.querySelector('[name="category_id"]').value = button.dataset.editCategory;
+                            editForm.querySelector('[name="name"]').value = button.dataset.editName;
+                            editForm.querySelector('[name="reference_number"]').value = button.dataset.editReference;
+                            editForm.querySelector('[name="bank"]').value = button.dataset.editBank;
+                            editForm.querySelector('[name="payer_account"]').value = button.dataset.editPayerAccount;
+                            editForm.querySelector('[name="description"]').value = button.dataset.editDescription;
+                        }
+                        editDialog.showModal();
+                        editForm.querySelector('[name="name"]').focus({ preventScroll: true });
+                    };
+                    editButtons.forEach((button) => button.addEventListener('click', () => openEditDialog(button)));
+                    editDialog.querySelectorAll('[data-occasional-edit-close]').forEach((button) => {
+                        button.addEventListener('click', () => editDialog.close());
+                    });
+                    editDialog.addEventListener('click', (event) => {
+                        if (event.target === editDialog) editDialog.close();
+                    });
+                    const requestedEntry = editDialog.dataset.autoOpenEntry;
+                    const requestedButton = editButtons.find((button) => button.dataset.editId === requestedEntry);
+                    if (requestedButton) openEditDialog(requestedButton, true);
                 }
             });
         </script>

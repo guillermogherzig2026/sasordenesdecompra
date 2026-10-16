@@ -6,7 +6,7 @@
             <a class="button ghost" href="{{ route('reports.download', 'services-months-excel') }}">Descargar</a>
         </x-slot:actions>
         @foreach ($months as $month)
-            <section class="panel service-month-panel finance-service-month-panel" data-month-panel>
+            <section class="panel service-month-panel finance-service-month-panel" data-month-panel data-month-key="{{ $month['month_key'] }}">
                 <div class="panel-header service-month-header service-month-header-compact">
                     <button class="month-toggle" type="button" data-month-toggle
                         aria-expanded="{{ $loop->first ? 'true' : 'false' }}">
@@ -56,7 +56,33 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                @forelse ($month['items'] as $item)
+                                @foreach ($month['occasional_payments'] as $payment)
+                                    <tr data-filter-row class="service-occasional-payment-row">
+                                        <td data-filter-value="OCP-{{ $payment->id }}"><strong>OCP-{{ str_pad($payment->id, 5, '0', STR_PAD_LEFT) }}</strong></td>
+                                        <td data-filter-value="{{ $payment->entry->name }}">{{ $payment->entry->name }}</td>
+                                        <td data-filter-value="Sin sucursal">-</td>
+                                        <td data-filter-value="{{ $payment->entry->category->name }} (ocasional)">{{ $payment->entry->category->name }} (ocasional)</td>
+                                        <td data-filter-value="{{ $payment->entry->bank ?: 'Sin banco' }}">{{ $payment->entry->bank ?: '-' }}</td>
+                                        <td data-filter-value="{{ $payment->entry->payer_account ?: 'Sin cuenta' }}">{{ $payment->entry->payer_account ?: '-' }}</td>
+                                        <td data-filter-value="{{ $payment->entry->name }}">{{ $payment->entry->name }}</td>
+                                        <td data-filter-value="{{ $payment->allocations->isNotEmpty() ? 'Varios' : $payment->entry->reference_number }}">
+                                            @if ($payment->allocations->isNotEmpty())
+                                                <button class="button ghost small" type="button" data-fuel-breakdown="{{ $payment->id }}" aria-label="Ver asignaciones del pago OCP-{{ $payment->id }}">Varios</button>
+                                            @else
+                                                {{ $payment->entry->reference_number }}
+                                            @endif
+                                        </td>
+                                        <td data-filter-value="Pago único">Pago único</td>
+                                        <td data-filter-value="{{ $payment->due_date->format('d/m/Y') }}" data-filter-date="{{ $payment->due_date->toDateString() }}">{{ $payment->due_date->format('d/m/Y') }}</td>
+                                        <td data-filter-value="${{ number_format((float) $payment->amount, 2) }}">${{ number_format((float) $payment->amount, 2) }}</td>
+                                        <td data-filter-value="{{ $payment->allocations->isNotEmpty() ? 'Varios' : $payment->entry->reference_number }}">{{ $payment->allocations->isNotEmpty() ? 'Varios' : $payment->entry->reference_number }}</td>
+                                        <td data-filter-value="Pendiente"><a class="button primary small" href="{{ route('finance.services.occasional.payment', $payment) }}">Registrar pago</a></td>
+                                        <td data-filter-value="Sin Archivo">Sin Archivo</td>
+                                        <td data-filter-value="Sin Archivo">Sin Archivo</td>
+                                        <td data-filter-value="No aplica">-</td>
+                                    </tr>
+                                @endforeach
+                                @foreach ($month['items'] as $item)
                                     @php
                                         $service = $item['service'];
                                         $receipt = $item['receipt'];
@@ -137,9 +163,10 @@
                                             </div>
                                         </td>
                                     </tr>
-                                @empty
+                                @endforeach
+                                @if ($month['occasional_payments']->isEmpty() && $month['items']->isEmpty())
                                     <tr><td colspan="16">No hay servicios programados para este mes.</td></tr>
-                                @endforelse
+                                @endif
                             </tbody>
                         </table>
                     </div>
@@ -147,6 +174,12 @@
             </section>
         @endforeach
     </x-app-shell>
+
+    @php
+        $fuelPreviewPayments = collect($months)->flatMap(fn (array $month) => $month['occasional_payments'])
+            ->filter(fn ($payment) => $payment->allocations->isNotEmpty());
+    @endphp
+    @include('services.partials.fuel-allocation-preview', ['payments' => $fuelPreviewPayments])
 
     <style>
         .service-month-table .th-filter {
