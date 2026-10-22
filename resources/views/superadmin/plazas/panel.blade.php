@@ -298,6 +298,8 @@
                 defaultTab: @json($defaultTab),
                 selectedSection: @json($selectedSection),
                 localMarketingView: @json($localMarketingView),
+                softwareMenuCategories: @json(\App\Support\NavigationPermissionCatalog::categories()),
+                canManageValidation: @json(auth()->user()->role === 'superadmin'),
                 displayName: @json(e(auth()->user()->name))
             };
 
