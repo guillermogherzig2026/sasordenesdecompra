@@ -1252,6 +1252,11 @@ button svg,
   gap: 8px;
 }
 
+.plaza-dashboard-carousel.is-compact:not(.is-menu-compact) .plaza-dashboard-card,
+.plaza-dashboard-carousel.is-compact:not(.is-menu-compact) .plaza-dashboard-add-card {
+  height: 212px;
+}
+
 .plaza-dashboard-carousel.is-compact .plaza-dashboard-add-icon {
   width: 44px;
   height: 44px;
@@ -1286,6 +1291,7 @@ button svg,
   width: 238px;
   max-width: 238px;
   min-height: 0;
+  height: 180px;
   grid-template-rows: auto auto auto auto;
   gap: 6px;
   padding: 10px;
@@ -1562,6 +1568,10 @@ button svg,
   min-width: 1280px;
 }
 
+.plaza-dashboard-portfolio-table.has-delete-column {
+  min-width: 1380px;
+}
+
 .plaza-dashboard-portfolio-table th,
 .plaza-dashboard-portfolio-table td {
   padding: 11px 10px;
@@ -1580,6 +1590,21 @@ button svg,
 .plaza-dashboard-edit-button {
   min-width: 0;
   white-space: nowrap;
+}
+
+.plaza-dashboard-delete-button {
+  white-space: nowrap;
+}
+
+.plaza-delete-name-confirmation {
+  display: grid;
+  gap: 6px;
+  margin-top: 16px;
+}
+
+.plaza-delete-confirmation .danger-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
 }
 
 .plaza-catalog-selector,
@@ -2458,7 +2483,34 @@ button svg,
 }
 
 .tenant-table {
-  min-width: 940px;
+  min-width: 1450px;
+}
+
+.tenant-commercial-name-column {
+  min-width: 150px;
+}
+
+.tenant-username-column,
+.tenant-password-column {
+  min-width: 130px;
+  white-space: nowrap;
+}
+
+.tenant-password-display {
+  display: inline-flex;
+  min-height: 30px;
+  align-items: center;
+  gap: 6px;
+}
+
+.tenant-password-display code {
+  min-width: 70px;
+}
+
+.tenant-password-toggle {
+  width: 28px;
+  min-height: 28px;
+  padding: 5px;
 }
 
 .tenant-contract-column,
@@ -2822,7 +2874,7 @@ button svg,
 
 .property-unit-catalog-table th:nth-child(2),
 .property-unit-catalog-table td:nth-child(2) {
-  width: 180px;
+  width: 112px;
 }
 
 .property-unit-catalog-table .unit-tenant-name-cell strong {
@@ -2833,7 +2885,7 @@ button svg,
 
 .property-unit-catalog-table th:nth-child(3),
 .property-unit-catalog-table td:nth-child(3) {
-  width: 112px;
+  width: 180px;
 }
 
 .property-unit-catalog-table th:nth-child(4),
@@ -3570,11 +3622,6 @@ button svg,
   width: 90px;
 }
 
-.property-units-table .contract-validation-column {
-  width: 42px;
-  text-align: center;
-}
-
 .property-units-table .contract-actions-column {
   width: 96px;
 }
@@ -3785,7 +3832,7 @@ button svg,
 }
 
 .property-legal-table {
-  min-width: 1540px;
+  min-width: 1390px;
   table-layout: auto;
 }
 
@@ -3862,10 +3909,16 @@ button svg,
   background: #f3f7f5;
 }
 
-.legal-term-edit-button {
-  min-height: 26px;
-  padding: 0 7px;
-  font-size: 10px;
+.property-legal-table .contract-validation-column {
+  width: 58px;
+  min-width: 58px;
+  text-align: center;
+}
+
+.property-legal-table .contract-validation-status-column {
+  width: 96px;
+  min-width: 96px;
+  text-align: center;
 }
 
 .legal-file-button,
@@ -3895,6 +3948,28 @@ button svg,
   align-items: center;
 }
 
+.legal-contract-term-inline .contract-term-date-button {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 700;
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.legal-contract-term-inline .contract-term-date-button:hover {
+  color: #075e73;
+  text-decoration: underline;
+}
+
+.legal-contract-term-inline .contract-term-date-button:focus-visible {
+  outline: 2px solid #075e73;
+  outline-offset: 3px;
+}
+
 .legal-contract-term-inline .contract-validation-inline {
   flex: 0 0 auto;
   margin-top: 0;
@@ -3902,7 +3977,6 @@ button svg,
 
 .property-legal-table .legal-file-button,
 .property-legal-table .legal-generate-button,
-.property-legal-table .legal-term-edit-button,
 .property-legal-table .status-pill {
   flex: 0 0 auto;
 }
@@ -4340,6 +4414,23 @@ button svg,
   font-size: 10px;
 }
 
+.payment-method-validation-actions [hidden] {
+  display: none;
+}
+
+.payment-method-month-panel .payment-method-validation-actions button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.payment-method-month-panel .payment-method-validation-actions .secondary-button:disabled:hover {
+  border-color: #b8d8d2;
+}
+
+.payment-method-month-panel .payment-method-validation-actions .action-button:disabled:hover {
+  background: var(--teal);
+}
+
 .payment-method-total-row td:first-child {
   color: #0d5a52;
   text-transform: uppercase;
@@ -4533,6 +4624,20 @@ button svg,
   margin: 0;
 }
 
+.unit-list-filters {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.unit-list-filters button {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
 .property-administration-content .payment-method-stack,
 .property-administration-content .property-balance-stack {
   min-width: 0;
@@ -4546,13 +4651,6 @@ button svg,
 
 .property-info-section {
   scroll-margin-top: 14px;
-}
-
-.user-module-layout {
-  display: grid;
-  grid-template-columns: minmax(320px, 0.8fr) minmax(0, 1.2fr);
-  gap: 18px;
-  align-items: start;
 }
 
 .user-property-access-controls {
@@ -4576,8 +4674,76 @@ button svg,
   overflow-y: auto;
 }
 
+.user-property-list input:disabled + span {
+  opacity: 0.6;
+}
+
+.modal-user-create .user-property-list {
+  max-height: none;
+  overflow: visible;
+}
+
+.user-plaza-access-item {
+  min-width: 0;
+}
+
+.user-plaza-menu-access {
+  max-height: 260px;
+  overflow-y: auto;
+  margin: 0 0 6px 26px;
+  border: 1px solid var(--line);
+  border-top: 0;
+  border-radius: 0 0 8px 8px;
+  background: var(--surface);
+}
+
+.user-plaza-menu-access[hidden] {
+  display: none;
+}
+
+.user-plaza-menu-access .user-menu-all {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  background: var(--surface);
+  font-weight: 700;
+}
+
+.user-menu-categories {
+  display: grid;
+  gap: 12px;
+  padding: 12px;
+}
+
+.user-menu-category h4 {
+  margin: 0 0 6px;
+  font-size: 11px;
+}
+
+.user-menu-category-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 2px 8px;
+}
+
+.user-plaza-menu-access .user-menu-option {
+  min-width: 0;
+  min-height: 30px;
+  border: 0;
+  background: transparent;
+  font-weight: 400;
+}
+
+.user-menu-option span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
 .user-admin-table {
-  min-width: 920px;
+  min-width: 1060px;
 }
 
 .property-detail-window,
@@ -5074,7 +5240,7 @@ button svg,
 .modal-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 20;
+  z-index: 40;
   display: grid;
   place-items: center;
   padding: 18px;
@@ -5083,6 +5249,10 @@ button svg,
 
 .modal-backdrop[hidden] {
   display: none;
+}
+
+.validation-message-backdrop {
+  z-index: 60;
 }
 
 .modal {
@@ -5100,6 +5270,41 @@ button svg,
 
 .modal.modal-compact {
   width: min(440px, 100%);
+}
+
+.modal.modal-user-create {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  height: min(660px, calc(100vh - 36px));
+  max-height: calc(100vh - 36px);
+}
+
+.modal-user-create .modal-body {
+  display: grid;
+  min-height: 0;
+  max-height: none;
+  overflow: hidden;
+  padding: 0;
+}
+
+.modal-user-create #platformUserForm {
+  display: grid;
+  min-height: 0;
+  grid-template-rows: minmax(0, 1fr) auto;
+  overflow: hidden;
+}
+
+.modal-user-create .form-grid {
+  min-height: 0;
+  align-content: start;
+  overflow-y: auto;
+  padding: 18px;
+}
+
+.modal-user-create .form-actions {
+  margin: 0;
+  padding: 14px 18px;
+  background: var(--surface);
 }
 
 .modal-header {
@@ -5749,7 +5954,7 @@ button svg,
   position: fixed;
   right: 18px;
   bottom: 18px;
-  z-index: 30;
+  z-index: 50;
   max-width: 340px;
   padding: 12px 14px;
   border-radius: 8px;
@@ -5790,7 +5995,6 @@ button svg,
 
   .superadmin-command,
   .superadmin-grid,
-  .user-module-layout,
   .accounting-grid,
   .plaza-management-actions {
     grid-template-columns: 1fr;
@@ -5864,6 +6068,14 @@ button svg,
   .form-grid,
   .modal-grid,
   .nav-tabs {
+    grid-template-columns: 1fr;
+  }
+
+  .modal-user-create .span-2 {
+    grid-column: 1;
+  }
+
+  .user-menu-category-options {
     grid-template-columns: 1fr;
   }
 

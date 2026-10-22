@@ -33,6 +33,7 @@ class SuperAdminUserController extends Controller
             $query->where(function ($inner) use ($search) {
                 $inner
                     ->where('name', 'like', "%{$search}%")
+                    ->orWhere('username', 'like', "%{$search}%")
                     ->orWhere('email', 'like', "%{$search}%");
             });
         }
@@ -67,6 +68,7 @@ class SuperAdminUserController extends Controller
 
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
+            'username' => ['nullable', 'string', 'max:80', 'regex:/^[a-z0-9]+$/', Rule::unique('users', 'username')],
             'email' => ['required', 'email', 'unique:users,email'],
             'password' => ['required', 'string', 'min:6'],
             'role' => ['required', Rule::in(self::ROLES)],
@@ -83,6 +85,7 @@ class SuperAdminUserController extends Controller
 
         $user = User::create([
             'name' => $validated['name'],
+            'username' => $validated['username'] ?? null,
             'email' => strtolower($validated['email']),
             'password' => $validated['password'],
             'plain_password' => $validated['password'],
@@ -107,6 +110,7 @@ class SuperAdminUserController extends Controller
 
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
+            'username' => ['nullable', 'string', 'max:80', 'regex:/^[a-z0-9]+$/', Rule::unique('users', 'username')->ignore($user->id)],
             'email' => ['required', 'email', Rule::unique('users', 'email')->ignore($user->id)],
             'role' => ['required', Rule::in(self::ROLES)],
             'buyer_subroles' => ['required_if:role,buyer', 'array', 'min:1'],
@@ -128,6 +132,7 @@ class SuperAdminUserController extends Controller
 
         $payload = [
             'name' => $validated['name'],
+            'username' => $validated['username'] ?? null,
             'email' => strtolower($validated['email']),
             'role' => $validated['role'],
             'buyer_subrole' => $validated['role'] === 'buyer' ? $this->buyerSubrolesPayload($validated['buyer_subroles'] ?? []) : null,

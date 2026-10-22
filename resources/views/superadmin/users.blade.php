@@ -68,8 +68,9 @@
                 @csrf
                 <div class="grid-3">
                     <label>Nombre<input name="name" value="{{ old('name') }}" required></label>
+                    <label>Usuario<input name="username" value="{{ old('username') }}" maxlength="80" pattern="[a-z0-9]+" autocomplete="username"></label>
                     <label>Correo<input name="email" type="email" value="{{ old('email') }}" required></label>
-                    <label>Contrasena inicial<input name="password" value="{{ old('password') }}" required></label>
+                    <label>Contrasena inicial<input name="password" type="password" autocomplete="new-password" required></label>
                 </div>
                 <div class="role-subcategory-stack">
                     <label>Rol
@@ -221,6 +222,9 @@
                             <tr>
                                 <td>
                                     <strong>{{ $managedUser->name }}</strong>
+                                    @if ($managedUser->username)
+                                        <small>{{ $managedUser->username }}</small>
+                                    @endif
                                     <small>{{ $managedUser->email }}</small>
                                 </td>
                                 <td class="password-cell">
@@ -330,8 +334,9 @@
                                     <form class="stack" method="POST" action="{{ route('superadmin.users.update', $managedUser) }}">
                                         @csrf
                                         @method('PUT')
-                                        <div class="grid-2">
+                                        <div class="grid-3">
                                             <label>Nombre<input name="name" value="{{ $managedUser->name }}" required></label>
+                                            <label>Usuario<input name="username" value="{{ $managedUser->username }}" maxlength="80" pattern="[a-z0-9]+" autocomplete="username"></label>
                                             <label>Correo<input name="email" type="email" value="{{ $managedUser->email }}" required></label>
                                         </div>
                                         <div class="grid-2">

@@ -11,6 +11,9 @@ const PANEL_DEFAULT_TAB = PANEL_CONFIG.defaultTab || "local_accounting_dashboard
 const PANEL_LOCAL_MARKETING_VIEW = ["screens", "campaigns"].includes(PANEL_CONFIG.localMarketingView)
   ? PANEL_CONFIG.localMarketingView
   : "screens";
+const SOFTWARE_MENU_CATEGORIES = Object.values(PANEL_CONFIG.softwareMenuCategories || {});
+const SOFTWARE_MENU_LABELS = Object.assign({}, ...SOFTWARE_MENU_CATEGORIES.map((category) => category.items || {}));
+const SOFTWARE_MENU_KEYS = Object.keys(SOFTWARE_MENU_LABELS);
 
 const icons = {
   alertCircle: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>',
@@ -107,6 +110,14 @@ const propertyPaymentColumns = [
   { key: "services", label: "Mantenimiento 2", totalKey: "maintenanceTotal" }
 ];
 
+const propertyUnitFilterOptions = [
+  { key: "all", label: "Todos" },
+  { key: "current", label: "Al corriente" },
+  { key: "due", label: "Con Adeudo" },
+  { key: "contract-current", label: "Contrato Vigente" },
+  { key: "contract-expired", label: "Contrato Vencido" }
+];
+
 const paymentMethodValidationConcepts = ["rent", "extraordinary", "maintenance", "services"];
 
 const plazaCreationSections = [
@@ -164,6 +175,7 @@ const DEMO_PLAZA_ARGENTINA_TENANTS = {
 };
 
 const seedState = {
+  deletedPropertyIds: [],
   properties: [
     {
       id: "prop-plaza-norte",
@@ -934,6 +946,7 @@ const view = {
   search: "",
   propertyFilter: "all",
   statusFilter: "all",
+  unitListFilter: "all",
   administrationPropertyId: loadSelectedPropertyId(),
   contractsPropertyId: loadSelectedPropertyId(),
   marketplacePropertyId: loadSelectedPropertyId(),
@@ -1062,6 +1075,10 @@ function mergeById(seedItems, savedItems) {
 }
 
 function normalizeState(nextState) {
+  nextState.deletedPropertyIds = [...new Set(
+    (Array.isArray(nextState.deletedPropertyIds) ? nextState.deletedPropertyIds : [])
+      .filter((propertyId) => typeof propertyId === "string" && propertyId)
+  )];
   nextState.properties = (Array.isArray(nextState.properties) ? nextState.properties : []).map((property) => ({
     ...property,
     marketplaceEnabled: Boolean(property.marketplaceEnabled)
@@ -1110,15 +1127,37 @@ function normalizeState(nextState) {
     status: String(ticket.status || "Abierto"),
     requestedAt: String(ticket.requestedAt || new Date().toISOString())
   }));
+  nextState.tenantProfiles = Array.isArray(nextState.tenantProfiles) ? nextState.tenantProfiles : [];
+  nextState.deletedPropertyIds.forEach((propertyId) => removePropertyData(nextState, propertyId));
   applyPlazaArgentinaDemoContractDates(nextState);
   applyPlazaArgentinaDemoTenants(nextState);
-  syncExpiredContractValidations(nextState.units);
   nextState.tenantProfiles = normalizeTenantProfiles(nextState);
   return nextState;
 }
 
+function removePropertyData(nextState, propertyId) {
+  nextState.properties = nextState.properties.filter((property) => property.id !== propertyId);
+  nextState.units = nextState.units.filter((unit) => unit.propertyId !== propertyId);
+  nextState.localMarketingScreens = nextState.localMarketingScreens.filter((screen) => screen.propertyId !== propertyId);
+  nextState.localMarketingPlaylists = nextState.localMarketingPlaylists.filter((playlist) => playlist.propertyId !== propertyId);
+  nextState.localMarketingMaintenanceTickets = nextState.localMarketingMaintenanceTickets.filter((ticket) => ticket.propertyId !== propertyId);
+  nextState.users.forEach((user) => {
+    if (Array.isArray(user.propertyIds)) user.propertyIds = user.propertyIds.filter((id) => id !== propertyId);
+    if (user.menuPermissionsByProperty) delete user.menuPermissionsByProperty[propertyId];
+  });
+  nextState.organizations.forEach((organization) => {
+    if (Array.isArray(organization.propertyIds)) organization.propertyIds = organization.propertyIds.filter((id) => id !== propertyId);
+  });
+  nextState.tenantProfiles.forEach((profile) => {
+    if (Array.isArray(profile.propertyIds)) profile.propertyIds = profile.propertyIds.filter((id) => id !== propertyId);
+  });
+}
+
 function plazaArgentinaDemoPropertyIds(nextState) {
-  const plazaArgentinaPropertyIds = new Set(DEMO_PLAZA_ARGENTINA_PROPERTY_IDS);
+  const existingPropertyIds = new Set(nextState.properties.map((property) => property.id));
+  const plazaArgentinaPropertyIds = new Set(
+    DEMO_PLAZA_ARGENTINA_PROPERTY_IDS.filter((propertyId) => existingPropertyIds.has(propertyId))
+  );
   (nextState.properties || []).forEach((property) => {
     if (normalizeText(property.name) === "plaza argentina") {
       plazaArgentinaPropertyIds.add(property.id);
@@ -1251,7 +1290,7 @@ function normalizeUsers(users) {
   return users.map((user) => ({
     ...user,
     username: user.username || defaultUsername(user),
-    password: DEMO_PASSWORD
+    password: user.password || DEMO_PASSWORD
   }));
 }
 
@@ -1310,6 +1349,7 @@ function normalizeTenantProfiles(nextState) {
       id: profile.id || `tp-${index + 1}`,
       userId: profile.userId || null,
       name: profile.name || linkedUser?.name || "Sin nombre",
+      commercialName: profile.commercialName || "",
       type: profile.type || "Sin clasificar",
       rfc: profile.rfc || "",
       phone: profile.phone || "",
@@ -1703,6 +1743,10 @@ function canManageAccess() {
   return ["superadmin", "admin"].includes(view.roleId);
 }
 
+function canManageValidation() {
+  return PANEL_CONFIG.canManageValidation === true && view.roleId === "superadmin";
+}
+
 function canViewTenants() {
   return ["superadmin", "admin", "project_manager", "local_accounting", "general_accounting", "legal"].includes(view.roleId);
 }
@@ -1877,7 +1921,7 @@ function visibleTenantRows() {
     if (view.propertyFilter !== "all" && !tenant.propertyIds.includes(view.propertyFilter)) return false;
     if (!query) return true;
 
-    const searchable = normalizeText(`${tenant.name} ${tenant.rfc} ${tenant.email} ${tenant.phone} ${tenant.contact} ${tenant.propertiesLabel}`);
+    const searchable = normalizeText(`${tenant.name} ${tenant.commercialName} ${tenant.rfc} ${tenant.email} ${tenant.phone} ${tenant.contact} ${tenant.propertiesLabel}`);
     return searchable.includes(query);
   }).sort((a, b) => a.name.localeCompare(b.name, "es"));
 }
@@ -1908,6 +1952,8 @@ function tenantRows() {
       propertyIds,
       propertiesLabel,
       unitsLabel: assignedUnits.map((unit) => unit.unit).join(", ") || "Sin unidad asignada",
+      username: user?.username || "",
+      hasPassword: Boolean(user?.password),
       hasPortalAccess: Boolean(user)
     };
   });
@@ -2246,7 +2292,6 @@ function render() {
   localMarketingColumnFilterCleanup = null;
   localMarketingMaintenanceMenuCleanup?.();
   localMarketingMaintenanceMenuCleanup = null;
-  if (syncExpiredContractValidations()) saveState();
   ensureActiveTabAllowed();
   renderHeader();
   renderNav();
@@ -4788,11 +4833,12 @@ function plazaDashboardProgrammedMonthlyIncome(property, units = propertyUnits(p
     .reduce((sum, unit) => sum + Number(unit.rentTotal ?? unit.monthlyRent ?? 0), 0);
 }
 
-function plazaDashboardAllPropertiesTableMarkup(properties) {
+function plazaDashboardAllPropertiesTableMarkup(properties, options = {}) {
+  const includeDelete = options.includeDelete === true;
   return `
     <div class="table-panel plaza-dashboard-status-panel">
       <div class="table-scroll">
-        <table class="plaza-dashboard-portfolio-table" aria-label="Informacion general de todas las plazas">
+        <table class="plaza-dashboard-portfolio-table ${includeDelete ? "has-delete-column" : ""}" aria-label="Informacion general de todas las plazas">
           <thead>
             <tr>
               <th>Plaza</th>
@@ -4806,10 +4852,11 @@ function plazaDashboardAllPropertiesTableMarkup(properties) {
               <th>Marketplace</th>
               <th>Estatus</th>
               <th>Editar</th>
+              ${includeDelete ? "<th>Eliminar</th>" : ""}
             </tr>
           </thead>
           <tbody>
-            ${properties.map(plazaDashboardPropertyRowMarkup).join("")}
+            ${properties.map((property) => plazaDashboardPropertyRowMarkup(property, includeDelete)).join("")}
           </tbody>
         </table>
       </div>
@@ -4817,7 +4864,7 @@ function plazaDashboardAllPropertiesTableMarkup(properties) {
   `;
 }
 
-function plazaDashboardPropertyRowMarkup(property) {
+function plazaDashboardPropertyRowMarkup(property, includeDelete = false) {
   const units = propertyUnits(property.id);
   const unitCount = units.length || Number(property.plannedUnits || 0);
   const occupiedUnits = units.length
@@ -4859,6 +4906,14 @@ function plazaDashboardPropertyRowMarkup(property) {
           Editar
         </button>
       </td>
+      ${includeDelete ? `
+        <td>
+          <button class="danger-button plaza-dashboard-delete-button" type="button" data-plaza-dashboard-delete="${escapeAttribute(property.id)}" aria-label="Eliminar ${escapeAttribute(property.name)}">
+            <span data-icon="trash" aria-hidden="true"></span>
+            Eliminar
+          </button>
+        </td>
+      ` : ""}
     </tr>
   `;
 }
@@ -5230,7 +5285,7 @@ function renderPlazaAdministration() {
                   <p class="muted">Consulta el resumen consolidado o selecciona una plaza para administrar sus unidades y cobranza.</p>
                 </div>
               </div>
-              ${plazaDashboardAllPropertiesTableMarkup(properties)}
+              ${plazaDashboardAllPropertiesTableMarkup(properties, { includeDelete: true })}
             </section>
           </section>
         ` : renderPropertyDetailSection({ property, markupOnly: true })}
@@ -5279,6 +5334,85 @@ function bindPlazaAdministrationActions(properties, activeCarouselIndex) {
   els.contentArea.querySelectorAll("[data-plaza-dashboard-edit]").forEach((button) => {
     button.addEventListener("click", () => openPlazaCreationFlow(button.dataset.plazaDashboardEdit));
   });
+  els.contentArea.querySelectorAll("[data-plaza-dashboard-delete]").forEach((button) => {
+    button.addEventListener("click", () => openDeletePlazaModal(button.dataset.plazaDashboardDelete));
+  });
+}
+
+function openDeletePlazaModal(propertyId, step = 1) {
+  if (view.roleId !== "superadmin") return;
+  const property = getProperty(propertyId);
+  if (!property || step < 1 || step > 3) return;
+
+  const unitCount = propertyUnits(propertyId).length;
+  const propertyName = escapeAttribute(property.name);
+  const questions = [
+    "Estas seguro que quieres eliminar la plaza?",
+    `Confirma de nuevo: deseas eliminar ${propertyName} y ${unitCount === 1 ? "su unidad" : `sus ${unitCount} unidades`}?`,
+    `Ultima confirmacion: elimina definitivamente ${propertyName}.`
+  ];
+
+  els.modal.classList.add("modal-compact");
+  els.modalEyebrow.textContent = `Confirmacion ${step} de 3`;
+  els.modalTitle.textContent = "Eliminar plaza";
+  els.modalBody.innerHTML = `
+    <section class="delete-confirmation plaza-delete-confirmation">
+      <p class="delete-question">${questions[step - 1]}</p>
+      <p class="muted">Esta accion eliminara la plaza y sus unidades, pagos, contratos y registros vinculados en este panel. No se puede deshacer.</p>
+      ${step === 3 ? `
+        <div class="plaza-delete-name-confirmation">
+          <label for="plazaDeleteName">Escribe el nombre exacto de la plaza para continuar</label>
+          <input id="plazaDeleteName" type="text" data-plaza-delete-name autocomplete="off" spellcheck="false">
+        </div>
+      ` : ""}
+      <div class="form-actions delete-confirmation-actions">
+        <button class="secondary-button" type="button" data-plaza-delete-close>Cerrar</button>
+        <button class="danger-button" type="button" data-plaza-delete-confirm ${step === 3 ? "disabled" : ""}>
+          ${step === 3 ? "Eliminar definitivamente" : "Confirmar"}
+        </button>
+      </div>
+    </section>
+  `;
+
+  const nameInput = els.modalBody.querySelector("[data-plaza-delete-name]");
+  const confirmButton = els.modalBody.querySelector("[data-plaza-delete-confirm]");
+  nameInput?.addEventListener("input", () => {
+    confirmButton.disabled = nameInput.value.trim() !== property.name;
+  });
+  els.modalBody.querySelector("[data-plaza-delete-close]").addEventListener("click", closeModal);
+  confirmButton.addEventListener("click", () => {
+    if (step < 3) openDeletePlazaModal(propertyId, step + 1);
+    else if (nameInput?.value.trim() === property.name) deletePlazaAndReturn(propertyId);
+  });
+
+  openModal();
+  (nameInput || els.modalClose).focus();
+}
+
+function deletePlazaAndReturn(propertyId) {
+  if (view.roleId !== "superadmin" || !getProperty(propertyId)) return;
+
+  state.deletedPropertyIds = [...new Set([...(state.deletedPropertyIds || []), propertyId])];
+  removePropertyData(state, propertyId);
+  [
+    "propertyFilter",
+    "administrationPropertyId",
+    "contractsPropertyId",
+    "marketplacePropertyId",
+    "propertiesCatalogPropertyId",
+    "localMarketingPropertyId",
+    "usersPropertyId",
+    "tenantCatalogPropertyId"
+  ].forEach((key) => {
+    if (view[key] === propertyId) view[key] = "all";
+  });
+  if (view.propertyDetailId === propertyId) view.propertyDetailId = "";
+  if (loadSelectedPropertyId() === propertyId) localStorage.removeItem(SELECTED_PROPERTY_KEY);
+
+  saveState();
+  closeModal();
+  render();
+  toast("Plaza eliminada");
 }
 
 function renderPlazaContracts() {
@@ -7154,7 +7288,7 @@ function renderPropertyDetailSection(options = {}) {
             ${activeAdministrationView === "balances" ? 'aria-current="page"' : ""}
           >
             <span data-icon="receipt" aria-hidden="true"></span>
-            Ver Adeudos
+            Detalle por mes
           </button>
         </nav>
 
@@ -7247,12 +7381,44 @@ function propertyAdministrationViewMarkup(property, activeView = "units") {
         <div>
           <p class="eyebrow">Unidades</p>
           <h3>Listado de unidades</h3>
-          <p class="muted">Cada unidad puede abrirse para revisar su informacion especifica.</p>
         </div>
       </div>
-      ${units.length ? propertyUnitsTableMarkup(units) : emptyState("Aun no hay unidades registradas para esta propiedad.")}
+      <div class="unit-list-filters" role="group" aria-label="Filtrar locales">
+        ${propertyUnitFilterOptions.map((option) => `
+          <button
+            class="${view.unitListFilter === option.key ? "action-button" : "secondary-button"}"
+            type="button"
+            data-unit-list-filter="${option.key}"
+            aria-pressed="${view.unitListFilter === option.key ? "true" : "false"}"
+          >${option.label}</button>
+        `).join("")}
+      </div>
+      <div data-unit-list-results>
+        ${propertyUnitListResultsMarkup(units)}
+      </div>
     </section>
   `;
+}
+
+function propertyUnitListResultsMarkup(units) {
+  if (!units.length) return emptyState("Aun no hay unidades registradas para esta propiedad.");
+  const filteredUnits = units.filter((unit) => unitMatchesPropertyUnitFilter(unit, view.unitListFilter));
+  return filteredUnits.length
+    ? propertyUnitsTableMarkup(filteredUnits)
+    : emptyState("No hay locales para este filtro.");
+}
+
+function unitMatchesPropertyUnitFilter(unit, filterKey) {
+  if (filterKey === "all") return true;
+  if (filterKey === "current" || filterKey === "due") {
+    const monthKey = currentMonthKey();
+    const hasDebt = propertyPaymentColumns.some((concept) => isPaymentConceptDue(unit, monthKey, concept.key));
+    return filterKey === "due" ? hasDebt : !hasDebt;
+  }
+  const contractKind = contractStatus(unit).kind;
+  if (filterKey === "contract-current") return !isUnitAvailable(unit) && ["active", "warning", "critical"].includes(contractKind);
+  if (filterKey === "contract-expired") return !isUnitAvailable(unit) && contractKind === "expired";
+  return true;
 }
 
 function switchPropertyAdministrationView(propertyId, nextView) {
@@ -8062,6 +8228,7 @@ function propertyValidationHeaderMarkup(concept, monthKey, units) {
           data-validation-all="${concept.key}"
           data-payment-month="${monthKey}"
           ${isAllValidated ? "checked" : ""}
+          ${canManageValidation() ? "" : "disabled"}
           aria-label="Seleccionar todos ${concept.label} ${formatMonthShort(monthKey)}"
         >
       </label>
@@ -8126,6 +8293,7 @@ function paymentValidationCellMarkup(unit, conceptKey, monthKey) {
         data-payment-month="${monthKey}"
         data-unit-id="${unit.id}"
         ${isValidated ? "checked disabled" : ""}
+        ${canManageValidation() ? "" : "disabled"}
         aria-label="Validar ${conceptKey} ${unit.unit} ${formatMonthShort(monthKey)}"
       >
     </td>
@@ -8164,7 +8332,6 @@ function propertyUnitsTableMarkup(units) {
               <th>Arrendatario</th>
               ${propertyPaymentHeadersMarkup({ includeRecords: false })}
               <th class="contract-date-column">Contrato</th>
-              ${propertyUnitContractValidationHeaderMarkup(orderedUnits)}
               <th class="contract-status-column">Estado</th>
               <th class="actions-column">Acciones</th>
             </tr>
@@ -8176,7 +8343,6 @@ function propertyUnitsTableMarkup(units) {
                 <td class="unit-tenant-name-cell">${unitTenantNameLabel(unit)}</td>
                 ${propertyPaymentCellsMarkup(unit, { includeRecords: false })}
                 <td class="contract-date-column">${formatDate(unit.contractStart)} - ${formatDate(unit.contractEnd)}</td>
-                ${propertyUnitContractValidationCellMarkup(unit)}
                 <td class="contract-status-column"><span class="status-pill ${contractStatus(unit).className}">${contractStatus(unit).label}</span></td>
                 <td class="actions-column">
                   <div class="unit-row-actions">
@@ -8191,7 +8357,6 @@ function propertyUnitsTableMarkup(units) {
           </tbody>
         </table>
       </div>
-      ${propertyUnitContractValidationActionsMarkup()}
     </div>
   `;
 }
@@ -8208,6 +8373,7 @@ function propertyUnitContractValidationHeaderMarkup(units) {
           type="checkbox"
           data-unit-contract-validation-all
           ${isAllValidated ? "checked" : ""}
+          ${canManageValidation() && eligibleUnits.length ? "" : "disabled"}
           aria-label="Seleccionar todas las validaciones de contrato"
         >
       </label>
@@ -8226,21 +8392,23 @@ function propertyUnitContractValidationCellMarkup(unit) {
         data-unit-contract-validation-check
         data-unit-id="${unit.id}"
         ${isValidated ? "checked disabled" : ""}
-        ${!isEligible ? "disabled" : ""}
+        ${!isEligible || !canManageValidation() ? "disabled" : ""}
         aria-label="Validar contrato ${unit.unit}"
       >
     </td>
   `;
 }
 
-function propertyUnitContractValidationActionsMarkup() {
+function propertyUnitContractValidationActionsMarkup(units) {
+  if (!canManageValidation()) return "";
+  const hasEligibleUnits = units.some(canValidateUnitContractTerm);
   return `
     <div class="payment-method-validation-actions unit-contract-validation-actions">
-      <button class="secondary-button" type="button" data-edit-unit-contract-validation>
+      <button class="secondary-button" type="button" data-edit-unit-contract-validation ${hasEligibleUnits ? "" : "disabled"}>
         <span data-icon="settings" aria-hidden="true"></span>
         Editar Validacion
       </button>
-      <button class="action-button" type="button" data-confirm-unit-contract-validation>
+      <button class="action-button" type="button" data-confirm-unit-contract-validation ${hasEligibleUnits ? "" : "disabled"}>
         <span data-icon="checkCircle" aria-hidden="true"></span>
         Validar
       </button>
@@ -8249,24 +8417,7 @@ function propertyUnitContractValidationActionsMarkup() {
 }
 
 function canValidateUnitContractTerm(unit) {
-  return Boolean(unit && !isUnitAvailable(unit) && unit.contractStart && unit.contractEnd && !isContractExpired(unit));
-}
-
-function clearContractTermValidation(unit) {
-  if (!unit || (unit.contractTermValidated === false && !unit.contractTermValidatedAt)) return false;
-  unit.contractTermValidated = false;
-  delete unit.contractTermValidatedAt;
-  return true;
-}
-
-function syncExpiredContractValidations(units = state.units) {
-  let changed = false;
-  (units || []).forEach((unit) => {
-    if (isContractExpired(unit)) {
-      changed = clearContractTermValidation(unit) || changed;
-    }
-  });
-  return changed;
+  return Boolean(unit && !isUnitAvailable(unit) && unit.contractStart && unit.contractEnd);
 }
 
 function bindPropertyUnitContractValidationActions(root = els.contentArea) {
@@ -8275,7 +8426,7 @@ function bindPropertyUnitContractValidationActions(root = els.contentArea) {
   });
 
   root.querySelectorAll("[data-unit-contract-validation-check]").forEach((checkbox) => {
-    checkbox.addEventListener("change", () => updatePropertyUnitContractValidationHeader(checkbox.closest(".property-units-table")));
+    checkbox.addEventListener("change", () => updatePropertyUnitContractValidationHeader(checkbox.closest(".contract-validation-table")));
   });
 
   root.querySelectorAll("[data-confirm-unit-contract-validation]").forEach((button) => {
@@ -8286,11 +8437,12 @@ function bindPropertyUnitContractValidationActions(root = els.contentArea) {
     button.addEventListener("click", () => editPropertyUnitContractValidation(button));
   });
 
-  root.querySelectorAll(".property-units-table").forEach(updatePropertyUnitContractValidationHeader);
+  root.querySelectorAll(".contract-validation-table").forEach(updatePropertyUnitContractValidationHeader);
 }
 
 function togglePropertyUnitContractValidation(headerCheckbox) {
-  const table = headerCheckbox.closest(".property-units-table");
+  if (!canManageValidation()) return;
+  const table = headerCheckbox.closest(".contract-validation-table");
   if (!table) return;
 
   table.querySelectorAll("[data-unit-contract-validation-check]").forEach((checkbox) => {
@@ -8314,7 +8466,8 @@ function updatePropertyUnitContractValidationHeader(table) {
 }
 
 function confirmPropertyUnitContractValidation(button) {
-  const panel = button.closest(".property-units-panel");
+  if (!canManageValidation()) return;
+  const panel = button.closest(".contract-validation-panel");
   if (!panel) return;
 
   panel.querySelectorAll("[data-unit-contract-validation-check]").forEach((checkbox) => {
@@ -8333,11 +8486,12 @@ function confirmPropertyUnitContractValidation(button) {
 
   saveState();
   render();
-  toast("Validacion confirmada");
+  openValidationMessageModal("Validacion guardada", "La validacion de contratos quedo registrada.");
 }
 
 function editPropertyUnitContractValidation(button) {
-  const panel = button.closest(".property-units-panel");
+  if (!canManageValidation()) return;
+  const panel = button.closest(".contract-validation-panel");
   if (!panel) return;
 
   panel.querySelectorAll("[data-unit-contract-validation-check]").forEach((checkbox) => {
@@ -8346,8 +8500,8 @@ function editPropertyUnitContractValidation(button) {
     checkbox.disabled = false;
     checkbox.classList.remove("is-validated");
   });
-  panel.querySelectorAll(".property-units-table").forEach(updatePropertyUnitContractValidationHeader);
-  toast("Validaciones listas para editar");
+  panel.querySelectorAll(".contract-validation-table").forEach(updatePropertyUnitContractValidationHeader);
+  openValidationMessageModal("Edicion de validacion habilitada", "Las casillas de validacion de contratos se pueden editar de nuevo.", button);
 }
 
 function propertyUnitCatalogTableMarkup(units, options = {}) {
@@ -8360,10 +8514,10 @@ function propertyUnitCatalogTableMarkup(units, options = {}) {
           <thead>
             <tr>
               <th>Unidad</th>
+              <th>Nivel</th>
               ${showProperty ? "<th>Plaza</th>" : ""}
               <th>Nombre del arrendatario</th>
               <th>Editar arrendatario</th>
-              <th>Nivel</th>
               <th>Renta Total</th>
               <th>Mantenimiento Total</th>
               <th>Metros cuadrados</th>
@@ -8375,6 +8529,7 @@ function propertyUnitCatalogTableMarkup(units, options = {}) {
             ${orderedUnits.map((unit) => `
               <tr>
                 <td><strong>${unit.unit}</strong></td>
+                <td>${unitLevelLabel(unit)}</td>
                 ${showProperty ? `<td><strong>${escapeAttribute(getProperty(unit.propertyId)?.name || "Sin plaza")}</strong></td>` : ""}
                 <td class="unit-tenant-name-cell">${unitTenantNameLabel(unit)}</td>
                 <td class="unit-tenant-edit-cell">
@@ -8383,7 +8538,6 @@ function propertyUnitCatalogTableMarkup(units, options = {}) {
                     Editar
                   </button>
                 </td>
-                <td>${unitLevelLabel(unit)}</td>
                 <td><strong>${formatCurrency(paymentTotalAmount(unit, "rentTotal"))}</strong></td>
                 <td><strong>${formatCurrency(paymentTotalAmount(unit, "maintenanceTotal"))}</strong></td>
                 <td>${unitSquareMetersLabel(unit)}</td>
@@ -8468,9 +8622,9 @@ function legalPanelButtonMarkup(propertyId) {
 function propertyLegalPanelTableMarkup(units) {
   const orderedUnits = sortedUnitsByNumber(units);
   return `
-    <div class="table-panel property-legal-panel">
+    <div class="table-panel property-legal-panel contract-validation-panel">
       <div class="table-scroll">
-        <table class="property-legal-table">
+        <table class="property-legal-table contract-validation-table">
           <thead>
             <tr>
               <th>Unidad</th>
@@ -8480,8 +8634,9 @@ function propertyLegalPanelTableMarkup(units) {
                 <span class="legal-heading-lines">Mantenimiento <span>Total</span></span>
               </th>
               <th>Vigencia de contrato</th>
+              ${propertyUnitContractValidationHeaderMarkup(orderedUnits)}
+              <th class="contract-validation-status-column">Validacion</th>
               <th>Estatus</th>
-              <th>Editar vigencia</th>
               <th class="legal-compact-heading">
                 <span class="legal-heading-lines">Machote de Contrato <span>en PDF</span></span>
               </th>
@@ -8496,6 +8651,7 @@ function propertyLegalPanelTableMarkup(units) {
           </tbody>
         </table>
       </div>
+      ${propertyUnitContractValidationActionsMarkup(orderedUnits)}
     </div>
   `;
 }
@@ -8503,7 +8659,6 @@ function propertyLegalPanelTableMarkup(units) {
 function propertyLegalPanelRowMarkup(unit) {
   const hasContract = !isUnitAvailable(unit);
   const status = hasContract ? contractStatus(unit) : { label: "Sin Contrato", className: "status-neutral" };
-  const nextContract = unit.nextPeriodContract || "";
 
   return `
     <tr>
@@ -8513,18 +8668,17 @@ function propertyLegalPanelRowMarkup(unit) {
       <td><strong>${formatCurrency(paymentTotalAmount(unit, "maintenanceTotal"))}</strong></td>
       <td>
         <div class="legal-contract-term-inline">
-          <strong>${hasContract ? `${formatDate(unit.contractStart)} - ${formatDate(unit.contractEnd)}` : "Sin Contrato"}</strong>
-          ${hasContract ? `<div class="contract-validation-inline">${contractTermValidationMarkup(unit)}</div>` : ""}
+          ${hasContract && !isContractTermValidated(unit) ? `
+            <button class="contract-term-date-button" type="button" data-edit-contract-term="${unit.id}" aria-label="Editar vigencia de ${escapeAttribute(unit.unit)}" title="Editar fechas del contrato">
+              ${formatDate(unit.contractStart)} - ${formatDate(unit.contractEnd)}
+            </button>
+          ` : `<strong>${hasContract ? `${formatDate(unit.contractStart)} - ${formatDate(unit.contractEnd)}` : "Sin Contrato"}</strong>`}
         </div>
       </td>
+      ${propertyUnitContractValidationCellMarkup(unit)}
+      <td class="contract-validation-status-column">${hasContract ? contractTermValidationMarkup(unit) : "—"}</td>
       <td>
         <span class="status-pill ${status.className}">${status.label}</span>
-      </td>
-      <td>
-        <button class="secondary-button legal-term-edit-button" type="button" data-edit-contract-term="${unit.id}">
-          <span data-icon="settings" aria-hidden="true"></span>
-          Editar fechas
-        </button>
       </td>
       <td>${legalTemplateFileActionsMarkup(unit)}</td>
       <td>${legalSignedContractActionsMarkup(unit)}</td>
@@ -8624,13 +8778,14 @@ function paymentStatusChipMarkup(unit, conceptKey, monthKey = null, options = {}
 
   const monthKeys = allLedgerMonthKeys([unit]);
   const monthsToCheck = monthKey ? [monthKey] : monthKeys.length ? monthKeys : [currentMonthKey()];
-  const paymentGroup = paymentGroupForConcept(conceptKey);
-  const hasDebt = monthsToCheck.some((monthKey) => {
-    if (paymentGroup) return getPaymentStatus(unit, monthKey, conceptKey) === "pending";
-    return conceptAmountForMonth(unit, conceptKey, monthKey) > 0 && getPaymentStatus(unit, monthKey, conceptKey) === "pending";
-  });
+  const hasDebt = monthsToCheck.some((key) => isPaymentConceptDue(unit, key, conceptKey));
 
   return `<span class="payment-status-chip ${hasDebt ? "is-due" : "is-current"}">${hasDebt ? "Con Adeudo" : "Al Corriente"}</span>`;
+}
+
+function isPaymentConceptDue(unit, monthKey, conceptKey) {
+  if (paymentGroupForConcept(conceptKey)) return getPaymentStatus(unit, monthKey, conceptKey) === "pending";
+  return conceptAmountForMonth(unit, conceptKey, monthKey) > 0 && getPaymentStatus(unit, monthKey, conceptKey) === "pending";
 }
 
 function bindPropertyDetailActions(propertyId) {
@@ -8650,8 +8805,8 @@ function bindPropertyAdministrationContentActions(propertyId, root) {
   root.querySelectorAll(".table-scroll").forEach((scrollContainer) => {
     scrollContainer.scrollLeft = 0;
   });
+  bindPropertyUnitListFilterActions(propertyId, root);
   bindPaymentRecordActions(root);
-  bindPropertyUnitContractValidationActions(root);
   bindPaymentMethodActions(root);
   bindBalanceValidationActions(root);
   root.querySelectorAll("[data-view-unit]").forEach((button) => {
@@ -8662,6 +8817,28 @@ function bindPropertyAdministrationContentActions(propertyId, root) {
   });
   root.querySelectorAll("[data-contract]").forEach((button) => {
     button.addEventListener("click", () => openContractModal(button.dataset.unitId, button.dataset.contract));
+  });
+}
+
+function bindPropertyUnitListFilterActions(propertyId, root) {
+  const results = root.querySelector("[data-unit-list-results]");
+  if (!results) return;
+
+  root.querySelectorAll("[data-unit-list-filter]").forEach((button) => {
+    button.addEventListener("click", () => {
+      view.unitListFilter = button.dataset.unitListFilter;
+      root.querySelectorAll("[data-unit-list-filter]").forEach((option) => {
+        const isActive = option.dataset.unitListFilter === view.unitListFilter;
+        option.classList.toggle("action-button", isActive);
+        option.classList.toggle("secondary-button", !isActive);
+        option.setAttribute("aria-pressed", String(isActive));
+      });
+      results.innerHTML = propertyUnitListResultsMarkup(propertyUnits(propertyId));
+      injectIcons(results);
+      results.querySelectorAll("[data-view-unit]").forEach((viewButton) => {
+        viewButton.addEventListener("click", () => openPropertyUnitStatusSection(viewButton.dataset.viewUnit, propertyId));
+      });
+    });
   });
 }
 
@@ -8732,6 +8909,10 @@ function openUnitTenantModal(propertyId, unitId) {
             ${tenantCatalogOptions(profile?.id || "", tenantName)}
           </select>
           <input id="unitTenantSearch" class="tenant-search-input" type="search" placeholder="Buscar por nombre" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="unitTenantCommercialName">Nombre comercial</label>
+          <input id="unitTenantCommercialName" name="commercialName" placeholder="Nombre del negocio" value="${escapeAttribute(profile?.commercialName || "")}">
         </div>
         <div class="field">
           <label for="unitTenantType">Tipo</label>
@@ -8809,6 +8990,7 @@ function populateUnitTenantFields(profileId) {
   if (!tenant) return;
 
   const values = {
+    unitTenantCommercialName: tenant.commercialName || "",
     unitTenantType: tenant.type || "Sin clasificar",
     unitTenantRfc: tenant.rfc || "",
     unitTenantContact: tenant.contact || tenant.name || "",
@@ -8841,7 +9023,6 @@ function saveUnitTenantFromForm(event, propertyId, unitId) {
   unit.tenantAssignmentManual = true;
   unit.contractStart = unit.contractStart || defaultUnitContractStart();
   unit.contractEnd = unit.contractEnd || defaultUnitContractEnd();
-  unit.contractTermValidated = false;
   unit.signedContract = unit.signedContract || "Pendiente de firma";
 
   saveState();
@@ -8861,6 +9042,7 @@ function upsertTenantProfileFromUnit(data, propertyId) {
 
   const propertyIds = new Set([...(profile.propertyIds || []), propertyId]);
   profile.userId = profile.userId || linkedUser?.id || null;
+  profile.commercialName = String(data.get("commercialName") || "").trim();
   profile.type = String(data.get("type") || "Sin clasificar");
   profile.rfc = String(data.get("rfc") || "").trim().toUpperCase();
   profile.phone = String(data.get("phone") || "").trim();
@@ -8976,10 +9158,6 @@ function openMarkUnitAvailableBlockedModal(propertyId, unitId) {
 
 function canMarkUnitAsAvailable(unit) {
   if (!unit || isUnitAvailable(unit) || !unit.contractEnd) return true;
-  if (isContractExpired(unit)) {
-    clearContractTermValidation(unit);
-    return true;
-  }
   return !isContractTermValidated(unit);
 }
 
@@ -9254,8 +9432,11 @@ function paymentMethodMonthPanelMarkup(units, monthKey, monthsBack) {
   const periodLabel = monthsBack === 0 ? "Mes corriente" : `${monthsBack} ${monthsBack === 1 ? "mes atras" : "meses atras"}`;
   const isExpanded = monthsBack === 0;
   const contentId = `paymentMethodMonthContent-${monthKey}`;
+  const lockState = paymentMethodMonthLockState(units[0], monthKey);
+  const hasLockedFields = lockState === true || (lockState === undefined && units.some((unit) =>
+    paymentMethodValidationConcepts.some((conceptKey) => isPaymentMethodConceptValidated(unit, monthKey, conceptKey))));
   return `
-    <section class="table-panel payment-method-month-panel payment-method-month-accordion ${isExpanded ? "is-expanded" : "is-collapsed"}" data-payment-month-panel="${monthKey}">
+    <section class="table-panel payment-method-month-panel payment-method-month-accordion ${isExpanded ? "is-expanded" : "is-collapsed"}" data-payment-month-panel="${monthKey}" data-property-id="${escapeAttribute(units[0]?.propertyId || "")}">
       <button
         class="month-panel-header payment-method-month-toggle"
         type="button"
@@ -9302,16 +9483,18 @@ function paymentMethodMonthPanelMarkup(units, monthKey, monthsBack) {
             </tfoot>
           </table>
         </div>
-        <div class="payment-method-validation-actions">
-          <button class="secondary-button" type="button" data-edit-payment-method-validation="${monthKey}">
-            <span data-icon="settings" aria-hidden="true"></span>
-            Editar Validacion
-          </button>
-          <button class="action-button" type="button" data-confirm-payment-method-rent-validation="${monthKey}">
-            <span data-icon="checkCircle" aria-hidden="true"></span>
-            Validar
-          </button>
-        </div>
+        ${canManageValidation() ? `
+          <div class="payment-method-validation-actions">
+            <button class="secondary-button" type="button" data-edit-payment-method-validation="${monthKey}" ${hasLockedFields ? "" : "disabled"}>
+              <span data-icon="settings" aria-hidden="true"></span>
+              Editar Validacion
+            </button>
+            <button class="action-button" type="button" data-confirm-payment-method-rent-validation="${monthKey}" ${hasLockedFields ? "disabled" : ""}>
+              <span data-icon="checkCircle" aria-hidden="true"></span>
+              Validar
+            </button>
+          </div>
+        ` : ""}
       </div>
     </section>
   `;
@@ -9319,9 +9502,12 @@ function paymentMethodMonthPanelMarkup(units, monthKey, monthsBack) {
 
 function paymentMethodAdvancePanelMarkup(units) {
   const monthKey = currentMonthKey();
+  const lockState = advancePaymentMonthLockState(units[0], monthKey);
+  const hasLockedFields = lockState === true || (lockState === undefined && units.some((unit) =>
+    paymentMethodValidationConcepts.some((conceptKey) => isAdvancePaymentConceptValidated(unit, monthKey, conceptKey))));
 
   return `
-    <section class="table-panel payment-method-month-panel payment-method-advance-panel">
+    <section class="table-panel payment-method-month-panel payment-method-advance-panel" data-property-id="${escapeAttribute(units[0]?.propertyId || "")}">
       <div class="month-panel-header">
         <div>
           <p class="eyebrow">Registro de anticipos</p>
@@ -9359,16 +9545,18 @@ function paymentMethodAdvancePanelMarkup(units) {
           </tfoot>
         </table>
       </div>
-      <div class="payment-method-validation-actions">
-        <button class="secondary-button" type="button" data-edit-advance-payment-validation="${monthKey}">
-          <span data-icon="settings" aria-hidden="true"></span>
-          Editar Validacion
-        </button>
-        <button class="action-button" type="button" data-confirm-advance-payment-validation="${monthKey}">
-          <span data-icon="checkCircle" aria-hidden="true"></span>
-          Validar
-        </button>
-      </div>
+      ${canManageValidation() ? `
+        <div class="payment-method-validation-actions">
+          <button class="secondary-button" type="button" data-edit-advance-payment-validation="${monthKey}" ${hasLockedFields ? "" : "hidden"}>
+            <span data-icon="settings" aria-hidden="true"></span>
+            Editar Validacion
+          </button>
+          <button class="action-button" type="button" data-confirm-advance-payment-validation="${monthKey}" ${hasLockedFields ? "hidden" : ""}>
+            <span data-icon="checkCircle" aria-hidden="true"></span>
+            Validar
+          </button>
+        </div>
+      ` : ""}
     </section>
   `;
 }
@@ -9388,8 +9576,8 @@ function paymentMethodAdvanceRowMarkup(unit, monthKey) {
       <td><strong>${unit.unit}</strong></td>
       <td>${tenantCellMarkup(unit)}</td>
       <td class="advance-period-cell">
-        ${advanceMonthSelectMarkup(unit, "desde", periodSelection.fromMonthKey, isAvailable)}
-        ${advanceMonthSelectMarkup(unit, "hasta", periodSelection.toMonthKey, isAvailable)}
+        ${advanceMonthSelectMarkup(unit, "desde", periodSelection.fromMonthKey, isAvailable || advancePaymentMonthLockState(unit, monthKey) === true || !canManageValidation())}
+        ${advanceMonthSelectMarkup(unit, "hasta", periodSelection.toMonthKey, isAvailable || advancePaymentMonthLockState(unit, monthKey) === true || !canManageValidation())}
       </td>
       <td class="payment-method-readonly-total payment-method-rent-section payment-method-section-start">
         <strong>${formatCurrency(rentTotal)}</strong>
@@ -9468,8 +9656,7 @@ function advanceMonthSelectMarkup(unit, field, selectedMonthKey, isDisabled = fa
 }
 
 function paymentMethodAdvanceAmountCellMarkup(unit, monthKey, conceptKey, value, isDisabled = false) {
-  const isValidated = isAdvancePaymentConceptValidated(unit, monthKey, conceptKey);
-  const isLocked = isDisabled || isValidated;
+  const isLocked = isDisabled || isAdvancePaymentFieldLocked(unit, monthKey, conceptKey) || !canManageValidation();
   return `
     <td class="payment-method-amount-cell ${paymentMethodSectionClass(conceptKey)} ${isLocked ? "is-frozen" : ""}">
       <input
@@ -9491,6 +9678,7 @@ function paymentMethodAdvanceAmountCellMarkup(unit, monthKey, conceptKey, value,
 function advancePaymentConceptValidationHeaderMarkup(units, monthKey, conceptKey) {
   const editableUnits = units.filter((unit) => !isUnitAvailable(unit));
   const isAllValidated = editableUnits.length > 0 && editableUnits.every((unit) => isAdvancePaymentConceptValidated(unit, monthKey, conceptKey));
+  const isLocked = advancePaymentMonthLockState(units[0], monthKey) === true;
   return `
     <th class="payment-method-validation-column ${paymentMethodSectionClass(conceptKey)}">
       <label class="validation-header-control">
@@ -9502,6 +9690,7 @@ function advancePaymentConceptValidationHeaderMarkup(units, monthKey, conceptKey
           data-payment-month="${monthKey}"
           data-payment-concept="${conceptKey}"
           ${isAllValidated ? "checked" : ""}
+          ${isLocked || !canManageValidation() ? "disabled" : ""}
           aria-label="Seleccionar validaciones de anticipo ${paymentMethodConceptLabel(conceptKey)} ${formatMonthShort(monthKey)}"
         >
       </label>
@@ -9512,17 +9701,18 @@ function advancePaymentConceptValidationHeaderMarkup(units, monthKey, conceptKey
 function advancePaymentConceptValidationCellMarkup(unit, monthKey, conceptKey) {
   const isValidated = isAdvancePaymentConceptValidated(unit, monthKey, conceptKey);
   const isAvailable = isUnitAvailable(unit);
+  const isLocked = isAdvancePaymentFieldLocked(unit, monthKey, conceptKey);
   return `
     <td class="payment-method-validation-column ${paymentMethodSectionClass(conceptKey)}">
       <input
-        class="validation-checkbox ${isValidated && !isAvailable ? "is-validated" : ""}"
+        class="validation-checkbox ${isLocked && isValidated && !isAvailable ? "is-validated" : ""}"
         type="checkbox"
         data-advance-payment-validation-check
         data-payment-month="${monthKey}"
         data-payment-concept="${conceptKey}"
         data-unit-id="${unit.id}"
         ${isValidated && !isAvailable ? "checked" : ""}
-        ${isValidated || isAvailable ? "disabled" : ""}
+        ${isLocked || isAvailable || !canManageValidation() ? "disabled" : ""}
         aria-label="Validar anticipo ${paymentMethodConceptLabel(conceptKey)} ${unit.unit} ${formatMonthShort(monthKey)}"
       >
     </td>
@@ -9723,14 +9913,42 @@ function paymentMethodAmountCellMarkup(unit, monthKey, conceptKey, value) {
     return `<td class="payment-method-amount-cell payment-method-empty-cell ${paymentMethodSectionClass(conceptKey)}"></td>`;
   }
 
-  const isValidated = isPaymentMethodConceptValidated(unit, monthKey, conceptKey);
-  const isAvailable = isUnitAvailable(unit);
-  const isLocked = isValidated || isAvailable;
+  const isLocked = isPaymentMethodFieldLocked(unit, monthKey, conceptKey);
   return `
     <td class="payment-method-amount-cell ${paymentMethodSectionClass(conceptKey)} ${isLocked ? "is-frozen" : ""}">
       ${paymentMethodAmountInputMarkup(unit, monthKey, conceptKey, value, isLocked)}
     </td>
   `;
+}
+
+function monthValidationLockState(unit, monthKey, field) {
+  return getProperty(unit?.propertyId)?.[field]?.[monthKey];
+}
+
+function paymentMethodMonthLockState(unit, monthKey) {
+  return monthValidationLockState(unit, monthKey, "paymentMethodValidationLocks");
+}
+
+function advancePaymentMonthLockState(unit, monthKey) {
+  return monthValidationLockState(unit, monthKey, "advancePaymentValidationLocks");
+}
+
+function setMonthValidationLock(propertyId, monthKey, field, locked) {
+  const property = getProperty(propertyId);
+  if (!property) return false;
+  if (!property[field] || typeof property[field] !== "object") property[field] = {};
+  property[field][monthKey] = locked;
+  return true;
+}
+
+function isPaymentMethodFieldLocked(unit, monthKey, conceptKey) {
+  const lockState = paymentMethodMonthLockState(unit, monthKey);
+  return lockState === true || (lockState !== false && isPaymentMethodConceptValidated(unit, monthKey, conceptKey));
+}
+
+function isAdvancePaymentFieldLocked(unit, monthKey, conceptKey) {
+  const lockState = advancePaymentMonthLockState(unit, monthKey);
+  return lockState === true || (lockState !== false && isAdvancePaymentConceptValidated(unit, monthKey, conceptKey));
 }
 
 function paymentMethodAmountInputMarkup(unit, monthKey, conceptKey, value, isLocked = false) {
@@ -9753,6 +9971,7 @@ function paymentMethodAmountInputMarkup(unit, monthKey, conceptKey, value, isLoc
 function paymentMethodConceptValidationHeaderMarkup(units, monthKey, conceptKey) {
   const editableUnits = units.filter((unit) => !isUnitAvailable(unit));
   const isAllValidated = editableUnits.length > 0 && editableUnits.every((unit) => isPaymentMethodConceptValidated(unit, monthKey, conceptKey));
+  const isLocked = paymentMethodMonthLockState(units[0], monthKey) === true;
   return `
     <th class="payment-method-validation-column ${paymentMethodSectionClass(conceptKey)}">
       <label class="validation-header-control">
@@ -9764,6 +9983,7 @@ function paymentMethodConceptValidationHeaderMarkup(units, monthKey, conceptKey)
           data-payment-month="${monthKey}"
           data-payment-concept="${conceptKey}"
           ${isAllValidated ? "checked" : ""}
+          ${isLocked || !canManageValidation() ? "disabled" : ""}
           aria-label="Seleccionar validaciones de ${paymentMethodConceptLabel(conceptKey)} ${formatMonthShort(monthKey)}"
         >
       </label>
@@ -9778,6 +9998,7 @@ function isPaymentMethodConceptValidated(unit, monthKey, conceptKey) {
 function paymentMethodConceptValidationCellMarkup(unit, monthKey, conceptKey) {
   const isValidated = isPaymentMethodConceptValidated(unit, monthKey, conceptKey);
   const isAvailable = isUnitAvailable(unit);
+  const isLocked = isPaymentMethodFieldLocked(unit, monthKey, conceptKey);
   if (isAvailable) {
     return `<td class="payment-method-validation-column payment-method-empty-cell ${paymentMethodSectionClass(conceptKey)}"></td>`;
   }
@@ -9785,14 +10006,14 @@ function paymentMethodConceptValidationCellMarkup(unit, monthKey, conceptKey) {
   return `
     <td class="payment-method-validation-column ${paymentMethodSectionClass(conceptKey)}">
       <input
-        class="validation-checkbox ${isValidated && !isAvailable ? "is-validated" : ""}"
+        class="validation-checkbox ${isLocked && isValidated && !isAvailable ? "is-validated" : ""}"
         type="checkbox"
         data-payment-method-validation-check
         data-payment-month="${monthKey}"
         data-payment-concept="${conceptKey}"
         data-unit-id="${unit.id}"
         ${isValidated && !isAvailable ? "checked" : ""}
-        ${isValidated || isAvailable ? "disabled" : ""}
+        ${isLocked || isAvailable || !canManageValidation() ? "disabled" : ""}
         aria-label="Validar ${paymentMethodConceptLabel(conceptKey)} ${unit.unit} ${formatMonthShort(monthKey)}"
       >
     </td>
@@ -10035,6 +10256,7 @@ function bindAdvancePaymentValidationActions(root = els.contentArea) {
 }
 
 function toggleAdvancePaymentValidation(headerCheckbox) {
+  if (!canManageValidation()) return;
   const table = headerCheckbox.closest(".advance-payment-table");
   if (!table) return;
 
@@ -10079,37 +10301,38 @@ function syncAdvancePaymentValidationFreeze(checkbox) {
 }
 
 function confirmAdvancePaymentValidation(button) {
+  if (!canManageValidation()) return;
   const panel = button.closest(".payment-method-advance-panel");
   const monthKey = button.dataset.confirmAdvancePaymentValidation;
-  if (!panel || !monthKey) return;
+  if (!panel || !monthKey || advancePaymentMonthLockState({ propertyId: panel.dataset.propertyId }, monthKey) === true) return;
 
   applyAdvancePaymentValidation(panel, monthKey);
-
+  if (!setMonthValidationLock(panel.dataset.propertyId, monthKey, "advancePaymentValidationLocks", true)) return;
   saveState();
-  render();
-  toast("Validacion de anticipos confirmada");
+  syncPaymentValidationLockUI(panel, monthKey, true, true);
+  openValidationMessageModal(
+    "Validacion de anticipos guardada",
+    "Los importes y periodos de anticipo quedaron bloqueados. Usa Editar Validacion para modificarlos.",
+    panel.querySelector("[data-edit-advance-payment-validation]")
+  );
 }
 
 function editAdvancePaymentValidation(button) {
+  if (!canManageValidation()) return;
   const panel = button.closest(".payment-method-advance-panel");
   const table = panel?.querySelector(".advance-payment-table");
   const monthKey = button.dataset.editAdvancePaymentValidation;
   if (!panel || !table || !monthKey) return;
 
-  panel.querySelectorAll(`[data-advance-payment-validation-check][data-payment-month="${monthKey}"]`).forEach((checkbox) => {
-    if (checkbox.closest("[data-advance-payment-row]")?.dataset.unitAvailable === "true") return;
-    checkbox.disabled = false;
-    checkbox.classList.remove("is-validated");
-  });
-  panel.querySelectorAll(`[data-advance-payment-amount][data-payment-month="${monthKey}"]`).forEach((input) => {
-    if (input.closest("[data-advance-payment-row]")?.dataset.unitAvailable === "true") return;
-    input.disabled = false;
-    input.classList.remove("is-validated");
-    input.closest(".payment-method-amount-cell")?.classList.remove("is-frozen");
-  });
-
+  if (!setMonthValidationLock(panel.dataset.propertyId, monthKey, "advancePaymentValidationLocks", false)) return;
+  saveState();
+  syncPaymentValidationLockUI(panel, monthKey, false, true);
   paymentMethodValidationConcepts.forEach((conceptKey) => updateAdvancePaymentValidationHeader(table, monthKey, conceptKey));
-  toast("Validaciones de anticipos listas para editar");
+  openValidationMessageModal(
+    "Edicion de anticipos habilitada",
+    "Los campos del anticipo se pueden editar de nuevo. Valida para volver a bloquearlos.",
+    panel.querySelector("[data-confirm-advance-payment-validation]")
+  );
 }
 
 function applyAdvancePaymentValidation(panel, monthKey) {
@@ -10150,6 +10373,7 @@ function applyAdvancePaymentValidation(panel, monthKey) {
 }
 
 function togglePaymentMethodValidation(headerCheckbox) {
+  if (!canManageValidation()) return;
   const table = headerCheckbox.closest(".payment-method-table");
   if (!table) return;
 
@@ -10194,37 +10418,80 @@ function syncPaymentMethodValidationFreeze(checkbox) {
 }
 
 function confirmPaymentMethodRentValidation(button) {
+  if (!canManageValidation()) return;
   const panel = button.closest(".payment-method-month-panel");
   const monthKey = button.dataset.confirmPaymentMethodRentValidation;
-  if (!panel || !monthKey) return;
+  if (!panel || !monthKey || paymentMethodMonthLockState({ propertyId: panel.dataset.propertyId }, monthKey) === true) return;
 
   applyPaymentMethodValidation(panel, monthKey);
-
+  if (!setMonthValidationLock(panel.dataset.propertyId, monthKey, "paymentMethodValidationLocks", true)) return;
   saveState();
-  render();
-  toast("Validacion confirmada");
+  syncPaymentValidationLockUI(panel, monthKey, true, false);
+  openValidationMessageModal(
+    "Validacion guardada",
+    "Los importes de este mes quedaron bloqueados. Usa Editar Validacion para modificarlos.",
+    panel.querySelector("[data-edit-payment-method-validation]")
+  );
 }
 
 function editPaymentMethodValidation(button) {
+  if (!canManageValidation()) return;
   const panel = button.closest(".payment-method-month-panel");
   const table = panel?.querySelector(".payment-method-table");
   const monthKey = button.dataset.editPaymentMethodValidation;
   if (!panel || !table || !monthKey) return;
+  const units = propertyUnits(panel.dataset.propertyId);
+  const lockState = paymentMethodMonthLockState({ propertyId: panel.dataset.propertyId }, monthKey);
+  const hasLockedFields = lockState === true || (lockState === undefined && units.some((unit) =>
+    paymentMethodValidationConcepts.some((conceptKey) => isPaymentMethodConceptValidated(unit, monthKey, conceptKey))));
+  if (!hasLockedFields) return;
 
-  panel.querySelectorAll(`[data-payment-method-validation-check][data-payment-month="${monthKey}"]`).forEach((checkbox) => {
-    if (checkbox.closest("[data-payment-method-row]")?.dataset.unitAvailable === "true") return;
-    checkbox.disabled = false;
-    checkbox.classList.remove("is-validated");
-  });
-  panel.querySelectorAll(`[data-payment-method-amount][data-payment-month="${monthKey}"]`).forEach((input) => {
-    if (input.closest("[data-payment-method-row]")?.dataset.unitAvailable === "true") return;
-    input.disabled = false;
-    input.classList.remove("is-validated");
-    input.closest(".payment-method-amount-cell")?.classList.remove("is-frozen");
-  });
-
+  if (!setMonthValidationLock(panel.dataset.propertyId, monthKey, "paymentMethodValidationLocks", false)) return;
+  saveState();
+  syncPaymentValidationLockUI(panel, monthKey, false, false);
   paymentMethodValidationConcepts.forEach((conceptKey) => updatePaymentMethodValidationHeader(table, monthKey, conceptKey));
-  toast("Validaciones listas para editar");
+  openValidationMessageModal(
+    "Edicion de validacion habilitada",
+    "Los campos de este mes se pueden editar de nuevo. Valida para volver a bloquearlos.",
+    panel.querySelector("[data-confirm-payment-method-rent-validation]")
+  );
+}
+
+function syncPaymentValidationLockUI(panel, monthKey, locked, advance) {
+  const rowSelector = advance ? "[data-advance-payment-row]" : "[data-payment-method-row]";
+  const amountSelector = advance ? "[data-advance-payment-amount]" : "[data-payment-method-amount]";
+  const checkSelector = advance ? "[data-advance-payment-validation-check]" : "[data-payment-method-validation-check]";
+  const headerSelector = advance ? "[data-advance-payment-validation-all]" : "[data-payment-method-validation-all]";
+
+  panel.querySelectorAll(`${amountSelector}[data-payment-month="${monthKey}"]`).forEach((input) => {
+    const unavailable = input.closest(rowSelector)?.dataset.unitAvailable === "true";
+    input.disabled = unavailable || locked || (advance && !canManageValidation());
+    input.classList.toggle("is-validated", locked);
+    input.closest(".payment-method-amount-cell")?.classList.toggle("is-frozen", locked);
+  });
+  panel.querySelectorAll(`${checkSelector}[data-payment-month="${monthKey}"]`).forEach((checkbox) => {
+    const unavailable = checkbox.closest(rowSelector)?.dataset.unitAvailable === "true";
+    checkbox.disabled = unavailable || locked || !canManageValidation();
+    checkbox.classList.toggle("is-validated", locked && checkbox.checked);
+  });
+  panel.querySelectorAll(`${headerSelector}[data-payment-month="${monthKey}"]`).forEach((checkbox) => {
+    checkbox.disabled = locked || !canManageValidation();
+  });
+  if (advance) {
+    panel.querySelectorAll("[data-advance-month]").forEach((select) => {
+      select.disabled = select.closest(rowSelector)?.dataset.unitAvailable === "true" || locked || !canManageValidation();
+    });
+  }
+
+  const editButton = panel.querySelector(advance ? "[data-edit-advance-payment-validation]" : "[data-edit-payment-method-validation]");
+  const validateButton = panel.querySelector(advance ? "[data-confirm-advance-payment-validation]" : "[data-confirm-payment-method-rent-validation]");
+  if (advance) {
+    if (editButton) editButton.hidden = !locked;
+    if (validateButton) validateButton.hidden = locked;
+  } else {
+    if (editButton) editButton.disabled = !locked;
+    if (validateButton) validateButton.disabled = locked;
+  }
 }
 
 function applyPaymentMethodValidation(panel, monthKey) {
@@ -10254,10 +10521,11 @@ function applyPaymentMethodValidation(panel, monthKey) {
 
 function persistPaymentMethodPanelAmounts(panel, monthKey) {
   panel.querySelectorAll(`[data-payment-method-amount][data-payment-month="${monthKey}"]`).forEach((input) => {
+    if (input.disabled) return;
     if (input.closest("[data-payment-method-row]")?.dataset.unitAvailable === "true") return;
     const unit = state.units.find((item) => item.id === input.dataset.unitId);
     const conceptKey = input.dataset.paymentMethodAmount;
-    if (!unit || !paymentMethodValidationConcepts.includes(conceptKey)) return;
+    if (!unit || !paymentMethodValidationConcepts.includes(conceptKey) || paymentMethodMonthLockState(unit, monthKey) === true) return;
 
     const record = ensurePaymentRecord(unit, monthKey, conceptKey);
     record.amount = Number(input.value || 0);
@@ -10367,16 +10635,30 @@ function updateAdvancePaymentTableTotals(table) {
 function savePaymentMethodAmounts(root = els.contentArea) {
   const touchedUnitMonths = new Map();
   root.querySelectorAll("[data-payment-method-amount]").forEach((input) => {
+    if (input.disabled) return;
     if (input.closest("[data-payment-method-row]")?.dataset.unitAvailable === "true") return;
     const unit = state.units.find((item) => item.id === input.dataset.unitId);
-    if (!unit) return;
+    if (!unit || paymentMethodMonthLockState(unit, input.dataset.paymentMonth) === true) return;
 
-    const record = ensurePaymentRecord(unit, input.dataset.paymentMonth, input.dataset.paymentMethodAmount);
-    record.amount = Number(input.value || 0);
+    const monthKey = input.dataset.paymentMonth;
+    const conceptKey = input.dataset.paymentMethodAmount;
+    const amount = Number(input.value || 0);
+    const changed = amount !== conceptAmountForMonth(unit, conceptKey, monthKey);
+    const record = ensurePaymentRecord(unit, monthKey, conceptKey);
+    record.amount = amount;
+    if (changed && record.validated) {
+      record.validated = false;
+      delete record.validatedAt;
+      const row = input.closest("[data-payment-method-row]");
+      const checkbox = row?.querySelector(`[data-payment-method-validation-check][data-payment-month="${monthKey}"][data-payment-concept="${conceptKey}"]`);
+      if (checkbox) checkbox.checked = false;
+      const table = row?.closest(".payment-method-table");
+      updatePaymentMethodValidationHeader(table, monthKey, conceptKey);
+    }
     if (!touchedUnitMonths.has(unit.id)) {
       touchedUnitMonths.set(unit.id, { unit, monthKeys: new Set() });
     }
-    touchedUnitMonths.get(unit.id).monthKeys.add(input.dataset.paymentMonth);
+    touchedUnitMonths.get(unit.id).monthKeys.add(monthKey);
   });
 
   touchedUnitMonths.forEach(({ unit, monthKeys }) => {
@@ -10416,6 +10698,7 @@ function bindBalanceValidationActions(root) {
 }
 
 function toggleBalanceValidationColumn(headerCheckbox) {
+  if (!canManageValidation()) return;
   const table = headerCheckbox.closest(".property-balance-table");
   if (!table) return;
   table.querySelectorAll(`[data-validation-check="${headerCheckbox.dataset.validationAll}"][data-payment-month="${headerCheckbox.dataset.paymentMonth}"]`).forEach((checkbox) => {
@@ -10462,6 +10745,7 @@ function updateBalanceSelectedTotals(table, monthKey) {
 }
 
 function confirmBalanceValidation(button) {
+  if (!canManageValidation()) return;
   const panel = button.closest(".property-balance-month-panel");
   const monthKey = button.dataset.confirmValidation;
   if (!panel || !monthKey) return;
@@ -10482,7 +10766,7 @@ function confirmBalanceValidation(button) {
 
   saveState();
   render();
-  toast("Validacion confirmada");
+  openValidationMessageModal("Validacion guardada", "La validacion del balance quedo registrada.");
 }
 
 function renderLegalWorkspace(propertyId) {
@@ -10494,6 +10778,8 @@ function renderLegalWorkspace(propertyId) {
 
 function bindPropertyLegalPanelActions(propertyId) {
   const propertyIdForUnit = (unitId) => propertyId || state.units.find((item) => item.id === unitId)?.propertyId || "";
+
+  bindPropertyUnitContractValidationActions(els.contentArea);
 
   els.contentArea.querySelector("[data-back-property-units]")?.addEventListener("click", () => {
     returnToPropertyUnits(propertyId);
@@ -10615,7 +10901,7 @@ function currentContractFileName(unit) {
   return `Contrato ${tenantLabel} ${unitLabel} ${contractYear}.pdf`;
 }
 
-function openContractTermModal(unitId, propertyId) {
+function openContractTermModal(unitId, propertyId, draftDates = null) {
   const unit = state.units.find((item) => item.id === unitId && item.propertyId === propertyId);
   if (!unit) return;
 
@@ -10631,19 +10917,19 @@ function openContractTermModal(unitId, propertyId) {
       <div class="form-grid">
         <div class="field">
           <label for="contractStart">Fecha de inicio del contrato</label>
-          <input id="contractStart" name="contractStart" type="date" value="${escapeAttribute(unit.contractStart || defaultUnitContractStart())}" required>
+          <input id="contractStart" name="contractStart" type="date" value="${escapeAttribute(draftDates?.start || unit.contractStart || defaultUnitContractStart())}" required>
         </div>
         <div class="field">
           <label for="contractEnd">Fecha de fin del contrato</label>
-          <input id="contractEnd" name="contractEnd" type="date" value="${escapeAttribute(unit.contractEnd || defaultUnitContractEnd())}" required>
+          <input id="contractEnd" name="contractEnd" type="date" value="${escapeAttribute(draftDates?.end || unit.contractEnd || defaultUnitContractEnd())}" required>
         </div>
       </div>
       <div class="form-actions">
         <button class="secondary-button" type="button" data-modal-cancel>
           <span data-icon="x" aria-hidden="true"></span>
-          Cancelar
+          Cerrar
         </button>
-        <button class="action-button" type="submit">
+        <button class="action-button" type="submit" data-save-contract-term>
           <span data-icon="checkCircle" aria-hidden="true"></span>
           Guardar
         </button>
@@ -10653,7 +10939,15 @@ function openContractTermModal(unitId, propertyId) {
 
   injectIcons(els.modalBody);
   els.modalBody.querySelector("[data-modal-cancel]")?.addEventListener("click", closeModal);
-  els.modalBody.querySelector("#contractTermForm")?.addEventListener("submit", (event) => saveContractTermFromForm(event, unitId, propertyId));
+  const form = els.modalBody.querySelector("#contractTermForm");
+  form?.addEventListener("submit", (event) => {
+    event.preventDefault();
+    showContractTermSaveConfirmation(form, unitId, propertyId);
+  });
+  form?.querySelector("[data-save-contract-term]")?.addEventListener("click", (event) => {
+    event.preventDefault();
+    if (form.reportValidity()) showContractTermSaveConfirmation(form, unitId, propertyId);
+  });
   openModal();
 }
 
@@ -10662,19 +10956,18 @@ function openContractTermValidatedBlockedModal(unit) {
   els.modalTitle.textContent = unit.unit;
   els.modalBody.innerHTML = `
     <section class="delete-confirmation">
-      <p class="delete-question">La vigencia del contrato no se puede modificar por que aparece como validadado.</p>
+      <p class="delete-question">La vigencia del contrato esta validada y no se puede modificar. Usa Editar Validacion y guarda el cambio antes de editar las fechas.</p>
     </section>
   `;
 
   openModal();
 }
 
-function saveContractTermFromForm(event, unitId, propertyId) {
-  event.preventDefault();
+function showContractTermSaveConfirmation(form, unitId, propertyId) {
   const unit = state.units.find((item) => item.id === unitId && item.propertyId === propertyId);
   if (!unit) return;
 
-  const data = new FormData(event.currentTarget);
+  const data = new FormData(form);
   const contractStart = String(data.get("contractStart") || "");
   const contractEnd = String(data.get("contractEnd") || "");
 
@@ -10683,8 +10976,44 @@ function saveContractTermFromForm(event, unitId, propertyId) {
     return;
   }
 
-  unit.contractStart = contractStart;
-  unit.contractEnd = contractEnd;
+  const draftDates = { start: contractStart, end: contractEnd };
+  els.modalEyebrow.textContent = "Confirmar cambios";
+  els.modalTitle.textContent = unit.unit;
+  els.modalBody.innerHTML = `
+    <section class="delete-confirmation">
+      <p class="delete-question">¿Estás seguro de que quieres guardar los cambios?</p>
+      <div class="modal-grid">
+        <div class="detail-box">
+          <span>Vigencia actual</span>
+          <strong>${formatDate(unit.contractStart)} - ${formatDate(unit.contractEnd)}</strong>
+        </div>
+        <div class="detail-box">
+          <span>Nueva vigencia</span>
+          <strong>${formatDate(contractStart)} - ${formatDate(contractEnd)}</strong>
+        </div>
+      </div>
+      <div class="form-actions delete-confirmation-actions">
+        <button class="secondary-button" type="button" data-cancel-contract-term-save>No</button>
+        <button class="action-button" type="button" data-confirm-contract-term-save>Sí</button>
+      </div>
+    </section>
+  `;
+
+  els.modalBody.querySelector("[data-cancel-contract-term-save]")?.addEventListener("click", () => openContractTermModal(unitId, propertyId, draftDates));
+  els.modalBody.querySelector("[data-confirm-contract-term-save]")?.addEventListener("click", () => saveContractTerm(unitId, propertyId, draftDates));
+  els.modalBody.querySelector("[data-cancel-contract-term-save]")?.focus();
+}
+
+function saveContractTerm(unitId, propertyId, draftDates) {
+  const unit = state.units.find((item) => item.id === unitId && item.propertyId === propertyId);
+  if (!unit) return;
+  if (isContractTermValidated(unit)) {
+    openContractTermValidatedBlockedModal(unit);
+    return;
+  }
+
+  unit.contractStart = draftDates.start;
+  unit.contractEnd = draftDates.end;
   unit.contractTermManual = true;
   unit.contractTermValidated = false;
   delete unit.contractTermValidatedAt;
@@ -11461,7 +11790,6 @@ function openPropertyUnitsModal(propertyId) {
                 <th>Arrendatario</th>
                 ${propertyPaymentHeadersMarkup({ includeRecords: false })}
                 <th class="contract-date-column">Contrato</th>
-                ${propertyUnitContractValidationHeaderMarkup(units)}
                 <th class="contract-status-column">Estado</th>
                 <th class="actions-column">Acciones</th>
               </tr>
@@ -11473,7 +11801,6 @@ function openPropertyUnitsModal(propertyId) {
                   <td>${tenantCellMarkup(unit)}</td>
                   ${propertyPaymentCellsMarkup(unit, { includeRecords: false })}
                   <td class="contract-date-column">${formatDate(unit.contractStart)} - ${formatDate(unit.contractEnd)}</td>
-                  ${propertyUnitContractValidationCellMarkup(unit)}
                   <td class="contract-status-column"><span class="status-pill ${contractStatus(unit).className}">${contractStatus(unit).label}</span></td>
                   <td class="actions-column">
                     <button class="secondary-button" type="button" data-view-unit="${unit.id}">
@@ -11486,14 +11813,12 @@ function openPropertyUnitsModal(propertyId) {
             </tbody>
           </table>
         </div>
-        ${propertyUnitContractValidationActionsMarkup()}
       </div>
     ` : emptyState("Aun no hay unidades registradas para esta propiedad.")}
   `;
 
   injectIcons(els.modalBody);
   bindPaymentRecordActions(els.modalBody);
-  bindPropertyUnitContractValidationActions(els.modalBody);
   els.modalBody.querySelector("[data-add-unit]")?.addEventListener("click", () => {
     closeModal();
     openUnitFormModal(propertyId);
@@ -12475,7 +12800,7 @@ function savePlazaCreationForm(form, documents, activateSection, propertyId = nu
 
   const existingProperty = propertyId ? getProperty(propertyId) : null;
   const savedPropertyId = existingProperty?.id
-    || uniqueId("prop", values.name, state.properties.map((property) => property.id));
+    || uniqueId("prop", values.name, [...state.properties.map((property) => property.id), ...(state.deletedPropertyIds || [])]);
   const location = [values.city, values.state].filter(Boolean).join(", ");
   const propertyData = {
     id: savedPropertyId,
@@ -12649,7 +12974,7 @@ function savePropertyFromForm(event, propertyId = null) {
     existingProperty.type = type;
     existingProperty.location = location;
   } else {
-    savedPropertyId = uniqueId("prop", name, state.properties.map((item) => item.id));
+    savedPropertyId = uniqueId("prop", name, [...state.properties.map((item) => item.id), ...(state.deletedPropertyIds || [])]);
     state.properties.push({
       id: savedPropertyId,
       name,
@@ -13344,6 +13669,21 @@ function bindTenantCatalogForPropertyActions(property) {
   els.contentArea.querySelectorAll("[data-tenant-contact]").forEach((button) => {
     button.addEventListener("click", () => openTenantContact(button.dataset.tenantContact));
   });
+
+  els.contentArea.querySelectorAll("[data-tenant-password-toggle]").forEach((button) => {
+    button.addEventListener("click", () => {
+      if (view.roleId !== "superadmin") return;
+      const user = getUser(button.dataset.tenantPasswordToggle);
+      const value = button.closest(".tenant-password-display")?.querySelector("[data-tenant-password-value]");
+      if (!user?.password || !value) return;
+
+      const revealed = button.getAttribute("aria-pressed") === "true";
+      value.textContent = revealed ? "••••••••" : user.password;
+      button.setAttribute("aria-pressed", String(!revealed));
+      button.setAttribute("aria-label", `${revealed ? "Mostrar" : "Ocultar"} contraseña de ${user.name}`);
+      button.title = revealed ? "Mostrar contraseña" : "Ocultar contraseña";
+    });
+  });
 }
 
 function tenantCatalogTableMarkup(tenants) {
@@ -13353,7 +13693,10 @@ function tenantCatalogTableMarkup(tenants) {
         <table class="tenant-table">
           <thead>
             <tr>
-              <th>Arrendatario</th>
+              <th>Arrendatario<br>Razón Social</th>
+              <th>Nombre Comercial</th>
+              <th>Usuario</th>
+              <th>Contraseña</th>
               <th>Tipo</th>
               <th>RFC</th>
               <th>Unidades</th>
@@ -13379,6 +13722,20 @@ function tenantCatalogRowMarkup(tenant) {
       <td class="primary-cell">
         <strong>${escapeAttribute(tenant.name)}</strong>
         <small>${tenant.hasPortalAccess ? "Con usuario de plataforma" : "Sin usuario de plataforma"}</small>
+      </td>
+      <td class="tenant-commercial-name-column">${escapeAttribute(tenant.commercialName || "Sin registrar")}</td>
+      <td class="tenant-username-column">${tenant.username ? `<code>${escapeAttribute(tenant.username)}</code>` : "Sin usuario"}</td>
+      <td class="tenant-password-column">
+        ${tenant.hasPassword ? `
+          <div class="tenant-password-display">
+            <code data-tenant-password-value>••••••••</code>
+            ${view.roleId === "superadmin" ? `
+              <button class="icon-button tenant-password-toggle" type="button" data-tenant-password-toggle="${escapeAttribute(tenant.userId)}" aria-label="Mostrar contraseña de ${escapeAttribute(tenant.name)}" aria-pressed="false" title="Mostrar contraseña">
+                <span data-icon="eye" aria-hidden="true"></span>
+              </button>
+            ` : ""}
+          </div>
+        ` : "Sin contraseña"}
       </td>
       <td>${escapeAttribute(tenant.type)}</td>
       <td class="nowrap">${escapeAttribute(tenant.rfc || "Sin RFC")}</td>
@@ -13470,6 +13827,10 @@ function renderTenantNew() {
           <div class="field span-2">
             <label for="tenantName">Nombre o razon social</label>
             <input id="tenantName" name="name" required placeholder="Nombre del arrendatario">
+          </div>
+          <div class="field">
+            <label for="tenantCommercialName">Nombre comercial</label>
+            <input id="tenantCommercialName" name="commercialName" placeholder="Nombre del negocio">
           </div>
           <div class="field">
             <label for="tenantType">Tipo de persona</label>
@@ -13583,6 +13944,7 @@ function createTenantFromForm(event) {
     id: profileId,
     userId,
     name,
+    commercialName: String(data.get("commercialName") || "").trim(),
     type: String(data.get("type") || "Sin clasificar"),
     rfc: String(data.get("rfc") || "").trim().toUpperCase(),
     phone: String(data.get("phone") || "").trim(),
@@ -13621,6 +13983,10 @@ function openTenantDetail(tenantId) {
   els.modalTitle.textContent = tenant.name;
   els.modalBody.innerHTML = `
     <div class="modal-grid">
+      <div class="detail-box">
+        <span>Nombre comercial</span>
+        <strong>${escapeAttribute(tenant.commercialName || "Sin registrar")}</strong>
+      </div>
       <div class="detail-box">
         <span>Tipo</span>
         <strong>${tenant.type}</strong>
@@ -14131,9 +14497,8 @@ function isContractExpired(unit) {
 
 function isContractTermValidated(unit) {
   if (!unit || isUnitAvailable(unit) || !unit.contractStart || !unit.contractEnd) return false;
-  if (isContractExpired(unit)) return false;
   if (typeof unit.contractTermValidated === "boolean") return unit.contractTermValidated;
-  return true;
+  return !isContractExpired(unit);
 }
 
 function contractTermValidationLabel(unit) {
@@ -14356,68 +14721,24 @@ function renderUserNew() {
         <div>
           <p class="eyebrow">Usuarios</p>
           <h3>Alta de Usuarios</h3>
-          <p class="muted">Crea usuarios del sistema y asigna propiedades cuando el rol sea Gerente de Propiedad o Contabilidad local.</p>
         </div>
+        <button class="action-button" type="button" data-create-platform-user>
+          <span data-icon="plus" aria-hidden="true"></span>
+          Crear Usuario
+        </button>
       </div>
 
       ${userPropertyAccessSectionMarkup(properties, selectedProperty)}
 
-      <div class="user-module-layout">
-        <section class="form-panel">
-          <form id="platformUserForm">
-          <div class="form-grid">
-            <div class="field span-2">
-              <label for="platformUserName">Nombre completo</label>
-              <input id="platformUserName" name="name" required placeholder="Nombre del usuario">
-            </div>
-            <div class="field span-2">
-              <label for="platformUserEmail">Correo</label>
-              <input id="platformUserEmail" name="email" type="email" required placeholder="correo@empresa.com">
-            </div>
-            <div class="field">
-              <label for="platformUserRole">Rol</label>
-              <select id="platformUserRole" name="role">
-                ${userCreationRoleOptions()}
-              </select>
-            </div>
-            <div class="field">
-              <label for="platformUsername">Usuario de acceso</label>
-              <input id="platformUsername" name="username" placeholder="Se genera automaticamente">
-            </div>
-            <div id="platformPropertyAccess" class="field span-2" hidden>
-              <label>Propiedades asignadas</label>
-              <div class="checkbox-list user-property-list">
-                ${state.properties.map((property) => `
-                  <label class="checkbox-row">
-                    <input type="checkbox" name="propertyIds" value="${property.id}">
-                    <span>${property.name} - ${property.type}</span>
-                  </label>
-                `).join("")}
-              </div>
-            </div>
-          </div>
-          <div class="form-actions">
-            <button class="secondary-button" type="reset">
-              <span data-icon="x" aria-hidden="true"></span>
-              Limpiar
-            </button>
-            <button class="action-button" type="submit">
-              <span data-icon="shield" aria-hidden="true"></span>
-              Crear usuario
-            </button>
-          </div>
-          </form>
-        </section>
-
-        <section class="table-panel">
-          <div class="month-panel-header">
+      <section class="table-panel">
+        <div class="month-panel-header">
           <div>
             <p class="eyebrow">Usuarios generados</p>
             <h3>Cuentas activas</h3>
             <p class="muted">Credenciales demo y propiedades visibles por usuario.</p>
           </div>
-          </div>
-          <div class="table-scroll">
+        </div>
+        <div class="table-scroll">
           <table class="user-admin-table">
             <thead>
               <tr>
@@ -14426,26 +14747,21 @@ function renderUserNew() {
                 <th>Acceso</th>
                 <th>Contrasena</th>
                 <th>Propiedades</th>
+                <th>Menus por plaza</th>
               </tr>
             </thead>
             <tbody>
               ${state.users.map((user) => userCreationRowMarkup(user)).join("")}
             </tbody>
           </table>
-          </div>
-        </section>
-      </div>
+        </div>
+      </section>
     </section>
   `;
 
-  const roleSelect = els.contentArea.querySelector("#platformUserRole");
-  const form = els.contentArea.querySelector("#platformUserForm");
-  const syncAccess = () => syncUserPropertyAccessVisibility(roleSelect.value);
   const propertyAccessSelect = els.contentArea.querySelector("[data-user-property-select]");
 
-  roleSelect?.addEventListener("change", syncAccess);
-  form?.addEventListener("reset", () => window.setTimeout(syncAccess, 0));
-  form?.addEventListener("submit", createPlatformUserFromForm);
+  els.contentArea.querySelector("[data-create-platform-user]")?.addEventListener("click", openPlatformUserModal);
   if (properties.length) {
     bindCatalogPlazaSelector(properties, activeIndex, (propertyId) => {
       view.usersPropertyId = propertyId;
@@ -14468,7 +14784,103 @@ function renderUserNew() {
   els.contentArea.querySelector("[data-property-team]")?.addEventListener("click", () => {
     if (selectedProperty) openPropertyTeamModal(selectedProperty.id);
   });
-  syncAccess();
+}
+
+function openPlatformUserModal() {
+  els.modal?.classList.remove("modal-wide", "modal-compact", "modal-plaza-flow", "modal-playlist");
+  els.modal?.classList.add("modal-user-create");
+  els.modalEyebrow.textContent = "Alta de Usuarios";
+  els.modalTitle.textContent = "Crear usuario";
+  els.modalBody.innerHTML = `
+    <form id="platformUserForm">
+      <div class="form-grid">
+        <div class="field span-2">
+          <label for="platformUserName">Nombre completo</label>
+          <input id="platformUserName" name="name" required placeholder="Nombre del usuario">
+        </div>
+        <div class="field span-2">
+          <label for="platformUserEmail">Correo</label>
+          <input id="platformUserEmail" name="email" type="email" required placeholder="correo@empresa.com">
+        </div>
+        <div class="field">
+          <label for="platformUserRole">Rol</label>
+          <select id="platformUserRole" name="role">${userCreationRoleOptions()}</select>
+        </div>
+        <div class="field">
+          <label for="platformUsername">Usuario de acceso</label>
+          <input id="platformUsername" name="username" placeholder="Se genera automaticamente">
+        </div>
+        <div id="platformPropertyAccess" class="field span-2">
+          <label>Plazas asignadas</label>
+          <small data-property-access-scope>Este rol tiene acceso a todas las plazas.</small>
+          <div class="checkbox-list user-property-list">
+            ${state.properties.map((property, index) => userPlazaMenuAccessMarkup(property, index)).join("")}
+          </div>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="secondary-button" type="button" data-modal-cancel>Cerrar</button>
+        <button class="action-button" type="submit">
+          <span data-icon="shield" aria-hidden="true"></span>
+          Guardar
+        </button>
+      </div>
+    </form>
+  `;
+
+  const roleSelect = els.modalBody.querySelector("#platformUserRole");
+  roleSelect.addEventListener("change", () => syncUserPropertyAccessVisibility(roleSelect.value));
+  els.modalBody.querySelectorAll("[data-user-plaza-access]").forEach((item) => {
+    item.querySelector("input[name='propertyIds']").addEventListener("change", () => syncUserPlazaMenuVisibility(item));
+    item.querySelector("[data-user-menu-all]").addEventListener("change", (event) => {
+      item.querySelectorAll("input[name='menuPermissions']").forEach((input) => {
+        input.checked = event.currentTarget.checked;
+      });
+      syncUserPlazaAllMenus(item);
+    });
+    item.querySelectorAll("input[name='menuPermissions']").forEach((input) => {
+      input.addEventListener("change", () => syncUserPlazaAllMenus(item));
+    });
+  });
+  els.modalBody.querySelector("[data-modal-cancel]").addEventListener("click", closeModal);
+  els.modalBody.querySelector("#platformUserForm").addEventListener("submit", createPlatformUserFromForm);
+  syncUserPropertyAccessVisibility(roleSelect.value);
+  injectIcons(els.modalBody);
+  openModal();
+  els.modalBody.querySelector("#platformUserName").focus();
+}
+
+function userPlazaMenuAccessMarkup(property, index) {
+  const panelId = `user-plaza-menus-${index}`;
+  return `
+    <div class="user-plaza-access-item" data-user-plaza-access>
+      <label class="checkbox-row user-plaza-choice">
+        <input type="checkbox" name="propertyIds" value="${escapeAttribute(property.id)}" aria-controls="${panelId}">
+        <span>${escapeAttribute(property.name)} - ${escapeAttribute(property.type)}</span>
+      </label>
+      <div id="${panelId}" class="user-plaza-menu-access" hidden>
+        <label class="checkbox-row user-menu-all">
+          <input type="checkbox" data-user-menu-all>
+          <span>Todos</span>
+        </label>
+        <div class="user-menu-categories">
+          ${SOFTWARE_MENU_CATEGORIES.map((category) => `
+            <section class="user-menu-category">
+              <h4>${escapeAttribute(category.label)}</h4>
+              <div class="user-menu-category-options">
+                ${Object.entries(category.items || {}).map(([permission, label]) => `
+                  <label class="checkbox-row user-menu-option">
+                    <input type="checkbox" name="menuPermissions" value="${escapeAttribute(permission)}">
+                    <span>${escapeAttribute(label)}</span>
+                  </label>
+                `).join("")}
+              </div>
+            </section>
+          `).join("")}
+        </div>
+      </div>
+    </div>
+  `;
 }
 
 function userCreationRoleOptions() {
@@ -14484,9 +14896,33 @@ function roleRequiresPropertyAccess(roleId) {
 }
 
 function syncUserPropertyAccessVisibility(roleId) {
-  const propertyBlock = els.contentArea.querySelector("#platformPropertyAccess");
+  const propertyBlock = els.modalBody.querySelector("#platformPropertyAccess");
   if (!propertyBlock) return;
-  propertyBlock.hidden = !roleRequiresPropertyAccess(roleId);
+  const needsAssignment = roleRequiresPropertyAccess(roleId);
+  propertyBlock.querySelector("[data-property-access-scope]").hidden = needsAssignment;
+  propertyBlock.querySelectorAll("input[name='propertyIds']").forEach((input) => {
+    input.disabled = !needsAssignment;
+    if (!needsAssignment) input.checked = false;
+    syncUserPlazaMenuVisibility(input.closest("[data-user-plaza-access]"));
+  });
+}
+
+function syncUserPlazaMenuVisibility(item) {
+  const propertyInput = item.querySelector("input[name='propertyIds']");
+  const enabled = propertyInput.checked && !propertyInput.disabled;
+  item.querySelector(".user-plaza-menu-access").hidden = !enabled;
+  item.querySelectorAll("[data-user-menu-all], input[name='menuPermissions']").forEach((input) => {
+    input.disabled = !enabled;
+  });
+  if (enabled) syncUserPlazaAllMenus(item);
+}
+
+function syncUserPlazaAllMenus(item) {
+  const allInput = item.querySelector("[data-user-menu-all]");
+  const menuInputs = [...item.querySelectorAll("input[name='menuPermissions']")];
+  const selectedCount = menuInputs.filter((input) => input.checked).length;
+  allInput.checked = menuInputs.length > 0 && selectedCount === menuInputs.length;
+  allInput.indeterminate = selectedCount > 0 && selectedCount < menuInputs.length;
 }
 
 function createPlatformUserFromForm(event) {
@@ -14497,7 +14933,15 @@ function createPlatformUserFromForm(event) {
   const email = String(data.get("email") || "").trim().toLowerCase();
   const role = String(data.get("role") || "admin");
   const requestedUsername = String(data.get("username") || "").trim();
-  const propertyIds = [...form.querySelectorAll("input[name='propertyIds']:checked")].map((input) => input.value);
+  const selectedPlazas = [...form.querySelectorAll("[data-user-plaza-access]")]
+    .filter((item) => item.querySelector("input[name='propertyIds']").checked);
+  const propertyIds = selectedPlazas.map((item) => item.querySelector("input[name='propertyIds']").value);
+  const menuPermissionsByProperty = Object.fromEntries(selectedPlazas.map((item) => [
+    item.querySelector("input[name='propertyIds']").value,
+    [...item.querySelectorAll("input[name='menuPermissions']:checked")]
+      .map((input) => input.value)
+      .filter((permission) => Object.hasOwn(SOFTWARE_MENU_LABELS, permission))
+  ]));
 
   if (!name || !email) {
     toast("Captura nombre y correo.");
@@ -14519,6 +14963,11 @@ function createPlatformUserFromForm(event) {
     return;
   }
 
+  if (roleRequiresPropertyAccess(role) && propertyIds.some((propertyId) => !menuPermissionsByProperty[propertyId]?.length)) {
+    toast("Selecciona al menos un menu para cada plaza.");
+    return;
+  }
+
   const userId = uniqueId(userIdPrefixForRole(role), name, state.users.map((user) => user.id));
   const usernameBase = requestedUsername || defaultUsername({ name, email, id: userId });
   const user = {
@@ -14528,13 +14977,15 @@ function createPlatformUserFromForm(event) {
     username: uniqueUsername(usernameBase, state.users),
     password: DEMO_PASSWORD,
     role,
-    propertyIds: roleRequiresPropertyAccess(role) ? propertyIds : []
+    propertyIds: roleRequiresPropertyAccess(role) ? propertyIds : [],
+    menuPermissionsByProperty: roleRequiresPropertyAccess(role) ? menuPermissionsByProperty : {}
   };
 
   state.users.push(user);
   assignUserToPropertyRole(user);
   saveState();
   renderCredentialsTable();
+  closeModal();
   render();
   toast("Usuario creado");
 }
@@ -14568,6 +15019,17 @@ function assignUserToPropertyRole(user) {
 }
 
 function userCreationRowMarkup(user) {
+  const menuAccess = Object.entries(user.menuPermissionsByProperty || {})
+    .map(([propertyId, permissions]) => {
+      const property = getProperty(propertyId);
+      if (!property || !Array.isArray(permissions)) return "";
+      const labels = permissions.map((permission) => SOFTWARE_MENU_LABELS[permission]).filter(Boolean);
+      const summary = labels.length === SOFTWARE_MENU_KEYS.length ? "Todos" : `${labels.length} menus`;
+      return `<span class="access-chip" title="${escapeAttribute(labels.join(", "))}">${escapeAttribute(property.name)}: ${summary}</span>`;
+    })
+    .filter(Boolean)
+    .join("");
+  const legacyMenuLabel = SOFTWARE_MENU_LABELS[user.menuPermission];
   return `
     <tr>
       <td class="primary-cell">
@@ -14582,6 +15044,7 @@ function userCreationRowMarkup(user) {
           ${assignedPropertyLabels(user).map((label) => `<span class="access-chip">${label}</span>`).join("")}
         </div>
       </td>
+      <td>${menuAccess || escapeAttribute(legacyMenuLabel || (user.role === "superadmin" ? "Todos los menus" : "Segun rol"))}</td>
     </tr>
   `;
 }
@@ -14745,7 +15208,42 @@ function openModal() {
 
 function closeModal() {
   els.modalBackdrop.hidden = true;
-  els.modal?.classList.remove("modal-wide", "modal-compact", "modal-plaza-flow", "modal-playlist");
+  els.modal?.classList.remove("modal-wide", "modal-compact", "modal-plaza-flow", "modal-playlist", "modal-user-create");
+}
+
+function openValidationMessageModal(title, message, focusTarget = null) {
+  document.querySelector(".validation-message-backdrop")?.remove();
+  const backdrop = document.createElement("div");
+  backdrop.className = "modal-backdrop validation-message-backdrop";
+  backdrop.innerHTML = `
+    <section class="modal modal-compact" role="dialog" aria-modal="true" aria-labelledby="validationMessageTitle">
+      <div class="modal-header">
+        <h3 id="validationMessageTitle"></h3>
+        <button class="icon-button" type="button" data-validation-message-close aria-label="Cerrar">
+          <span data-icon="x" aria-hidden="true"></span>
+        </button>
+      </div>
+      <div class="modal-body"><p data-validation-message-text></p></div>
+    </section>
+  `;
+  backdrop.querySelector("#validationMessageTitle").textContent = title;
+  backdrop.querySelector("[data-validation-message-text]").textContent = message;
+  const close = () => {
+    backdrop.remove();
+    if (focusTarget?.isConnected && !focusTarget.hidden) focusTarget.focus();
+  };
+  backdrop.querySelector("[data-validation-message-close]").addEventListener("click", close);
+  backdrop.addEventListener("click", (event) => {
+    if (event.target === backdrop) close();
+  });
+  backdrop.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape") return;
+    event.stopPropagation();
+    close();
+  });
+  injectIcons(backdrop);
+  document.body.appendChild(backdrop);
+  backdrop.querySelector("[data-validation-message-close]").focus();
 }
 
 function toast(message) {

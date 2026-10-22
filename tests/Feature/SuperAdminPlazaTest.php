@@ -76,6 +76,12 @@ class SuperAdminPlazaTest extends TestCase
         $this->assertStringContainsString('data-administration-carousel="next"', $moduleScript);
         $this->assertStringContainsString('renderPropertyDetailSection({ property, markupOnly: true })', $moduleScript);
         $this->assertStringContainsString('Listado de unidades', $moduleScript);
+        foreach (['Todos', 'Al corriente', 'Con Adeudo', 'Contrato Vigente', 'Contrato Vencido'] as $filterLabel) {
+            $this->assertStringContainsString('label: "'.$filterLabel.'"', $moduleScript);
+        }
+        $this->assertStringContainsString('data-unit-list-filter="${option.key}"', $moduleScript);
+        $this->assertStringContainsString('propertyPaymentColumns.some((concept) => isPaymentConceptDue(unit, monthKey, concept.key))', $moduleScript);
+        $this->assertStringNotContainsString('Cada unidad puede abrirse para revisar su informacion especifica.', $moduleScript);
         $this->assertStringContainsString('property-administration-panel', $moduleScript);
         $this->assertStringContainsString('property-administration-toolbar', $moduleScript);
         $this->assertStringContainsString('data-property-administration-home', $moduleScript);
@@ -270,6 +276,15 @@ class SuperAdminPlazaTest extends TestCase
         $this->assertStringContainsString('Marketplace ${enabledMarketplaceUnits} de ${units.length}', $moduleScript);
         $this->assertStringNotContainsString('Resumen comercial de la plaza', $moduleScript);
         $this->assertStringContainsString('propertyLegalPanelTableMarkup(units)', $moduleScript);
+        $this->assertStringContainsString('class="property-legal-table contract-validation-table"', $moduleScript);
+        $this->assertStringNotContainsString('contract-validation-edit-column', $moduleScript);
+        $this->assertStringContainsString('<th class="contract-validation-status-column">Validacion</th>', $moduleScript);
+        $this->assertStringNotContainsString('legal-term-action-column', $moduleScript);
+        $this->assertStringNotContainsString('data-edit-unit-contract-validation-row=', $moduleScript);
+        $this->assertStringContainsString('data-edit-unit-contract-validation', $moduleScript);
+        $this->assertSame(1, substr_count($moduleScript, '${propertyUnitContractValidationHeaderMarkup('));
+        $this->assertSame(1, substr_count($moduleScript, '${propertyUnitContractValidationCellMarkup('));
+        $this->assertSame(1, substr_count($moduleScript, '${propertyUnitContractValidationActionsMarkup('));
         $this->assertStringContainsString('class="legal-contract-term-inline"', $moduleScript);
         $this->assertStringContainsString('Mantenimiento <span>Total</span>', $moduleScript);
         $this->assertStringContainsString('Machote de Contrato <span>en PDF</span>', $moduleScript);
@@ -282,6 +297,11 @@ class SuperAdminPlazaTest extends TestCase
         $this->assertStringNotContainsString('class="property-header-inline-actions"', $moduleScript);
         $this->assertStringContainsString('superadmin_dashboard: renderPlazaGeneralDashboard', $moduleScript);
         $this->assertStringContainsString('plazaDashboardStatusTableMarkup(property, units)', $moduleScript);
+        $this->assertStringContainsString('plazaDashboardAllPropertiesTableMarkup(properties, { includeDelete: true })', $moduleScript);
+        $this->assertStringContainsString('data-plaza-dashboard-delete=', $moduleScript);
+        $this->assertStringContainsString('Confirmacion ${step} de 3', $moduleScript);
+        $this->assertStringContainsString('nameInput.value.trim() !== property.name', $moduleScript);
+        $this->assertStringContainsString('nextState.deletedPropertyIds.forEach((propertyId) => removePropertyData(nextState, propertyId));', $moduleScript);
         $this->assertStringContainsString('<th>Pago de renta</th>', $moduleScript);
         $this->assertStringContainsString('<th>Pago de mantenimiento</th>', $moduleScript);
         $this->assertStringContainsString('<th>Activo en Marketplace</th>', $moduleScript);
@@ -310,7 +330,22 @@ class SuperAdminPlazaTest extends TestCase
             ->assertOk()
             ->assertSee('data-selected-section="administration"', false)
             ->assertSee('defaultTab: "administration"', false)
-            ->assertSee('selectedSection: "administration"', false);
+            ->assertSee('selectedSection: "administration"', false)
+            ->assertSee('canManageValidation: true', false);
+    }
+
+    public function test_only_superadmin_can_manage_plaza_payment_validation(): void
+    {
+        $user = User::factory()->create([
+            'role' => 'administrative_assistant',
+            'active' => true,
+            'menu_permissions' => [NavigationPermissionCatalog::HOME_DASHBOARD, 'plazas.administration'],
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('superadmin.plazas.panel', ['section' => 'administration']))
+            ->assertOk()
+            ->assertSee('canManageValidation: false', false);
     }
 
     public function test_superadmin_can_open_each_moved_plaza_menu_directly(): void
