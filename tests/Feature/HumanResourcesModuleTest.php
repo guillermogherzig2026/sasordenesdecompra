@@ -231,7 +231,7 @@ class HumanResourcesModuleTest extends TestCase
         $response->assertOk();
         $response->assertSeeInOrder([
             '<aside class="sidebar">',
-            '<details class="nav-group" open>',
+            '<details class="nav-group is-current" open>',
             '<summary>Recursos Humanos</summary>',
             'class="button nav-button sub-nav-button active" href="'.route('human-resources.show', 'empleados').'"',
             '</aside>',

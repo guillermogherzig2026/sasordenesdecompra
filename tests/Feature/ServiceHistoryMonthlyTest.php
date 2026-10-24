@@ -104,6 +104,10 @@ class ServiceHistoryMonthlyTest extends TestCase
         $this->assertSame(2, preg_match_all('/<tr[^>]*data-filter-row/', $html));
         $this->assertSame(0, preg_match_all('/<button[^>]*data-month-toggle/', $html));
         $this->assertSame(0, preg_match_all('/<section[^>]*data-month-key/', $html));
+        $this->assertStringContainsString("selectAllControl.className = 'column-filter-select-all';", $html);
+        $this->assertStringContainsString("apply.textContent = 'Buscar';", $html);
+        $this->assertStringContainsString('panel.append(selectAllControl, search, options, actions);', $html);
+        $this->assertStringNotContainsString("selectAll.textContent = 'Todos';", $html);
     }
 
     public function test_general_history_uses_the_existing_history_permission(): void

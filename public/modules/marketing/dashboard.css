@@ -1,0 +1,487 @@
+/* General marketing dashboard. Keep these overrides inside this page. */
+html.sas-theme-core .leadflow .marketing-dashboard {
+    --marketing-accent: #6955e8;
+    --marketing-accent-hover: #5744ce;
+    --marketing-accent-soft: #f1eeff;
+    --marketing-border: #e5e8f3;
+    --marketing-ink: #222846;
+    --marketing-muted: #63708c;
+    display: grid;
+    gap: 16px;
+    min-width: 0;
+    color: var(--marketing-ink);
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+html.sas-theme-core .leadflow .marketing-dashboard *,
+html.sas-theme-core .leadflow .marketing-dashboard *::before,
+html.sas-theme-core .leadflow .marketing-dashboard *::after {
+    box-sizing: border-box;
+}
+
+html.sas-theme-core .leadflow .marketing-dashboard [hidden] { display: none !important; }
+
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-icon {
+    display: block;
+    width: 18px;
+    height: 18px;
+    flex: 0 0 18px;
+}
+
+html.sas-theme-core .leadflow .marketing-dashboard :is(h1, h2, h3, p) { margin: 0; }
+html.sas-theme-core .leadflow .marketing-dashboard :is(h1, h2, h3) { color: var(--marketing-ink); }
+html.sas-theme-core .leadflow .marketing-dashboard :is(h2, h3) { font-weight: 700; }
+
+html.sas-theme-core .leadflow .marketing-dashboard :is(a, button, input, select):focus-visible {
+    outline: 2px solid var(--marketing-accent);
+    outline-offset: 3px;
+}
+
+html.sas-theme-core .leadflow .marketing-dashboard .btn {
+    min-height: 36px;
+    padding: 8px 14px;
+    gap: 8px;
+    border: 1px solid #c9c0fc;
+    border-radius: 6px;
+    background: #fff;
+    color: var(--marketing-accent);
+    box-shadow: none;
+    font-size: 12px;
+    font-weight: 650;
+    line-height: 1.35;
+}
+
+html.sas-theme-core .leadflow .marketing-dashboard .btn:hover { background: #f7f5ff; }
+html.sas-theme-core .leadflow .marketing-dashboard .btn.primary {
+    border-color: var(--marketing-accent);
+    background: var(--marketing-accent);
+    color: #fff;
+}
+html.sas-theme-core .leadflow .marketing-dashboard .btn.primary:hover { background: var(--marketing-accent-hover); }
+
+html.sas-theme-core .leadflow .marketing-dashboard :is(select, input[type="search"], input[readonly]) {
+    min-width: 0;
+    min-height: 36px;
+    border: 1px solid var(--marketing-border);
+    border-radius: 6px;
+    background: #fff;
+    color: #465374;
+    font-size: 12px;
+    font-weight: 400;
+    box-shadow: none;
+}
+
+html.sas-theme-core .leadflow .marketing-dashboard :is(select, input[type="search"]):focus {
+    border-color: var(--marketing-accent);
+    box-shadow: 0 0 0 3px rgba(105, 85, 232, .08);
+}
+html.sas-theme-core .leadflow .marketing-dashboard input[readonly] { width: 100%; padding: 7px 10px; background: #fbfcff; }
+
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-favorites-panel {
+    gap: 0;
+    margin: 0;
+    padding: 14px 16px 12px;
+    border: 1px solid var(--marketing-border);
+    border-radius: 9px;
+    background: #fff;
+    box-shadow: none;
+}
+
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-favorites-heading {
+    justify-content: space-between;
+    padding: 0 0 10px;
+    margin-bottom: 10px;
+    border-bottom: 1px solid var(--marketing-border);
+}
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-favorites-heading h2 { font-size: 14px; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-favorites-heading .badge {
+    min-width: 24px;
+    padding: 3px 7px;
+    border-radius: 6px;
+    background: #f1f3fa;
+    color: #4f5b77;
+    text-align: center;
+    font-size: 11px;
+}
+
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-company-carousel {
+    grid-template-columns: 27px minmax(0, 1fr) 27px;
+    gap: 8px;
+}
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-company-carousel > .carousel-button {
+    width: 27px;
+    height: 27px;
+    min-height: 0;
+    border: 1px solid #e7e1ff;
+    border-radius: 50%;
+    background: #fff;
+    color: var(--marketing-accent);
+    font-size: 21px;
+    font-weight: 400;
+    box-shadow: none;
+}
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-company-carousel > .carousel-button:hover:not(:disabled) { background: var(--marketing-accent-soft); }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-company-carousel-track { gap: 9px; }
+html.sas-theme-core .leadflow .marketing-dashboard :is(.marketing-favorite-card, .marketing-favorite-card-wrap) {
+    flex: 0 0 138px;
+    width: 138px;
+    min-height: 122px;
+}
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-favorite-card {
+    padding: 12px 8px 10px;
+    gap: 5px;
+    border-color: var(--marketing-border);
+    border-radius: 6px;
+    background: #fff;
+    color: var(--marketing-ink);
+    box-shadow: none;
+}
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-favorite-card-wrap > .marketing-favorite-card { width: 100%; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-favorite-card:hover { border-color: #b7abf5; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-favorite-card.active,
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-favorite-card-wrap.active > .marketing-favorite-card {
+    border-color: var(--marketing-accent);
+    background: #faf9ff;
+    box-shadow: inset 0 0 0 1px var(--marketing-accent);
+}
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-favorite-card strong { font-size: 11px; line-height: 1.3; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-favorite-card .muted { color: var(--marketing-muted); font-size: 10px; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-favorite-card .logo-circle { width: 34px; height: 34px; font-size: 11px; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-favorite-card :is(.check, .metric-icon) { background: var(--marketing-accent-soft); color: var(--marketing-accent); }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-favorite-card .status-dot { color: var(--marketing-muted); font-size: 11px; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-favorite-card .status-dot.active::before { background: #8874ed; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-favorite-empty { min-height: 122px; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-company-picker { margin-top: 11px; padding-top: 10px; border-color: var(--marketing-border); }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-company-picker label { color: var(--marketing-muted); font-size: 11px; font-weight: 500; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-company-picker .select { width: min(330px, 100%); min-height: 32px; padding: 6px 10px; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-company-picker .btn { min-height: 32px; padding: 6px 12px; border-color: var(--marketing-border); color: #55617f; }
+
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-dashboard-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    min-width: 0;
+    padding: 0 5px;
+    border-bottom: 1px solid var(--marketing-border);
+}
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-dashboard-header h1 { font-size: 25px; font-weight: 750; line-height: 1.25; letter-spacing: -.45px; overflow-wrap: anywhere; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-dashboard-header p { margin-top: 5px; color: var(--marketing-muted); font-size: 12px; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-dashboard-actions { display: flex; align-items: center; flex-wrap: wrap; justify-content: flex-end; gap: 10px; flex: 0 0 auto; margin-left: auto; }
+
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-dashboard-tabs {
+    display: flex;
+    flex: 1 1 auto;
+    align-items: stretch;
+    gap: 10px;
+    min-width: 0;
+    margin-top: 0;
+    border-bottom: 0;
+    overflow-x: auto;
+    scrollbar-width: thin;
+}
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-dashboard-tabs a {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    min-height: 45px;
+    padding: 11px 20px;
+    border-bottom: 2px solid transparent;
+    color: #657293;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-dashboard-tabs a:hover { color: var(--marketing-accent); background: #f5f3ff; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-dashboard-tabs a.is-active { border-bottom-color: var(--marketing-accent); color: var(--marketing-accent); }
+
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-dashboard-content { display: grid; gap: 12px; min-width: 0; }
+
+html.sas-theme-core .leadflow .marketing-dashboard :is(.marketing-channel-panel, .marketing-campaign-link) {
+    gap: 0;
+    min-width: 0;
+    padding: 15px;
+    border: 1px solid var(--marketing-border);
+    border-radius: 8px;
+    background: #fff;
+    box-shadow: none;
+}
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-channel-heading { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding-bottom: 13px; }
+html.sas-theme-core .leadflow .marketing-dashboard :is(.marketing-channel-heading, .marketing-campaign-link) h2 { font-size: 15px; line-height: 1.4; }
+html.sas-theme-core .leadflow .marketing-dashboard :is(.marketing-channel-heading p, .marketing-section-caption) { margin-top: 3px; color: var(--marketing-muted); font-size: 11px; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-channel-tools { display: flex; align-items: center; gap: 14px; min-width: 0; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-company-pill { display: inline-flex; align-items: center; gap: 4px; max-width: 220px; padding: 7px 13px; border-radius: 999px; background: #f3f2fc; color: #56617f; font-size: 11px; overflow-wrap: anywhere; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-company-pill strong { color: var(--marketing-ink); }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-channel-search { display: flex; align-items: center; gap: 9px; width: 250px; max-width: 100%; min-width: 0; padding: 0 11px; border: 1px solid var(--marketing-border); border-radius: 6px; color: #8290ad; background: #fff; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-channel-search:focus-within { border-color: var(--marketing-accent); }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-channel-search input[type="search"] { width: 100%; min-height: 33px; padding: 6px 0; border: 0; border-radius: 0; background: transparent; outline: 0; box-shadow: none; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-channel-search input::placeholder { color: var(--marketing-muted); opacity: 1; }
+
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-channel-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-channel-card { display: flex; flex-direction: column; gap: 8px; min-width: 0; padding: 12px; border: 1px solid var(--marketing-border); border-radius: 8px; background: #fff; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-channel-card-top { position: relative; display: flex; align-items: flex-start; gap: 11px; min-width: 0; min-height: 49px; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-channel-logo { display: grid; place-items: center; flex: 0 0 40px; width: 40px; height: 40px; margin-top: 2px; border-radius: 10px; color: #fff; background: var(--marketing-accent); }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-channel-logo svg { display: block; width: 30px; height: 30px; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-channel-logo.is-whatsapp { background: #21cf64; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-channel-logo.is-meta { background: #fff; color: #0866ff; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-channel-logo.is-meta svg { width: 39px; height: 32px; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-channel-logo.is-instagram { background: radial-gradient(circle at 30% 100%, #ffcb62 0%, #f54c41 38%, #c333a8 67%, #7759d2 95%); }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-channel-logo.is-facebook { background: #1877f2; border-radius: 50%; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-channel-logo:is(.is-chatgpt, .is-x) { background: #16191c; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-channel-logo.is-google { background: #fff; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-channel-logo.is-other { border-radius: 50%; background: var(--marketing-accent); }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-channel-copy { min-width: 0; padding-top: 3px; flex: 1; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-channel-copy h3 { font-size: 12px; line-height: 1.45; overflow-wrap: anywhere; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-channel-copy p { margin-top: 5px; color: var(--marketing-muted); font-size: 10px; line-height: 1.45; overflow-wrap: anywhere; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-channel-status { flex: 0 0 auto; padding: 3px 7px; border-radius: 999px; background: #f3f3fb; color: #62708b; font-size: 10px; line-height: 1.5; white-space: nowrap; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-channel-status.is-ready { background: #eaf8f0; color: #268657; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-channel-action { display: inline-flex; align-items: center; justify-content: center; gap: 7px; width: 100%; min-height: 31px; margin-top: auto; padding: 6px 8px; border: 1px solid #b5a6ff; border-radius: 5px; background: #fff; color: var(--marketing-accent); font-size: 11px; font-weight: 650; line-height: 1.3; cursor: pointer; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-channel-action .marketing-icon { width: 14px; height: 14px; flex-basis: 14px; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-channel-action:hover { background: var(--marketing-accent-soft); border-color: var(--marketing-accent); }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-channel-empty { padding: 28px 12px; color: var(--marketing-muted); text-align: center; }
+
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-campaign-link-form { display: grid; grid-template-columns: minmax(0, 1fr); align-items: end; gap: 14px; margin-top: 12px; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-campaign-link-form label { display: grid; gap: 5px; min-width: 0; color: #586683; font-size: 11px; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-campaign-link-form > div { min-width: 0; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-field-label { display: block; margin-bottom: 5px; color: #586683; font-size: 11px; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-campaign-link-form select { width: 100%; padding: 7px 10px; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-campaign-link-form .btn { min-width: 180px; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-campaign-networks { display: flex; align-items: center; flex-wrap: wrap; gap: 5px; min-width: 0; min-height: 36px; color: var(--marketing-muted); font-size: 11px; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-campaign-networks > span { padding: 4px 8px; border: 1px solid var(--marketing-border); border-radius: 5px; background: #fafbfe; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-campaign-hint { display: flex; align-items: flex-start; gap: 7px; margin-top: 8px; color: var(--marketing-muted); font-size: 11px; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-campaign-hint .marketing-icon { width: 15px; height: 15px; flex-basis: 15px; color: var(--marketing-accent); }
+
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-dashboard-shortcuts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-dashboard-shortcuts > a { display: flex; align-items: center; gap: 12px; min-width: 0; min-height: 58px; padding: 11px 15px; border: 1px solid var(--marketing-border); border-radius: 7px; background: #fff; color: var(--marketing-accent); }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-dashboard-shortcuts > a:hover { border-color: #b7abf5; background: #fcfbff; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-dashboard-shortcuts > a > span { min-width: 0; flex: 1; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-dashboard-shortcuts strong { display: block; color: #4e5b7a; font-size: 11px; font-weight: 600; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-dashboard-shortcuts small { display: block; margin-top: 2px; color: var(--marketing-muted); font-size: 10px; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-dashboard-shortcuts > a > .marketing-icon:last-child { width: 14px; height: 14px; flex-basis: 14px; color: #8892ae; }
+
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-overview { display: grid; min-width: 0; gap: 14px; padding-top: 5px; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-overview > h2 { font-size: 16px; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-overview-metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-overview-metric { position: relative; min-width: 0; padding: 16px; border: 1px solid var(--marketing-border); border-radius: 8px; background: #fff; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-overview-metric > .marketing-icon { float: right; width: 33px; height: 33px; margin: 0 0 5px 10px; padding: 7px; border-radius: 8px; background: var(--marketing-accent-soft); color: var(--marketing-accent); }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-overview-metric > span { display: block; color: #657190; font-size: 11px; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-overview-metric > strong { display: block; margin-top: 6px; color: var(--marketing-ink); font-size: 25px; font-weight: 700; line-height: 1.3; overflow-wrap: anywhere; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-overview-metric > small { display: block; margin-top: 5px; color: var(--marketing-muted); font-size: 10px; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-overview-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-overview-grid > * { min-width: 0; overflow: hidden; border: 1px solid var(--marketing-border); border-radius: 8px; background: #fff; box-shadow: none; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-overview-grid > .panel.pad { padding: 16px; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-overview-grid > .panel.pad > h2 { margin-bottom: 10px; font-size: 14px; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-overview-grid .panel-head { padding: 14px 16px; border-bottom-color: var(--marketing-border); }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-overview-grid > .panel.pad > .panel-head { margin: -16px -16px 6px; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-overview-grid .panel-head h2 { font-size: 14px; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-overview-grid .detail-row { gap: 12px; color: #596680; font-size: 12px; overflow-wrap: anywhere; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-overview-grid .detail-row strong { flex: 0 0 auto; color: var(--marketing-ink); }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-overview-grid .detail-section { padding: 13px 0; border-color: var(--marketing-border); }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-overview-grid .detail-section p { margin-top: 4px; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-overview-grid .conversation-item { grid-template-columns: 33px minmax(0, 1fr) auto; align-items: center; padding: 13px 0; border-color: var(--marketing-border); }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-overview-grid .conversation-item .avatar { width: 33px; height: 33px; background: var(--marketing-accent-soft); color: var(--marketing-accent); font-size: 12px; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-overview-grid .conversation-item > span { min-width: 0; overflow-wrap: anywhere; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-overview-grid .conversation-item > span:last-child { color: var(--marketing-muted); font-size: 10px; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-lead-progress { display: block; width: 100%; height: 6px; margin: 0 0 8px; border: 0; border-radius: 999px; overflow: hidden; appearance: none; background: #f0edf9; accent-color: var(--marketing-accent); }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-lead-progress::-webkit-progress-bar { border-radius: 999px; background: #f0edf9; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-lead-progress::-webkit-progress-value { border-radius: 999px; background: var(--marketing-accent); }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-lead-progress::-moz-progress-bar { border-radius: 999px; background: var(--marketing-accent); }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-overview .campaign-selector { min-width: 0; padding: 14px 16px; margin: 0; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-overview .campaign-selector h2 { margin-bottom: 12px; font-size: 14px; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-overview .campaign-selector .card-row { padding-bottom: 6px; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-overview .campaign-selector .square-card { flex: 0 0 145px; min-height: 106px; padding: 12px 8px; gap: 6px; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-overview .campaign-selector .square-card strong { line-height: 1.35; overflow-wrap: anywhere; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-dashboard-empty { padding: 28px 16px; color: var(--marketing-muted); font-size: 12px; text-align: center; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-dashboard-empty .btn { margin-top: 12px; }
+
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-channel-dialog { width: min(600px, calc(100vw - 32px)); max-height: calc(100dvh - 48px); margin: auto; padding: 22px; border: 1px solid var(--marketing-border); border-radius: 12px; background: #fff; color: var(--marketing-ink); box-shadow: 0 16px 60px rgba(34, 40, 70, .15); font-family: inherit; overflow-y: auto; overscroll-behavior: contain; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-channel-dialog::backdrop { background: rgba(34, 40, 70, .35); }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-dialog-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 14px; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-dialog-heading h2 { font-size: 19px; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-dialog-heading form { margin: 0; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-dialog-heading button { display: grid; place-items: center; flex: 0 0 32px; width: 32px; height: 32px; padding: 0; border: 1px solid var(--marketing-border); border-radius: 6px; background: #fff; color: var(--marketing-muted); font-size: 22px; cursor: pointer; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-channel-dialog p { margin-top: 10px; color: #657190; font-size: 13px; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-channel-dialog .btn { margin-top: 18px; }
+
+/* Configuration workspace and account forms. */
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-workspace-panel {
+    display: grid;
+    gap: 14px;
+    min-width: 0;
+    padding: 18px;
+    border: 1px solid var(--marketing-border);
+    border-radius: 10px;
+    background: #fafaff;
+}
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-workspace-panel .marketing-dashboard-header { padding: 0; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-workspace-panel .marketing-dashboard-tabs { margin-top: 0; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-workspace-panel :is(.marketing-channel-panel, .marketing-campaign-link) { scroll-margin-top: 24px; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-settings-nav {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    min-width: 0;
+    padding: 5px;
+    border: 1px solid var(--marketing-border);
+    border-radius: 8px;
+    background: #fff;
+}
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-settings-nav a {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    min-height: 34px;
+    padding: 7px 12px;
+    border: 1px solid transparent;
+    border-radius: 5px;
+    color: #56617c;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.4;
+    text-align: center;
+}
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-settings-nav a .marketing-icon { width: 15px; height: 15px; flex-basis: 15px; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-settings-nav a:hover { background: #f7f5ff; color: var(--marketing-accent-hover); }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-settings-nav a:is(.is-active, [aria-current="page"], [aria-current="location"]) { border-color: #e0dafa; background: var(--marketing-accent-soft); color: var(--marketing-accent-hover); }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-configuration-summary { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; min-width: 0; margin-bottom: 12px; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-configuration-summary > :is(span, a, div) { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border: 1px solid #e1def2; border-radius: 999px; background: #fff; color: #5e6881; font-size: 11px; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-configuration-summary strong { color: var(--marketing-accent-hover); font-size: 12px; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-configuration-summary .marketing-icon { width: 14px; height: 14px; flex-basis: 14px; color: var(--marketing-accent); }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-channel-account { min-width: 0; padding: 5px 8px; border-radius: 5px; background: #f7f8fc; color: #53617d; font-size: 10px; line-height: 1.45; overflow-wrap: anywhere; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-channel-account strong { font-weight: 600; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-channel-notice { padding: 10px 12px; border: 1px solid #ded8fa; border-radius: 7px; background: #f7f5ff; color: #594f80; font-size: 12px; line-height: 1.6; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-channel-panel > .marketing-channel-notice { margin-bottom: 12px; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-channel-dialog > .marketing-company-pill { max-width: 100%; margin-bottom: 13px; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-channel-dialog > .marketing-form-errors { margin-bottom: 13px; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-channel-dialog .marketing-channel-notice { margin: 0 0 16px; color: #594f80; font-size: 12px; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-channel-form { display: grid; gap: 15px; min-width: 0; margin: 0; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; min-width: 0; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-form-full { grid-column: 1 / -1; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-channel-form label { display: grid; gap: 6px; min-width: 0; color: #434e69; font-size: 12px; font-weight: 600; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-channel-form label:has(> span) { grid-template-columns: auto 1fr; column-gap: 5px; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-channel-form label > span { font-weight: 400; color: #65718b; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-channel-form label:has(> span) > :is(input, select, textarea) { grid-column: 1 / -1; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-channel-form :is(input:not([type="checkbox"]):not([type="radio"]), select, textarea) { width: 100%; min-width: 0; min-height: 38px; padding: 8px 10px; border: 1px solid #d7dceb; border-radius: 6px; background: #fff; color: var(--marketing-ink); font: inherit; font-weight: 400; line-height: 1.5; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-channel-form input[type="hidden"] { display: none; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-channel-form input[readonly] { background: #f7f8fc; color: #5f6a83; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-channel-form textarea { min-height: 84px; resize: vertical; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-channel-form :is(input, select, textarea):focus { border-color: var(--marketing-accent); outline: 2px solid rgba(105, 85, 232, .18); outline-offset: 1px; box-shadow: none; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-channel-form :is(small, .marketing-field-hint) { display: block; color: #65718b; font-size: 11px; font-weight: 400; line-height: 1.5; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-channel-dialog .marketing-campaign-hint { margin: 0; font-size: 11px; line-height: 1.55; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-channel-form :is(input, select, textarea)[aria-invalid="true"] { border-color: #ce5d69; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-form-errors { padding: 11px 13px; border: 1px solid #edc6ca; border-radius: 7px; background: #fff4f5; color: #9b3543; font-size: 12px; line-height: 1.5; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-form-errors p { margin: 0; color: inherit; font-size: inherit; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-form-errors ul { margin: 5px 0 0; padding-left: 18px; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-campaign-link > .marketing-form-errors { margin-top: 12px; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-dialog-actions { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 9px; margin-top: 1px; padding-top: 15px; border-top: 1px solid var(--marketing-border); }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-channel-dialog .marketing-dialog-actions .btn { margin: 0; min-width: 105px; }
+html.sas-theme-core .leadflow .marketing-dashboard :is(.btn, .marketing-channel-action):disabled { opacity: .55; cursor: not-allowed; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-campaign-selection-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr) auto; align-items: end; gap: 14px; min-width: 0; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-campaign-selection-row label { color: #485570; font-weight: 600; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-campaign-selection-row .btn { min-height: 36px; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-campaign-link-form .marketing-campaign-channel-options { display: flex; flex-wrap: wrap; gap: 8px; min-width: 0; margin: 0; padding: 11px 0 0; border: 0; border-top: 1px solid var(--marketing-border); }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-campaign-channel-options legend { padding: 0 9px 0 0; color: #485570; font-size: 11px; font-weight: 600; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-campaign-link-form .marketing-channel-choice { display: inline-flex; align-items: center; gap: 7px; min-width: 0; max-width: 100%; min-height: 35px; padding: 7px 10px; border: 1px solid #dfe3ee; border-radius: 6px; background: #fff; color: #53607a; font-size: 11px; font-weight: 500; cursor: pointer; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-campaign-link-form .marketing-channel-choice:hover { border-color: #b9aef2; background: #faf9ff; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-campaign-link-form .marketing-channel-choice:has(input:checked) { border-color: #c0b5f5; background: var(--marketing-accent-soft); color: #57469c; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-campaign-link-form .marketing-channel-choice:has(input:disabled) { background: #f7f8fb; color: #748098; cursor: not-allowed; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-channel-choice input[type="checkbox"] { width: 15px; height: 15px; min-height: 15px; margin: 0; padding: 0; flex: 0 0 15px; accent-color: var(--marketing-accent); }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-channel-choice .marketing-icon { width: 15px; height: 15px; flex-basis: 15px; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-channel-choice :is(span, strong) { min-width: 0; overflow-wrap: anywhere; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-channel-choice small { display: block; max-width: 220px; margin-top: 1px; color: #6b7690; font-size: 10px; line-height: 1.4; overflow-wrap: anywhere; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-campaign-channel-options > p { width: 100%; color: var(--marketing-muted); font-size: 11px; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-setup-empty { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; align-items: center; gap: 12px; min-width: 0; margin-top: 12px; padding: 16px; border: 1px dashed #d6d1ec; border-radius: 7px; background: #faf9ff; color: #5c6580; font-size: 12px; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-setup-empty > .marketing-icon { color: var(--marketing-accent); width: 24px; height: 24px; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-setup-empty > div { min-width: 0; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-setup-empty strong { display: block; margin-bottom: 3px; color: #4b526e; font-size: 12px; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-setup-empty p { margin: 0; color: inherit; font-size: inherit; }
+html.sas-theme-core .leadflow .marketing-dashboard .marketing-setup-empty .btn { margin: 0; }
+
+@media (max-width: 1400px) {
+    html.sas-theme-core .leadflow .marketing-dashboard .marketing-channel-card-top { flex-wrap: wrap; column-gap: 9px; row-gap: 5px; }
+    html.sas-theme-core .leadflow .marketing-dashboard .marketing-channel-copy { flex-basis: calc(100% - 49px); }
+    html.sas-theme-core .leadflow .marketing-dashboard .marketing-channel-status { margin-left: 49px; }
+    html.sas-theme-core .leadflow .marketing-dashboard .marketing-campaign-link-form { gap: 14px; }
+    html.sas-theme-core .leadflow .marketing-dashboard .marketing-campaign-link-form .btn { min-width: 150px; }
+}
+
+@media (max-width: 1100px) {
+    html.sas-theme-core .leadflow .marketing-dashboard .marketing-channel-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    html.sas-theme-core .leadflow .marketing-dashboard .marketing-channel-card-top { flex-wrap: nowrap; }
+    html.sas-theme-core .leadflow .marketing-dashboard .marketing-channel-copy { flex-basis: auto; }
+    html.sas-theme-core .leadflow .marketing-dashboard .marketing-channel-status { margin-left: 0; }
+    html.sas-theme-core .leadflow .marketing-dashboard .marketing-dashboard-header { align-items: flex-start; }
+    html.sas-theme-core .leadflow .marketing-dashboard .marketing-dashboard-actions { max-width: 42%; }
+    html.sas-theme-core .leadflow .marketing-dashboard .marketing-channel-heading { flex-wrap: wrap; }
+    html.sas-theme-core .leadflow .marketing-dashboard .marketing-channel-tools { justify-content: space-between; width: 100%; }
+    html.sas-theme-core .leadflow .marketing-dashboard .marketing-campaign-link-form { grid-template-columns: minmax(0, 1fr); }
+    html.sas-theme-core .leadflow .marketing-dashboard .marketing-campaign-selection-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    html.sas-theme-core .leadflow .marketing-dashboard .marketing-campaign-selection-row > .btn { grid-column: 1 / -1; justify-self: end; }
+    html.sas-theme-core .leadflow .marketing-dashboard .marketing-dashboard-shortcuts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    html.sas-theme-core .leadflow .marketing-dashboard .marketing-dashboard-tabs { gap: 0; }
+    html.sas-theme-core .leadflow .marketing-dashboard .marketing-dashboard-tabs a { padding-inline: 14px; }
+}
+
+@media (max-width: 700px) {
+    html.sas-theme-core .leadflow .marketing-dashboard { gap: 13px; }
+    html.sas-theme-core .leadflow .marketing-dashboard .marketing-favorites-panel { padding: 12px 10px; }
+    html.sas-theme-core .leadflow .marketing-dashboard .marketing-company-carousel { gap: 4px; grid-template-columns: 23px minmax(0, 1fr) 23px; }
+    html.sas-theme-core .leadflow .marketing-dashboard .marketing-company-carousel > .carousel-button { width: 23px; height: 23px; }
+    html.sas-theme-core .leadflow .marketing-dashboard :is(.marketing-favorite-card, .marketing-favorite-card-wrap) { flex-basis: 130px; width: 130px; }
+    html.sas-theme-core .leadflow .marketing-dashboard .marketing-company-picker { gap: 6px; }
+    html.sas-theme-core .leadflow .marketing-dashboard .marketing-company-picker .select { width: 100%; }
+    html.sas-theme-core .leadflow .marketing-dashboard .marketing-dashboard-header { flex-direction: column; gap: 12px; padding-inline: 1px; }
+    html.sas-theme-core .leadflow .marketing-dashboard .marketing-dashboard-header h1 { font-size: 23px; }
+    html.sas-theme-core .leadflow .marketing-dashboard .marketing-dashboard-actions { max-width: none; width: 100%; justify-content: flex-start; gap: 8px; }
+    html.sas-theme-core .leadflow .marketing-dashboard .marketing-dashboard-actions .btn { flex: 1 1 auto; }
+    html.sas-theme-core .leadflow .marketing-dashboard .marketing-dashboard-tabs a { gap: 7px; padding-inline: 12px; }
+    html.sas-theme-core .leadflow .marketing-dashboard :is(.marketing-channel-panel, .marketing-campaign-link) { padding: 13px; }
+    html.sas-theme-core .leadflow .marketing-dashboard .marketing-channel-tools { flex-wrap: wrap; gap: 9px; }
+    html.sas-theme-core .leadflow .marketing-dashboard .marketing-channel-search { width: 100%; }
+    html.sas-theme-core .leadflow .marketing-dashboard .marketing-channel-grid { grid-template-columns: minmax(0, 1fr); }
+    html.sas-theme-core .leadflow .marketing-dashboard .marketing-channel-card { padding: 13px; }
+    html.sas-theme-core .leadflow .marketing-dashboard .marketing-channel-card-top { min-height: 45px; }
+    html.sas-theme-core .leadflow .marketing-dashboard .marketing-channel-copy h3 { font-size: 13px; }
+    html.sas-theme-core .leadflow .marketing-dashboard .marketing-channel-copy p { font-size: 11px; }
+    html.sas-theme-core .leadflow .marketing-dashboard .marketing-channel-action { min-height: 36px; font-size: 12px; }
+    html.sas-theme-core .leadflow .marketing-dashboard .marketing-campaign-link-form { grid-template-columns: minmax(0, 1fr); gap: 11px; }
+    html.sas-theme-core .leadflow .marketing-dashboard .marketing-campaign-link-form .btn { width: 100%; }
+    html.sas-theme-core .leadflow .marketing-dashboard .marketing-dashboard-shortcuts { gap: 9px; }
+    html.sas-theme-core .leadflow .marketing-dashboard .marketing-dashboard-shortcuts > a { gap: 8px; padding: 12px 10px; }
+    html.sas-theme-core .leadflow .marketing-dashboard .marketing-dashboard-shortcuts > a > .marketing-icon:last-child { display: none; }
+    html.sas-theme-core .leadflow .marketing-dashboard .marketing-overview-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
+    html.sas-theme-core .leadflow .marketing-dashboard .marketing-overview-metric { padding: 13px; }
+    html.sas-theme-core .leadflow .marketing-dashboard .marketing-overview-metric > strong { font-size: 22px; }
+    html.sas-theme-core .leadflow .marketing-dashboard .marketing-overview-grid { grid-template-columns: minmax(0, 1fr); }
+    html.sas-theme-core .leadflow .marketing-dashboard .marketing-workspace-panel { padding: 12px; gap: 12px; }
+    html.sas-theme-core .leadflow .marketing-dashboard .marketing-settings-nav { gap: 5px; }
+    html.sas-theme-core .leadflow .marketing-dashboard .marketing-settings-nav a { flex: 1 1 auto; padding: 7px 9px; }
+    html.sas-theme-core .leadflow .marketing-dashboard .marketing-configuration-summary { gap: 6px; }
+    html.sas-theme-core .leadflow .marketing-dashboard .marketing-configuration-summary > :is(span, a, div) { padding: 5px 8px; }
+    html.sas-theme-core .leadflow .marketing-dashboard .marketing-campaign-selection-row { grid-template-columns: minmax(0, 1fr); gap: 11px; }
+    html.sas-theme-core .leadflow .marketing-dashboard .marketing-campaign-selection-row > .btn { justify-self: stretch; }
+    html.sas-theme-core .leadflow .marketing-dashboard .marketing-campaign-link-form .marketing-channel-choice { min-height: 38px; }
+    html.sas-theme-core .leadflow .marketing-dashboard .marketing-channel-dialog { max-height: calc(100dvh - 24px); padding: 17px; }
+    html.sas-theme-core .leadflow .marketing-dashboard .marketing-form-grid { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+    html.sas-theme-core .leadflow .marketing-dashboard .marketing-channel-form :is(input:not([type="checkbox"]):not([type="radio"]), select, textarea) { min-height: 42px; }
+    html.sas-theme-core .leadflow .marketing-dashboard .marketing-channel-dialog .marketing-dialog-actions .btn { flex: 1 1 0; min-width: 0; }
+    html.sas-theme-core .leadflow .marketing-dashboard .marketing-setup-empty { grid-template-columns: 24px minmax(0, 1fr); padding: 13px; }
+    html.sas-theme-core .leadflow .marketing-dashboard .marketing-setup-empty > .btn { grid-column: 1 / -1; width: 100%; }
+}
+
+@media (max-width: 380px) {
+    html.sas-theme-core .leadflow .marketing-dashboard .marketing-channel-card-top { flex-wrap: wrap; }
+    html.sas-theme-core .leadflow .marketing-dashboard .marketing-channel-copy { flex-basis: calc(100% - 49px); }
+    html.sas-theme-core .leadflow .marketing-dashboard .marketing-channel-status { margin-left: 49px; }
+    html.sas-theme-core .leadflow .marketing-dashboard .marketing-dashboard-shortcuts { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    html.sas-theme-core .leadflow .marketing-dashboard *,
+    html.sas-theme-core .leadflow .marketing-dashboard *::before,
+    html.sas-theme-core .leadflow .marketing-dashboard *::after { scroll-behavior: auto; transition: none; animation: none; }
+}

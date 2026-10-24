@@ -6,29 +6,29 @@
         <style>
             @page { size: letter; margin: 12mm; }
             * { box-sizing: border-box; }
-            body { margin: 0; background: #f4f7fb; color: #111; font-family: Arial, Helvetica, sans-serif; font-size: 12px; }
+            body { margin: 0; background: #f7f8fc; color: #20243a; font-family: Arial, Helvetica, sans-serif; font-size: 12px; }
             .print-actions { width: 216mm; margin: 14px auto; text-align: right; }
-            .print-actions button { border: 1px solid #176b87; border-radius: 6px; padding: 8px 12px; color: #fff; background: #176b87; font-weight: 700; cursor: pointer; }
+            .print-actions button { border: 1px solid #6955e8; border-radius: 6px; padding: 8px 12px; color: #fff; background: #6955e8; font-weight: 700; cursor: pointer; }
             .sheet { width: 216mm; min-height: 279mm; margin: 0 auto 24px; padding: 12mm; background: #fff; }
             .oc-frame { min-height: 250mm; border: 2px solid #000; display: grid; grid-template-rows: auto auto auto auto 1fr auto; }
             .top-header { min-height: 58px; display: grid; grid-template-columns: 190px 1fr; align-items: center; border-bottom: 2px solid #000; }
             .brand { padding: 8px 10px; display: flex; align-items: center; gap: 10px; }
-            .brand-mark { width: 92px; height: 40px; border-radius: 999px; display: grid; place-items: center; color: #103f8f; font-size: 30px; font-weight: 900; letter-spacing: -2px; border-top: 4px solid #7bb13c; }
+            .brand-mark { width: 92px; height: 40px; border-radius: 999px; display: grid; place-items: center; color: #5540d0; font-size: 30px; font-weight: 900; letter-spacing: 0; border-top: 4px solid #6955e8; }
             .brand-logo { max-width: 92px; max-height: 46px; object-fit: contain; display: block; }
             .company-title { text-align: center; font-size: 17px; font-weight: 900; text-transform: uppercase; line-height: 1.2; }
-            .title-bar { padding: 7px; border-top: 3px solid #000; border-bottom: 2px solid #000; color: #fff; background: #082764; text-align: center; font-size: 21px; font-weight: 900; }
+            .title-bar { padding: 7px; border-top: 3px solid #000; border-bottom: 2px solid #000; color: #fff; background: #5540d0; text-align: center; font-size: 21px; font-weight: 800; }
             .info-grid { display: grid; grid-template-columns: 1fr 1fr; border-bottom: 1px solid #777; }
             .info-row { display: grid; grid-template-columns: 185px 1fr; min-height: 25px; }
             .info-row.third { grid-template-columns: 185px 1fr 170px 1fr; }
-            .label { padding: 5px 6px; background: #c8c8c8; font-weight: 900; text-align: right; border-right: 1px solid #aaa; }
+            .label { padding: 5px 6px; background: #eeeff5; font-weight: 800; text-align: right; border-right: 1px solid #aaa; }
             .value { padding: 5px 7px; border: 1px solid #bcbcbc; border-top: 0; min-height: 24px; }
             .value.center { text-align: center; }
             .provider-grid { display: grid; grid-template-columns: 1.35fr .75fr; border-bottom: 1px solid #777; }
             .provider-left { display: grid; grid-template-columns: 120px 1fr; }
-            .provider-labels { background: #c8c8c8; padding: 12px 6px; display: grid; align-content: center; gap: 9px; text-align: right; font-weight: 900; }
+            .provider-labels { background: #eeeff5; padding: 12px 6px; display: grid; align-content: center; gap: 9px; text-align: right; font-weight: 800; }
             .provider-values { padding: 10px 8px; border-right: 1px solid #bbb; line-height: 1.35; }
             .provider-right { display: grid; grid-template-columns: 120px 1fr; }
-            .provider-right .label-stack { background: #c8c8c8; padding: 16px 6px; display: grid; align-content: center; gap: 19px; text-align: right; font-weight: 900; }
+            .provider-right .label-stack { background: #eeeff5; padding: 16px 6px; display: grid; align-content: center; gap: 19px; text-align: right; font-weight: 800; }
             .provider-right .value-stack { padding: 16px 8px; display: grid; align-content: center; gap: 18px; text-align: center; border-left: 1px solid #bbb; }
             .delivery-row { display: grid; grid-template-columns: 190px 120px 1fr 120px; border-bottom: 1px solid #777; }
             .billing { display: grid; grid-template-columns: 100px 1fr; border-bottom: 2px solid #000; }
@@ -45,7 +45,7 @@
             .totals .amount { border: 2px solid #000; text-align: right; font-weight: 400; }
             .totals .grand { font-size: 14px; font-weight: 900; }
             .notes-wrap { align-self: start; width: 52%; margin: 70px auto 0; border: 2px solid #000; }
-            .notes-title { padding: 4px; border-bottom: 1px solid #000; background: #e7f1f7; text-align: center; font-size: 16px; }
+            .notes-title { padding: 4px; border-bottom: 1px solid #000; background: #f0edff; text-align: center; font-size: 16px; }
             .notes-body { min-height: 85px; padding: 5px; font-size: 10px; line-height: 1.35; white-space: pre-line; }
             .signature { padding: 0 20px 70px; text-align: center; font-weight: 900; align-self: end; }
             .signature-label { display: block; }

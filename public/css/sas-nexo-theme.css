@@ -1,0 +1,910 @@
+/* Shared visual language for the ERP and its embedded modules. */
+html.sas-nexo-theme {
+  color-scheme: light;
+  --sas-canvas: #f7f8fc;
+  --sas-surface: #ffffff;
+  --sas-ink: #20243a;
+  --sas-muted: #66728c;
+  --sas-line: #e5e8f1;
+  --sas-line-strong: #d5dbea;
+  --sas-accent: #6955e8;
+  --sas-accent-dark: #5540d0;
+  --sas-accent-soft: #f0edff;
+  --sas-focus: rgba(105, 85, 232, .16);
+  --sas-menu-outline-violet: #9b63ff;
+  --sas-menu-outline-pink: #ff63b6;
+  --sas-shadow: 0 10px 32px rgba(33, 39, 78, .08);
+  font-family: Inter, "Segoe UI", Arial, sans-serif;
+  letter-spacing: 0;
+}
+
+html.sas-nexo-theme :is(button, input, select, textarea) {
+  font-family: inherit;
+  letter-spacing: 0;
+}
+
+html.sas-nexo-theme :is(button, a, input, select, textarea, summary):focus-visible {
+  outline: 2px solid var(--sas-accent);
+  outline-offset: 2px;
+}
+
+html.sas-nexo-theme :is(input[type="checkbox"], input[type="radio"]) {
+  accent-color: var(--sas-accent);
+}
+
+/* Main Laravel shell: navigation, forms, tables and dialogs. */
+html.sas-theme-core {
+  --bg: var(--sas-canvas);
+  --panel: var(--sas-surface);
+  --text: var(--sas-ink);
+  --muted: var(--sas-muted);
+  --line: var(--sas-line);
+  --primary: var(--sas-accent);
+  --primary-strong: var(--sas-accent-dark);
+  font-size: 13px;
+}
+
+html.sas-theme-core body {
+  background: var(--sas-canvas);
+  color: var(--sas-ink);
+  padding-bottom: 0;
+}
+
+html.sas-theme-core .app-shell {
+  grid-template-columns: 228px minmax(0, 1fr);
+}
+
+html.sas-theme-core .sidebar {
+  gap: 14px;
+  padding: 14px 10px;
+  color: var(--sas-ink);
+  background: #fff;
+  border-right: 1px solid var(--sas-line);
+}
+
+html.sas-theme-core .sidebar-brand {
+  min-height: 48px;
+  padding: 0 8px 14px;
+  border-bottom: 1px solid var(--sas-line);
+  font-size: 13px;
+}
+
+html.sas-theme-core .sidebar-brand span {
+  color: var(--sas-muted);
+  font-size: 11px;
+}
+
+html.sas-theme-core .brand-mark {
+  width: 36px;
+  height: 36px;
+  border-radius: 7px;
+  background: var(--sas-accent);
+  box-shadow: 0 4px 10px rgba(105, 85, 232, .14);
+}
+
+html.sas-theme-core .nav-list {
+  gap: 4px;
+  padding-right: 4px;
+  scrollbar-width: thin;
+  scrollbar-color: #d7dce9 transparent;
+}
+
+html.sas-theme-core .nav-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+html.sas-theme-core .nav-list::-webkit-scrollbar-thumb {
+  background: #d7dce9;
+}
+
+html.sas-theme-core .nav-group,
+html.sas-theme-core .nav-group[open] {
+  padding: 2px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+}
+
+html.sas-theme-core .nav-group summary {
+  min-height: 34px;
+  padding: 8px 10px;
+  color: #68748c;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+html.sas-theme-core .nav-group summary::after {
+  color: #a4acc0;
+}
+
+html.sas-theme-core .nav-group.is-current,
+html.sas-theme-core .nav-group.is-current[open] {
+  padding: 4px;
+  border: 1.5px solid var(--sas-menu-outline-violet);
+  border-radius: 16px;
+  background: #fff;
+}
+
+html.sas-theme-core .nav-group.is-current > summary {
+  color: var(--sas-ink);
+  font-weight: 800;
+}
+
+html.sas-theme-core .nav-group.is-current > summary::after {
+  color: var(--sas-accent);
+}
+
+html.sas-theme-core .nav-sublist {
+  gap: 2px;
+  padding: 2px 0 6px 5px;
+}
+
+html.sas-theme-core .nav-button {
+  min-height: 34px;
+  padding: 7px 10px;
+  color: #545e78;
+  font-size: 12px;
+  font-weight: 560;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+html.sas-theme-core .nav-button:hover,
+html.sas-theme-core .nav-button.active,
+html.sas-theme-core .nav-box .nav-button.active {
+  color: var(--sas-accent);
+  background: var(--sas-accent-soft);
+  box-shadow: none;
+}
+
+html.sas-theme-core .nav-button.active {
+  font-weight: 700;
+}
+
+html.sas-theme-core .nav-box {
+  --nav-box-outline: var(--sas-menu-outline-violet);
+  --nav-box-border: var(--nav-box-outline);
+  --nav-box-bg: #fff;
+  --nav-box-active: var(--sas-accent-soft);
+  margin-block: 6px;
+  padding: 7px;
+  border: 1.5px solid var(--nav-box-outline);
+  border-radius: 14px;
+  background: var(--nav-box-bg);
+}
+
+html.sas-theme-core .nav-list-framed .nav-box {
+  border-color: var(--nav-box-outline);
+}
+
+html.sas-theme-core .nav-sublist > .nav-box:nth-of-type(even) {
+  --nav-box-outline: var(--sas-menu-outline-pink);
+}
+
+html.sas-theme-core .nav-box-title {
+  padding: 4px 8px;
+  color: #68748c;
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: 0;
+}
+
+html.sas-theme-core .nav-inline-flow {
+  border-left-color: var(--sas-line);
+  background: transparent;
+}
+
+html.sas-theme-core .nav-pending-badge.is-empty {
+  background: #eef0f5;
+  color: #6d778d;
+}
+
+html.sas-theme-core .topbar {
+  min-height: 58px;
+  padding: 10px 24px;
+  background: #fff;
+  border-bottom: 1px solid var(--sas-line);
+}
+
+html.sas-theme-core .topbar .eyebrow {
+  margin: 0 0 2px;
+  color: #68748c;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+html.sas-theme-core .topbar h1 {
+  color: var(--sas-ink);
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+html.sas-theme-core .user-pill {
+  padding: 4px 5px 4px 12px;
+  color: #525c75;
+  font-size: 11px;
+  border-radius: 7px;
+  background: #fff;
+}
+
+html.sas-theme-core .view {
+  min-height: calc(100vh - 58px);
+  padding: 20px 24px;
+  gap: 16px;
+  background: var(--sas-canvas);
+}
+
+html.sas-theme-core :is(.panel, .metric-card) {
+  border-color: var(--sas-line);
+  border-radius: 8px;
+  box-shadow: none;
+}
+
+html.sas-theme-core .metric-card strong {
+  color: var(--sas-ink);
+  font-size: 1.6rem;
+  font-weight: 700;
+}
+
+html.sas-theme-core .panel-header :is(h2, h3),
+html.sas-theme-core .panel-header-title :is(h2, h3) {
+  color: var(--sas-ink);
+  font-weight: 700;
+}
+
+html.sas-theme-core :is(input:not([type="checkbox"]):not([type="radio"]), select, textarea) {
+  border-color: var(--sas-line-strong);
+  border-radius: 6px;
+  color: var(--sas-ink);
+  background: #fff;
+}
+
+html.sas-theme-core :is(input:not([type="checkbox"]):not([type="radio"]), select, textarea):focus {
+  border-color: var(--sas-accent);
+  box-shadow: 0 0 0 3px var(--sas-focus);
+  outline: none;
+}
+
+html.sas-theme-core :is(label, .form-label) {
+  color: #5d667d;
+  font-weight: 650;
+}
+
+html.sas-theme-core .button {
+  min-height: 36px;
+  border-color: var(--sas-line-strong);
+  border-radius: 6px;
+  color: #44506b;
+  background: #fff;
+  box-shadow: none;
+  font-weight: 650;
+}
+
+html.sas-theme-core .button:hover {
+  border-color: #c7bff7;
+  color: var(--sas-accent-dark);
+  background: #faf9ff;
+}
+
+html.sas-theme-core .button.primary,
+html.sas-theme-core .button.primary:hover {
+  color: #fff;
+  border-color: var(--sas-accent);
+  background: var(--sas-accent);
+}
+
+html.sas-theme-core .button.primary:hover {
+  background: var(--sas-accent-dark);
+}
+
+html.sas-theme-core .button.danger,
+html.sas-theme-core .button.danger:hover {
+  color: #fff;
+  border-color: #c84149;
+  background: #c84149;
+}
+
+html.sas-theme-core .sidebar .nav-button,
+html.sas-theme-core .sidebar .nav-box .nav-button {
+  color: #545e78;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  font-size: 12px;
+  font-weight: 560;
+}
+
+html.sas-theme-core .sidebar .nav-button:is(:hover, .active),
+html.sas-theme-core .sidebar .nav-box .nav-button:is(:hover, .active),
+html.sas-theme-core .sidebar .nav-box-construction-materiales .nav-inline-flow .nav-button.active {
+  color: var(--sas-accent);
+  border: 0;
+  background: var(--sas-accent-soft);
+  box-shadow: none;
+}
+
+html.sas-theme-core .sidebar .nav-button.active {
+  font-weight: 700;
+}
+
+html.sas-theme-core :is(th, thead td) {
+  color: #65718a;
+  background: #f8f9fc;
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: 0;
+}
+
+html.sas-theme-core :is(th, td) {
+  border-bottom-color: var(--sas-line);
+}
+
+html.sas-theme-core tbody tr:hover td {
+  background: #fafaff;
+}
+
+html.sas-theme-core :is(.column-filter summary, .column-sort-button, .excel-filter-toggle) {
+  border-color: var(--sas-line);
+  color: #69738d;
+  box-shadow: none;
+}
+
+html.sas-theme-core :is(.column-filter summary.is-filtered, .excel-filter-toggle.active) {
+  color: #fff;
+  border-color: var(--sas-accent);
+  background: var(--sas-accent);
+}
+
+html.sas-theme-core :is(.column-filter-panel, .excel-filter-panel, .status-menu-panel) {
+  border-color: var(--sas-line);
+  border-radius: 8px;
+  box-shadow: var(--sas-shadow);
+}
+
+html.sas-theme-core :is(.supply-detail-dialog, .confirm-dialog, .system-message-dialog) {
+  border-radius: 8px;
+  box-shadow: 0 20px 60px rgba(29, 37, 68, .18);
+}
+
+html.sas-theme-core :is(.supply-detail-dialog, .confirm-dialog, .system-message-dialog)::backdrop {
+  background: rgba(25, 30, 54, .38);
+}
+
+html.sas-theme-core .status:is(.approved, .primary, .domiciled) {
+  --status-color: var(--sas-accent-dark);
+  --status-bg: var(--sas-accent-soft);
+}
+
+html.sas-theme-core :is(.catalog-filter-card, .service-category-card, .occasional-payment-category) {
+  border-color: var(--sas-line);
+  color: #4e5871;
+  background: #fff;
+  box-shadow: none;
+  font-weight: 650;
+}
+
+html.sas-theme-core :is(.catalog-filter-card, .service-category-card, .occasional-payment-category).is-selected {
+  border-color: var(--sas-accent);
+  color: #fff;
+  background: var(--sas-accent);
+  box-shadow: none;
+}
+
+html.sas-theme-core :is(.catalog-filter-card, .service-category-card, .occasional-payment-category).is-selected :is(.catalog-filter-symbol, .service-category-symbol, .occasional-payment-category-icon) {
+  color: #fff;
+}
+
+html.sas-theme-core :is(.catalog-filter-symbol, .service-category-symbol, .occasional-payment-category-icon) {
+  color: var(--sas-accent);
+}
+
+html.sas-theme-core :is(.catalog-filter-arrow, .service-carousel-arrow, .occasional-payment-carousel-arrow) {
+  border-color: var(--sas-line);
+  color: var(--sas-accent);
+  box-shadow: none;
+}
+
+html.sas-theme-core :is(.service-create-dialog, .occasional-create-dialog, .occasional-payment-dialog) {
+  border-color: var(--sas-line);
+  border-radius: 8px;
+  box-shadow: 0 20px 60px rgba(29, 37, 68, .18);
+}
+
+html.sas-theme-core :is(.service-create-dialog, .occasional-create-dialog, .occasional-payment-dialog)::backdrop {
+  background: rgba(25, 30, 54, .38);
+}
+
+html.sas-theme-core :is(.occasional-directory-results > .service-results-heading, .service-directory-table th, .fuel-allocation-panel, .fuel-allocation-table th) {
+  background: #f8f9fc;
+}
+
+html.sas-theme-core .occasional-payment-modes input:checked + span {
+  background: var(--sas-accent-soft);
+  color: var(--sas-accent-dark);
+}
+
+html.sas-theme-core .fuel-allocation-feedback[data-state="neutral"] {
+  background: var(--sas-accent-soft);
+  color: var(--sas-accent-dark);
+}
+
+html.sas-theme-core .occasional-preview {
+  background: #f8f9fc;
+}
+
+html.sas-theme-core .occasional-icon-choice:has(input:checked) {
+  border-color: var(--sas-accent);
+  background: var(--sas-accent-soft);
+  box-shadow: inset 0 0 0 1px var(--sas-accent);
+}
+
+html.sas-theme-core :is(.security-favorite-rail, .security-incident-dashboard, .security-incident-metric) {
+  border-color: var(--sas-line);
+  background: #fff;
+}
+
+html.sas-theme-core :is(.security-favorite-card, .security-favorite-card-wrap, .security-favorite-new) {
+  border-color: var(--sas-line);
+  background: #fff;
+}
+
+html.sas-theme-core :is(.security-favorite-card.is-active, .security-favorite-card-wrap.is-active, .security-favorite-card.is-all.is-active) {
+  border-color: var(--sas-accent);
+  color: var(--sas-accent-dark);
+  background: var(--sas-accent-soft);
+  box-shadow: none;
+}
+
+html.sas-theme-core .security-favorite-card.is-all.is-active small {
+  color: #7266b9;
+}
+
+html.sas-theme-core :is(.security-favorite-arrow, .security-favorite-new, .security-favorite-avatar.is-all) {
+  color: var(--sas-accent);
+}
+
+html.sas-theme-core .security-favorites-dialog {
+  border-color: var(--sas-line);
+  box-shadow: 0 20px 60px rgba(29, 37, 68, .18);
+}
+
+html.sas-theme-core .security-favorites-dialog::backdrop {
+  background: rgba(25, 30, 54, .38);
+}
+
+html.sas-theme-core .security-favorites-option:has(input:checked) {
+  border-color: var(--sas-accent);
+  background: var(--sas-accent-soft);
+}
+
+html.sas-theme-core :is(.security-favorite-picker[open] summary, .security-favorite-picker-all.is-current, .security-favorite-picker-option > a.is-current) {
+  border-color: var(--sas-accent);
+  background: var(--sas-accent-soft);
+}
+
+html.sas-theme-core :is(.agent-count, .agent-modal-close, .agent-carousel-arrow) {
+  color: var(--sas-accent);
+  border-color: var(--sas-line);
+  box-shadow: none;
+}
+
+html.sas-theme-core .agent-count {
+  background: var(--sas-accent-soft);
+}
+
+html.sas-theme-core .login-hero {
+  color: var(--sas-ink);
+  background: var(--sas-canvas);
+  border-right: 1px solid var(--sas-line);
+}
+
+html.sas-theme-core .login-hero .eyebrow {
+  color: var(--sas-accent);
+}
+
+html.sas-theme-core .login-hero h1 {
+  max-width: 660px;
+  font-size: 3rem;
+  line-height: 1.08;
+  font-weight: 700;
+}
+
+html.sas-theme-core .login-hero p:not(.eyebrow) {
+  color: var(--sas-muted);
+}
+
+html.sas-theme-core .login-card {
+  border-color: var(--sas-line);
+  box-shadow: none;
+}
+
+/* Marketing workspace: selection, campaign cards, metrics and popups. */
+html.sas-theme-core .leadflow {
+  --green-950: #302c5d;
+  --green-900: #463b9b;
+  --green-700: var(--sas-accent-dark);
+  --green-600: var(--sas-accent);
+  --green-100: var(--sas-accent-soft);
+  --ink: var(--sas-ink);
+  --muted: var(--sas-muted);
+  --line: var(--sas-line);
+  --soft: var(--sas-canvas);
+  --shadow: none;
+  background: transparent;
+  color: var(--sas-ink);
+  font-size: 12px;
+}
+
+html.sas-theme-core .leadflow :is(.panel, .square-card, .campaign-mini-card, .selector) {
+  border-color: var(--sas-line);
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: none;
+}
+
+html.sas-theme-core .leadflow :is(.square-card.active, .campaign-mini-card.active),
+html.sas-theme-core .marketing-favorite-card.active,
+html.sas-theme-core .marketing-favorite-card-wrap.active > .marketing-favorite-card {
+  border-color: var(--sas-accent);
+  color: var(--sas-ink);
+  background: #f9f8ff;
+  box-shadow: inset 0 0 0 1px var(--sas-accent);
+}
+
+html.sas-theme-core .leadflow :is(.check, .badge.green, .metric-icon) {
+  background: var(--sas-accent-soft);
+  color: var(--sas-accent);
+}
+
+html.sas-theme-core .leadflow .page-head h1 {
+  font-size: 22px;
+  font-weight: 700;
+}
+
+html.sas-theme-core .leadflow .panel-head h2 {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+html.sas-theme-core .leadflow :is(.btn, .select) {
+  border-color: var(--sas-line-strong);
+  border-radius: 6px;
+  background: #fff;
+  color: #47516c;
+  font-weight: 650;
+}
+
+html.sas-theme-core .leadflow :is(.btn.primary, .table-edit-button) {
+  border-color: var(--sas-accent);
+  background: var(--sas-accent);
+  color: #fff;
+}
+
+html.sas-theme-core .leadflow :is(.btn.primary, .table-edit-button):hover {
+  background: var(--sas-accent-dark);
+}
+
+html.sas-theme-core .leadflow :is(.btn.danger, .btn.danger:hover) {
+  border-color: #efc4c8;
+  color: #bb3943;
+  background: #fff;
+}
+
+html.sas-theme-core .leadflow .marketing-company-select {
+  border-color: var(--sas-accent);
+  color: var(--sas-accent-dark);
+  background: var(--sas-accent-soft);
+}
+
+html.sas-theme-core .leadflow :is(.modal-backdrop, .filter-popover) {
+  background-color: rgba(25, 30, 54, .38);
+}
+
+html.sas-theme-core .leadflow .modal-card {
+  border: 1px solid var(--sas-line);
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 20px 60px rgba(29, 37, 68, .18);
+}
+
+html.sas-theme-core .leadflow .filter-popover {
+  border-color: var(--sas-line);
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: var(--sas-shadow);
+}
+
+html.sas-theme-core .leadflow :is(th, .table-filter) {
+  background: #f8f9fc;
+}
+
+/* Plazas iframe. Its size and behavior remain owned by the module. */
+html.sas-theme-plazas {
+  --bg: var(--sas-canvas);
+  --surface: #fff;
+  --surface-2: #f9faff;
+  --ink: var(--sas-ink);
+  --muted: var(--sas-muted);
+  --line: var(--sas-line);
+  --teal: var(--sas-accent);
+  --teal-dark: var(--sas-accent-dark);
+  --blue: #555bd2;
+  --shadow: none;
+}
+
+html.sas-theme-plazas body {
+  color: var(--sas-ink);
+  background: var(--sas-canvas);
+}
+
+html.sas-theme-plazas :is(.workspace, .content-area) {
+  background: var(--sas-canvas);
+}
+
+html.sas-theme-plazas :is(.plaza-management-panel, .table-panel, .metric-tile, .overview-band, .plaza-dashboard-card, .plaza-dashboard-add-card) {
+  border-color: var(--sas-line);
+  border-radius: 8px;
+  background-color: #fff;
+  box-shadow: none;
+}
+
+html.sas-theme-plazas .plaza-dashboard-card:is(:hover, .is-selected),
+html.sas-theme-plazas .plaza-dashboard-add-card:hover {
+  border-color: var(--sas-accent);
+  box-shadow: 0 5px 16px rgba(105, 85, 232, .1);
+}
+
+html.sas-theme-plazas .plaza-dashboard-all-card .property-icon.is-all {
+  color: var(--sas-accent);
+  background: var(--sas-accent-soft);
+}
+
+html.sas-theme-plazas :is(.action-button, .action-button:hover) {
+  color: #fff;
+  border-color: var(--sas-accent);
+  background: var(--sas-accent);
+}
+
+html.sas-theme-plazas .action-button:hover {
+  background: var(--sas-accent-dark);
+}
+
+html.sas-theme-plazas :is(.secondary-button, .icon-button) {
+  color: var(--sas-accent-dark);
+  border-color: var(--sas-line-strong);
+  background: #fff;
+}
+
+html.sas-theme-plazas :is(input, select, textarea) {
+  border-color: var(--sas-line-strong);
+  border-radius: 6px;
+}
+
+html.sas-theme-plazas :is(input, select, textarea):focus {
+  border-color: var(--sas-accent);
+  box-shadow: 0 0 0 3px var(--sas-focus);
+}
+
+html.sas-theme-plazas th {
+  color: #65718a;
+  background: #f8f9fc;
+  font-weight: 750;
+}
+
+html.sas-theme-plazas tbody tr:hover {
+  background: #fafaff;
+}
+
+html.sas-theme-plazas .month-panel-header {
+  background: #fafaff;
+}
+
+html.sas-theme-plazas .modal-backdrop {
+  background: rgba(25, 30, 54, .38);
+}
+
+html.sas-theme-plazas .modal {
+  border: 1px solid var(--sas-line);
+  border-radius: 8px;
+  box-shadow: 0 20px 60px rgba(29, 37, 68, .18);
+}
+
+html.sas-theme-plazas :is(.modal-header, .modal-user-create .form-actions) {
+  border-color: var(--sas-line);
+  background: #fff;
+}
+
+/* Government contracts iframe. */
+html.sas-theme-government {
+  --bg: var(--sas-canvas);
+  --surface: #fff;
+  --surface-2: #f9faff;
+  --surface-3: #f3f1ff;
+  --text: var(--sas-ink);
+  --muted: var(--sas-muted);
+  --border: var(--sas-line);
+  --nav: #fff;
+  --nav-2: var(--sas-accent-soft);
+  --accent: var(--sas-accent);
+  --accent-2: #575fd2;
+  --accent-dark: var(--sas-accent-dark);
+  --accent-strong: var(--sas-accent-dark);
+  --shadow: none;
+}
+
+html.sas-theme-government body {
+  color: var(--sas-ink);
+  background: var(--sas-canvas);
+  font-size: 13px;
+}
+
+html.sas-theme-government :is(.summary-band, .panel, .metric-card, .contract-card, .form-section-card) {
+  border-color: var(--sas-line);
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: none;
+}
+
+html.sas-theme-government .summary-band h2 {
+  font-size: 22px;
+  font-weight: 700;
+}
+
+html.sas-theme-government .topbar h1 {
+  font-size: 20px;
+  font-weight: 700;
+}
+
+html.sas-theme-government .contract-card:is(:hover, .selected) {
+  border-color: var(--sas-accent);
+  background: #f9f8ff;
+  box-shadow: 0 5px 16px rgba(105, 85, 232, .1);
+}
+
+html.sas-theme-government :is(.contract-modal, .modal, .modal-card) {
+  border: 1px solid var(--sas-line);
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 20px 60px rgba(29, 37, 68, .18);
+}
+
+html.sas-theme-government .modal-backdrop {
+  background: rgba(25, 30, 54, .38);
+}
+
+html.sas-theme-government :is(input, select, textarea) {
+  border-color: var(--sas-line-strong);
+  border-radius: 6px;
+}
+
+html.sas-theme-government :is(input, select, textarea):focus {
+  border-color: var(--sas-accent);
+  box-shadow: 0 0 0 3px var(--sas-focus);
+}
+
+html.sas-theme-government th {
+  color: #65718a;
+  background: #f8f9fc;
+  font-weight: 750;
+}
+
+/* Human resources and training iframes. */
+html.sas-theme-hr {
+  --bg: var(--sas-canvas);
+  --surface: #fff;
+  --surface-soft: #fafaff;
+  --line: var(--sas-line);
+  --line-strong: var(--sas-line-strong);
+  --text: var(--sas-ink);
+  --muted: var(--sas-muted);
+  --primary: var(--sas-accent);
+  --primary-strong: var(--sas-accent-dark);
+  --primary-soft: var(--sas-accent-soft);
+  --violet: var(--sas-accent);
+  --shadow: none;
+  --shadow-soft: none;
+}
+
+html.sas-theme-hr body {
+  color: var(--sas-ink);
+  background: var(--sas-canvas);
+  font-size: 13px;
+}
+
+html.sas-theme-hr body.hr-suite-embedded {
+  background: transparent;
+}
+
+html.sas-theme-hr :is(.card, .panel, .table-card, .form-card, .metric-card, .flow-preview) {
+  border-color: var(--sas-line);
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: none;
+}
+
+html.sas-theme-hr .brand-mark {
+  background: var(--sas-accent);
+  box-shadow: none;
+}
+
+html.sas-theme-hr :is(.btn, .btn:hover) {
+  border-radius: 6px;
+  font-weight: 650;
+}
+
+html.sas-theme-hr :is(input, select, textarea) {
+  border-color: var(--sas-line-strong);
+  border-radius: 6px;
+}
+
+html.sas-theme-hr :is(input, select, textarea):focus {
+  border-color: var(--sas-accent);
+  box-shadow: 0 0 0 3px var(--sas-focus);
+}
+
+html.sas-theme-hr th {
+  color: #65718a;
+  background: #f8f9fc;
+  font-weight: 750;
+}
+
+html.sas-theme-hr .modal-backdrop {
+  background: rgba(25, 30, 54, .38);
+}
+
+html.sas-theme-hr .modal {
+  border: 1px solid var(--sas-line);
+  border-radius: 8px;
+  box-shadow: 0 20px 60px rgba(29, 37, 68, .18);
+}
+
+html.sas-theme-hr .training-screen .section-header .eyebrow,
+html.sas-theme-hr .training-tabs button[aria-selected="true"],
+html.sas-theme-hr .training-program-card .training-card-edit {
+  color: var(--sas-accent-dark);
+}
+
+html.sas-theme-hr .training-tabs button[aria-selected="true"],
+html.sas-theme-hr .training-program-card.is-selected {
+  border-color: var(--sas-accent);
+}
+
+html.sas-theme-hr .training-program-card.is-selected {
+  box-shadow: inset 0 0 0 1px var(--sas-accent);
+}
+
+html.sas-theme-hr :is(.training-progress progress, .training-check-row input[type="checkbox"]) {
+  accent-color: var(--sas-accent);
+}
+
+@media (max-width: 900px) {
+  html.sas-theme-core .app-shell {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  html.sas-theme-core .sidebar {
+    height: auto;
+  }
+
+  html.sas-theme-core :is(.marketing-workspace-shell, .security-favorite-shell) .sidebar {
+    height: 100dvh;
+  }
+
+  html.sas-theme-core .view {
+    padding: 14px;
+  }
+
+  html.sas-theme-core .login-hero h1 {
+    font-size: 2.3rem;
+  }
+}
+
+@media print {
+  html.sas-nexo-theme :is(.panel, .card, .metric-card, .table-panel) {
+    box-shadow: none;
+  }
+}

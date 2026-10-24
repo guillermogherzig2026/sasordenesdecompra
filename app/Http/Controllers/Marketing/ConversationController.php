@@ -19,6 +19,9 @@ class ConversationController extends Controller
         $campaign = $workspace->selectedCampaign($request, $company);
         $companies = $workspace->companiesFor($request->user());
         $campaigns = $workspace->campaignsFor($request->user(), $company);
+        $cloudNumber = $company?->whatsappNumbers()->whereNotNull('meta_phone_number_id')->first()
+            ?? $company?->whatsappNumbers()->where('status', 'pending_meta')->first();
+        $webhookReady = filled(config('services.whatsapp.verify_token')) && filled(config('services.whatsapp.app_secret'));
 
         $baseQuery = Conversation::query()
             ->visibleTo($request->user())
@@ -64,11 +67,15 @@ class ConversationController extends Controller
             ->orderBy('name')
             ->get();
 
-        return view('marketing.leadflow.conversations.index', compact('company', 'campaign', 'companies', 'campaigns', 'conversations', 'selected', 'stats', 'advisors'));
+        return view('marketing.leadflow.conversations.index', compact('company', 'campaign', 'companies', 'campaigns', 'conversations', 'selected', 'stats', 'advisors', 'cloudNumber', 'webhookReady'));
     }
 
     public function storeMessage(Request $request, Conversation $conversation): RedirectResponse
     {
+        if ($conversation->whatsapp_number_id !== null) {
+            return back()->withErrors(['body' => 'El envio por WhatsApp Cloud API aun no esta habilitado. No se guardo ni envio el mensaje.']);
+        }
+
         $data = $request->validate([
             'body' => ['required_without:file', 'nullable', 'string'],
             'file' => ['nullable', 'file', 'max:10240'],

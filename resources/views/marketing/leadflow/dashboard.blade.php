@@ -1,62 +1,95 @@
-@extends('marketing.leadflow.layout', ['title' => 'Inicio | LeadFlow'])
+@extends('marketing.leadflow.layout', ['title' => 'Panel general | Marketing'])
+
+@push('styles')
+    <link rel="stylesheet" href="{{ asset('modules/marketing/dashboard.css') }}?v={{ filemtime(public_path('modules/marketing/dashboard.css')) }}">
+@endpush
+@push('scripts')
+    <script src="{{ asset('modules/marketing/dashboard.js') }}?v={{ filemtime(public_path('modules/marketing/dashboard.js')) }}" defer></script>
+@endpush
 
 @section('content')
-@include('marketing.leadflow.partials.company-selection')
-@include('marketing.leadflow.partials.campaign-selection', ['selectionRoute' => 'marketing.index'])
+@php
+    $can = fn (string $permission) => auth()->user()->canNavigateTo('marketing.'.$permission);
+    $companyParameters = ['company_id' => $company?->id ?? 'all', 'campaign' => 'all'];
+@endphp
+<div class="marketing-dashboard" data-marketing-dashboard>
+    @include('marketing.leadflow.partials.company-selection')
 
-<div class="grid cols-4" style="margin-bottom:16px">
-    <div class="panel metric"><span class="metric-icon">♙</span><div><span>Leads</span><strong>{{ number_format($metrics['leads']) }}</strong><span class="trend">↑ 12.5%</span></div></div>
-    <div class="panel metric"><span class="metric-icon" style="background:var(--blue-100);color:var(--blue-600)">◌</span><div><span>Conversaciones activas</span><strong>{{ number_format($metrics['active_conversations']) }}</strong><span class="trend">↑ 8.3%</span></div></div>
-    <div class="panel metric"><span class="metric-icon" style="background:var(--amber-100);color:var(--amber-600)">♧</span><div><span>Sin asignar</span><strong>{{ number_format($metrics['unassigned']) }}</strong><span class="trend down">↓ 4.2%</span></div></div>
-    <div class="panel metric"><span class="metric-icon" style="background:var(--purple-100);color:var(--purple-600)">◷</span><div><span>Tiempo de respuesta</span><strong>2m 45s</strong><span class="trend">↓ 11%</span></div></div>
-</div>
+    <section class="marketing-workspace-panel" aria-label="Espacio de marketing">
 
-<div class="grid cols-4">
-    <div class="panel">
-        <div class="panel-head"><h2>Conversaciones recientes</h2><a class="btn" href="{{ route('marketing.conversations.index') }}">Ver todas</a></div>
-        @foreach($recentConversations as $conversation)
-            <a class="conversation-item" href="{{ route('marketing.conversations.index', ['conversation' => $conversation->id]) }}">
-                <span class="avatar">{{ $conversation->lead->name[0] }}</span>
-                <span>
-                    <strong>{{ $conversation->lead->name }}</strong><br>
-                    <span class="muted small">{{ $conversation->company->name }} · {{ $conversation->campaign?->name ?? 'Sin campaña' }}</span>
-                </span>
-                <span class="muted small">{{ $conversation->last_message_at?->format('H:i') }}</span>
-            </a>
-        @endforeach
-    </div>
+    <header class="marketing-dashboard-header">
+        <nav class="marketing-dashboard-tabs" aria-label="Secciones del panel de marketing">
+            <a class="{{ $dashboardView === 'summary' ? 'is-active' : '' }}" href="{{ route('marketing.index', array_merge($scopeParameters, ['view' => 'summary'])) }}" @if($dashboardView === 'summary') aria-current="page" @endif><x-marketing-icon name="summary" />Resumen</a>
+            @if($can('reports'))
+                <a href="{{ route('marketing.reports.index', $scopeParameters) }}"><x-marketing-icon name="report" />Reportes</a>
+            @endif
+            <a class="{{ $dashboardView === 'channels' ? 'is-active' : '' }}" href="{{ route('marketing.index', array_merge($scopeParameters, ['view' => 'channels'])) }}" @if($dashboardView === 'channels') aria-current="page" @endif><x-marketing-icon name="settings" />Configuraciones</a>
+        </nav>
+        <div class="marketing-dashboard-actions">
+            @if($can('campaigns'))
+                <a class="btn" href="{{ route('marketing.campaigns.index', $scopeParameters) }}"><x-marketing-icon name="campaign" />Ver campañas</a>
+            @endif
+            @if($company)
+                <a class="btn primary" href="{{ route('marketing.index', array_merge($scopeParameters, ['view' => 'channels'])) }}#marketing-channels"><x-marketing-icon name="settings" />Configurar canales</a>
+            @endif
+        </div>
+    </header>
 
-    <div class="panel pad">
-        <h2>Embudo de leads</h2>
-        @foreach([100, 72, 48, 30, 18] as $width)
-            <div class="funnel-step" style="width:{{ $width }}%"></div>
-        @endforeach
-        <div class="detail-row"><span>Nuevos</span><strong>{{ number_format($metrics['leads']) }}</strong></div>
-        <div class="detail-row"><span>Convertidos</span><strong>{{ number_format($metrics['converted']) }}</strong></div>
-    </div>
+    @include('marketing.leadflow.partials.dashboard-channels')
 
-    <div class="panel pad">
-        <h2>Top campañas</h2>
-        @foreach($topCampaigns as $item)
-            <div class="detail-row">
-                <span>{{ $loop->iteration }}. {{ $item->name }}</span>
-                <strong>{{ number_format($item->leads_count) }}</strong>
+    <section class="marketing-overview" aria-label="Resumen de marketing" @if($dashboardView !== 'summary') hidden @endif>
+        @include('marketing.leadflow.partials.campaign-selection', ['selectionRoute' => 'marketing.index', 'selectionParameters' => ['view' => 'summary']])
+        <div class="marketing-overview-metrics">
+            @foreach([
+                ['Leads', number_format($metrics['leads']), 'Contactos registrados', 'users'],
+                ['Conversaciones activas', number_format($metrics['active_conversations']), 'Conversaciones abiertas', 'conversation'],
+                ['Sin asignar', number_format($metrics['unassigned']), 'Pendientes de responsable', 'clock'],
+                ['Convertidos', number_format($metrics['converted']), 'Leads con conversión registrada', 'summary'],
+            ] as [$label, $value, $caption, $icon])
+                <div class="panel marketing-overview-metric"><x-marketing-icon :name="$icon" /><span>{{ $label }}</span><strong>{{ $value }}</strong><small>{{ $caption }}</small></div>
+            @endforeach
+        </div>
+        <div class="marketing-overview-grid">
+            <div class="panel pad">
+                <div class="panel-head"><h2>Conversaciones recientes</h2>@if($can('conversations'))<a class="btn" href="{{ route('marketing.conversations.index', $scopeParameters) }}">Ver todas</a>@endif</div>
+                @forelse($recentConversations as $conversation)
+                    <div class="conversation-item">
+                        <span class="avatar">{{ mb_substr($conversation->lead->name, 0, 1) }}</span>
+                        <span>@if($can('conversations'))<a href="{{ route('marketing.conversations.index', array_merge($scopeParameters, ['conversation' => $conversation->id])) }}"><strong>{{ $conversation->lead->name }}</strong></a>@else<strong>{{ $conversation->lead->name }}</strong>@endif<br><span class="muted small">{{ $conversation->company->name }} · {{ $conversation->campaign?->name ?? 'Sin campaña' }}</span></span>
+                        <span class="muted small">{{ $conversation->last_message_at?->format('d/m H:i') }}</span>
+                    </div>
+                @empty
+                    <p class="marketing-dashboard-empty">Todavía no hay conversaciones para esta selección.</p>
+                @endforelse
             </div>
-            <div style="height:6px;background:#eef2f7;border-radius:999px;margin-bottom:10px">
-                <div style="width:{{ min(100, $item->leads_count / max(1, $metrics['leads']) * 100) }}%;height:6px;background:var(--green-600);border-radius:999px"></div>
+            <div class="panel pad">
+                <h2>Estado de los leads</h2>
+                @foreach(\App\Models\Marketing\Lead::STATUSES as $status => $label)
+                    <div class="detail-row"><span>{{ $label }}</span><strong>{{ number_format($leadStatusCounts[$status] ?? 0) }}</strong></div>
+                    <progress class="marketing-lead-progress" max="{{ max(1, $metrics['leads']) }}" value="{{ $leadStatusCounts[$status] ?? 0 }}" aria-label="{{ $label }}"></progress>
+                @endforeach
             </div>
-        @endforeach
-        <a class="btn block" href="{{ route('marketing.campaigns.index') }}">Ver campañas</a>
-    </div>
+            <div class="panel pad">
+                <h2>Campañas con más leads</h2>
+                @forelse($topCampaigns as $item)
+                    <div class="detail-row"><span>{{ $item->name }}</span><strong>{{ number_format($item->leads_count) }} leads</strong></div>
+                @empty
+                    <p class="marketing-dashboard-empty">No hay campañas en esta selección.</p>
+                @endforelse
+            </div>
+            <div class="panel pad">
+                <h2>Actividad reciente</h2>
+                @forelse($activity as $message)
+                    <div class="detail-section"><strong>{{ $message->message_type === 'note' ? 'Nota agregada' : 'Mensaje registrado' }}</strong><p class="muted small">{{ $message->conversation->lead->name }} · {{ $message->sent_at?->diffForHumans() }}</p></div>
+                @empty
+                    <p class="marketing-dashboard-empty">La actividad de tu equipo aparecerá aquí.</p>
+                @endforelse
+            </div>
+        </div>
+    </section>
 
-    <div class="panel pad">
-        <h2>Actividad reciente</h2>
-        @foreach($activity as $message)
-            <div class="detail-section">
-                <strong>{{ $message->message_type === 'note' ? 'Nota agregada' : 'Mensaje registrado' }}</strong>
-                <p class="muted small" style="margin:4px 0 0">{{ $message->conversation->lead->name }} · {{ $message->sent_at?->diffForHumans() }}</p>
-            </div>
-        @endforeach
-    </div>
+    </section>
+
+    @include('marketing.leadflow.partials.channel-dialogs')
 </div>
 @endsection

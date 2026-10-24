@@ -42,4 +42,10 @@ return [
         'ready_attempts' => (int) env('CAMERA_RECORDER_READY_ATTEMPTS', 20),
     ],
 
+    'whatsapp' => [
+        'verify_token' => env('WHATSAPP_WEBHOOK_VERIFY_TOKEN'),
+        'app_secret' => env('META_APP_SECRET'),
+        'graph_version' => env('META_GRAPH_VERSION'),
+    ],
+
 ];

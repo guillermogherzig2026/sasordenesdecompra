@@ -2,6 +2,7 @@
     $pickerCompanies = $workspaceCompanies ?? $companies;
     $favoriteCompanies = $pickerCompanies->where('is_favorite', true)->values();
     $selectionRoute = request()->route()->getName();
+    $selectionParameters = request()->routeIs('marketing.index') ? ['view' => request('view') === 'summary' ? 'summary' : 'channels'] : [];
 @endphp
 <section class="panel pad marketing-favorites-panel" aria-label="Selección de empresa">
     <div class="panel-head marketing-favorites-heading">
@@ -17,13 +18,13 @@
                     <strong>Nueva empresa</strong>
                 </a>
             @endif
-            <a class="square-card marketing-favorite-card marketing-favorite-command {{ $company ? '' : 'active' }}" href="{{ route($selectionRoute, ['company_id' => 'all', 'campaign' => 'all']) }}" @if (!$company) aria-current="page" @endif>
+            <a class="square-card marketing-favorite-card marketing-favorite-command {{ $company ? '' : 'active' }}" href="{{ route($selectionRoute, array_merge($selectionParameters ?? [], ['company_id' => 'all', 'campaign' => 'all'])) }}" @if (!$company) aria-current="page" @endif>
                 <span class="metric-icon" aria-hidden="true">▦</span>
                 <strong>Todas</strong>
             </a>
             @foreach($favoriteCompanies as $item)
                 <div class="marketing-favorite-card-wrap {{ $company?->is($item) ? 'active' : '' }}" data-marketing-favorite-id="{{ $item->id }}">
-                    <a class="square-card marketing-favorite-card" href="{{ route($selectionRoute, ['company_id' => $item->id, 'campaign' => 'all']) }}" @if ($company?->is($item)) aria-current="page" @endif>
+                    <a class="square-card marketing-favorite-card" href="{{ route($selectionRoute, array_merge($selectionParameters ?? [], ['company_id' => $item->id, 'campaign' => 'all'])) }}" @if ($company?->is($item)) aria-current="page" @endif>
                         @if ($company?->is($item))<span class="check" aria-hidden="true">✓</span>@endif
                         <span class="logo-circle" style="background:{{ $item->brand_color }}">{{ $item->logo_initials }}</span>
                         <strong>{{ $item->name }}</strong>
@@ -54,6 +55,9 @@
             @endforeach
         </select>
         <input type="hidden" name="campaign" value="all">
+        @foreach($selectionParameters as $name => $value)
+            <input type="hidden" name="{{ $name }}" value="{{ $value }}">
+        @endforeach
         <button class="btn" type="submit">Aplicar</button>
     </form>
 </section>
