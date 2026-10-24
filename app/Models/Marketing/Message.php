@@ -19,6 +19,7 @@ class Message extends Model
         'file_name',
         'file_path',
         'external_id',
+        'meta_message_id',
         'sent_at',
     ];
 

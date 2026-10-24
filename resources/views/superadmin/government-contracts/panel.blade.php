@@ -1,6 +1,6 @@
 <!doctype html>
 <html
-    class="government-contracts-parent-navigation"
+    class="government-contracts-parent-navigation sas-nexo-theme sas-theme-government"
     lang="es"
     data-selected-module="{{ $selectedModule }}"
     data-selected-section="{{ $selectedSection }}"
@@ -34,6 +34,7 @@
                 }
             }
         </style>
+        <link rel="stylesheet" href="{{ asset('css/sas-nexo-theme.css') }}?v={{ filemtime(public_path('css/sas-nexo-theme.css')) }}">
     </head>
     <body>
         <div id="root"></div>

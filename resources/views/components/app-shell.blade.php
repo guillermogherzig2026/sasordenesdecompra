@@ -426,7 +426,7 @@
                 <span>{{ auth()->user()->role === 'buyer' ? auth()->user()->buyerSubroleLabel() : ($roleLabels[auth()->user()->role] ?? 'Usuario') }}</span>
             </div>
         </div>
-        <nav class="nav-list" aria-label="Menu principal">
+        <nav @class(['nav-list', 'nav-list-framed' => in_array($currentUser->role, ['superadmin', 'finance'], true)]) aria-label="Menu principal">
             @if ($currentUser->role !== 'superadmin' && $currentUser->canNavigateTo($homeDashboardPermission))
                 <a class="button nav-button {{ request()->routeIs('dashboard') ? 'active' : '' }}" href="{{ route('dashboard') }}">Panel de inicio</a>
             @endif
@@ -434,7 +434,7 @@
                     @php
                         $groupIsActive = collect($items)->contains(fn ($item) => $item['active']);
                     @endphp
-                    <details class="nav-group" {{ $groupIsActive ? 'open' : '' }}>
+                    <details @class(['nav-group', 'is-current' => $groupIsActive]) {{ $groupIsActive ? 'open' : '' }}>
                         <summary>{{ $groupLabel }}</summary>
                         <div class="nav-sublist">
                             @foreach ($items as $item)

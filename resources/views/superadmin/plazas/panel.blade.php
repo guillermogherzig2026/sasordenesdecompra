@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="es" data-selected-section="{{ $selectedSection }}">
+<html lang="es" class="sas-nexo-theme sas-theme-plazas" data-selected-section="{{ $selectedSection }}">
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -234,6 +234,7 @@
                 }
             }
         </style>
+        <link rel="stylesheet" href="{{ asset('css/sas-nexo-theme.css') }}?v={{ filemtime(public_path('css/sas-nexo-theme.css')) }}">
     </head>
     <body>
         <section id="loginView" hidden aria-hidden="true">

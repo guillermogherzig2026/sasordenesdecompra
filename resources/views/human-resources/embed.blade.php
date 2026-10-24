@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="es-MX">
+<html lang="es-MX" class="sas-nexo-theme sas-theme-hr">
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -31,6 +31,7 @@
                 padding: 0;
             }
         </style>
+        <link rel="stylesheet" href="{{ asset('css/sas-nexo-theme.css') }}?v={{ filemtime(public_path('css/sas-nexo-theme.css')) }}">
     </head>
     <body class="hr-suite-embedded">
         <div id="app" aria-live="polite"></div>

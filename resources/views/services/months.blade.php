@@ -747,6 +747,33 @@
             color: #fff;
         }
 
+        .column-filter-select-all {
+            min-height: 32px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 2px 2px 8px;
+            border-bottom: 1px solid var(--line);
+            color: var(--ink);
+            font-size: .84rem;
+            font-weight: 750;
+            cursor: pointer;
+            text-transform: none;
+        }
+
+        .column-filter-select-all input {
+            width: 15px;
+            min-height: 15px;
+            flex: 0 0 15px;
+            margin: 0;
+            accent-color: var(--primary);
+        }
+
+        .column-filter-actions .column-filter-apply-button {
+            width: 100%;
+            justify-content: center;
+        }
+
         .date-range-calendar {
             display: grid;
             gap: 12px;
@@ -1543,9 +1570,21 @@
                     const search = document.createElement('input');
                     search.type = 'search';
                     search.className = 'column-filter-search';
-                    search.placeholder = 'Buscar';
+                    search.placeholder = 'Filtrar opciones...';
                     search.autocomplete = 'off';
                     search.setAttribute('aria-label', `Buscar en ${label}`);
+
+                    const selectAllControl = document.createElement('label');
+                    selectAllControl.className = 'column-filter-select-all';
+
+                    const selectAll = document.createElement('input');
+                    selectAll.type = 'checkbox';
+                    selectAll.checked = true;
+                    selectAll.setAttribute('aria-label', `Seleccionar o deseleccionar todos los valores de ${label}`);
+
+                    const selectAllText = document.createElement('span');
+                    selectAllText.textContent = 'Seleccionar todo';
+                    selectAllControl.append(selectAll, selectAllText);
 
                     const options = document.createElement('div');
                     options.className = 'column-filter-options';
@@ -1564,16 +1603,7 @@
                         optionText.textContent = value;
 
                         checkbox.addEventListener('change', () => {
-                            const checked = checkboxes.filter((input) => input
-                                .checked).map((input) => input.value);
-
-                            if (checked.length === checkboxes.length) {
-                                filters.delete(column);
-                            } else {
-                                filters.set(column, new Set(checked));
-                            }
-
-                            applyFilters();
+                            updateSelectAllState();
                         });
 
                         option.append(checkbox, optionText);
@@ -1581,6 +1611,30 @@
 
                         return checkbox;
                     });
+
+                    const updateSelectAllState = () => {
+                        const checkedCount = checkboxes.filter((checkbox) => checkbox.checked).length;
+                        selectAll.checked = checkboxes.length > 0 && checkedCount === checkboxes.length;
+                        selectAll.indeterminate = checkedCount > 0 && checkedCount < checkboxes.length;
+                        selectAll.disabled = checkboxes.length === 0;
+                    };
+
+                    const syncDraftFromAppliedFilter = () => {
+                        const selected = filters.get(column);
+                        checkboxes.forEach((checkbox) => {
+                            checkbox.checked = !selected || selected.has(checkbox.value);
+                        });
+                        updateSelectAllState();
+                    };
+
+                    selectAll.addEventListener('change', () => {
+                        checkboxes.forEach((checkbox) => {
+                            checkbox.checked = selectAll.checked;
+                        });
+                        updateSelectAllState();
+                    });
+
+                    updateSelectAllState();
 
                     const noMatches = document.createElement('div');
                     noMatches.className = 'column-filter-empty';
@@ -1602,32 +1656,39 @@
                     const actions = document.createElement('div');
                     actions.className = 'column-filter-actions';
 
-                    const selectAll = document.createElement('button');
-                    selectAll.className = 'button ghost small';
-                    selectAll.type = 'button';
-                    selectAll.textContent = 'Todos';
-                    selectAll.addEventListener('click', () => {
-                        checkboxes.forEach((checkbox) => checkbox.checked = true);
-                        filters.delete(column);
+                    const apply = document.createElement('button');
+                    apply.className = 'button primary small column-filter-apply-button';
+                    apply.type = 'button';
+                    apply.textContent = 'Buscar';
+                    apply.addEventListener('click', () => {
+                        const checked = checkboxes.filter((checkbox) => checkbox.checked)
+                            .map((checkbox) => checkbox.value);
+
+                        if (checked.length === checkboxes.length) {
+                            filters.delete(column);
+                        } else {
+                            filters.set(column, new Set(checked));
+                        }
+
+                        summary.classList.toggle('is-filtered', checked.length !== checkboxes.length);
                         applyFilters();
+                        details.removeAttribute('open');
                     });
 
-                    const clear = document.createElement('button');
-                    clear.className = 'button ghost small';
-                    clear.type = 'button';
-                    clear.textContent = 'Limpiar';
-                    clear.addEventListener('click', () => {
-                        checkboxes.forEach((checkbox) => checkbox.checked = false);
-                        filters.set(column, new Set());
-                        applyFilters();
+                    search.addEventListener('keydown', (event) => {
+                        if (event.key === 'Enter') {
+                            event.preventDefault();
+                            apply.click();
+                        }
                     });
 
-                    actions.append(selectAll, clear);
-                    panel.append(search, options, actions);
+                    actions.append(apply);
+                    panel.append(selectAllControl, search, options, actions);
                     details.append(summary, panel);
                     details.addEventListener('toggle', () => {
                         if (details.open) {
                             closeColumnFilters(details);
+                            syncDraftFromAppliedFilter();
                             search.value = '';
                             options.querySelectorAll('.column-filter-option').forEach((option) => option.hidden = false);
                             noMatches.hidden = true;

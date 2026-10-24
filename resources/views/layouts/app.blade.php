@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="es">
+<html lang="es" class="sas-nexo-theme sas-theme-core">
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -890,6 +890,7 @@
             }
         </style>
         @stack('styles')
+        <link rel="stylesheet" href="{{ asset('css/sas-nexo-theme.css') }}?v={{ filemtime(public_path('css/sas-nexo-theme.css')) }}">
     </head>
     <body>
         @yield('body')

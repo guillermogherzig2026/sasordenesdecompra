@@ -1,0 +1,261 @@
+:root {
+    --sas-purple: #6d4aff;
+    --sas-purple-soft: #f0ecff;
+    --sas-ink: #18233b;
+    --sas-muted: #66738d;
+    --sas-line: #dbe2ee;
+    --sas-surface: #ffffff;
+    --sas-canvas: #f6f8fc;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html,
+body {
+    min-height: 100%;
+}
+
+body {
+    margin: 0;
+    color: var(--sas-ink);
+    background: var(--sas-canvas);
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+button,
+input,
+select,
+textarea {
+    font: inherit;
+}
+
+.sas-app-shell {
+    display: grid;
+    grid-template-columns: 220px minmax(0, 1fr);
+    min-height: 100vh;
+}
+
+.sas-sidebar {
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+    padding: 14px 12px;
+    border-right: 1px solid var(--sas-line);
+    background: var(--sas-surface);
+}
+
+.sas-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 54px;
+    padding: 4px 2px 14px;
+    color: inherit;
+    text-decoration: none;
+}
+
+.sas-brand-mark {
+    display: grid;
+    flex: 0 0 36px;
+    width: 36px;
+    height: 36px;
+    place-items: center;
+    border-radius: 7px;
+    color: #fff;
+    background: var(--sas-purple);
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.sas-brand strong,
+.sas-brand small {
+    display: block;
+}
+
+.sas-brand strong {
+    font-size: 14px;
+}
+
+.sas-brand small {
+    margin-top: 2px;
+    color: var(--sas-muted);
+    font-size: 11px;
+}
+
+.sas-navigation {
+    padding-top: 10px;
+    border-top: 1px solid var(--sas-line);
+}
+
+.sas-nav-group {
+    border: 1px solid var(--sas-purple);
+    border-radius: 8px;
+    background: #fff;
+}
+
+.sas-nav-group summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 42px;
+    padding: 0 12px;
+    cursor: pointer;
+    list-style: none;
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+.sas-nav-group summary::-webkit-details-marker {
+    display: none;
+}
+
+.sas-nav-chevron {
+    font-size: 16px;
+}
+
+.sas-nav-list {
+    display: grid;
+    gap: 3px;
+    padding: 0 6px 7px;
+}
+
+.sas-nav-link {
+    min-height: 34px;
+    padding: 9px 10px;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    color: #30405f;
+    text-decoration: none;
+    font-size: 12px;
+    font-weight: 650;
+}
+
+.sas-nav-link:hover,
+.sas-nav-link:focus-visible {
+    border-color: #cfc4ff;
+    outline: 0;
+}
+
+.sas-nav-link.is-active {
+    border-color: #b9a8ff;
+    color: #4f2fe3;
+    background: var(--sas-purple-soft);
+}
+
+.sas-page {
+    min-width: 0;
+}
+
+.sas-topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 64px;
+    padding: 8px 22px;
+    border-bottom: 1px solid var(--sas-line);
+    background: var(--sas-surface);
+}
+
+.sas-eyebrow {
+    display: block;
+    margin-bottom: 2px;
+    color: var(--sas-purple);
+    font-size: 9px;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+.sas-topbar h1 {
+    margin: 0;
+    font-size: 18px;
+    letter-spacing: 0;
+}
+
+.sas-account {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.sas-avatar {
+    display: grid;
+    width: 30px;
+    height: 30px;
+    place-items: center;
+    border-radius: 50%;
+    color: #fff;
+    background: #16899f;
+    font-size: 10px;
+    font-weight: 800;
+}
+
+.sas-account-name {
+    max-width: 180px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 12px;
+}
+
+.sas-logout {
+    min-height: 30px;
+    padding: 0 10px;
+    border: 1px solid var(--sas-line);
+    border-radius: 6px;
+    color: var(--sas-ink);
+    background: #fff;
+    cursor: pointer;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.sas-logout:hover,
+.sas-logout:focus-visible {
+    border-color: var(--sas-purple);
+    outline: 0;
+}
+
+.sas-view {
+    min-width: 0;
+    padding: 18px;
+}
+
+@media (max-width: 900px) {
+    .sas-app-shell {
+        display: block;
+    }
+
+    .sas-sidebar {
+        position: static;
+        width: 100%;
+        height: auto;
+        border-right: 0;
+        border-bottom: 1px solid var(--sas-line);
+    }
+
+    .sas-nav-list {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .sas-topbar {
+        padding-inline: 14px;
+    }
+
+    .sas-view {
+        padding: 12px;
+    }
+}
+
+@media (max-width: 560px) {
+    .sas-account-name {
+        display: none;
+    }
+
+    .sas-nav-list {
+        grid-template-columns: 1fr;
+    }
+}

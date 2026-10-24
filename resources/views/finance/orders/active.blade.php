@@ -190,7 +190,8 @@
         .finance-active-panel .due-date-pill {
             border-radius: 8px;
             display: inline-flex;
-            font-weight: 850;
+            font-size: inherit;
+            font-weight: 400;
             justify-content: center;
             min-width: 98px;
             padding: 7px 10px;

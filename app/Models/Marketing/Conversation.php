@@ -21,10 +21,14 @@ class Conversation extends Model
         'status',
         'unread_count',
         'last_message_at',
+        'whatsapp_number_id',
+        'contact_wa_id',
+        'last_inbound_at',
     ];
 
     protected $casts = [
         'last_message_at' => 'datetime',
+        'last_inbound_at' => 'datetime',
     ];
 
     public function scopeVisibleTo(Builder $query, \App\Models\User $user): Builder
@@ -50,6 +54,11 @@ class Conversation extends Model
     public function assignedUser(): BelongsTo
     {
         return $this->belongsTo(User::class, 'assigned_user_id');
+    }
+
+    public function whatsappNumber(): BelongsTo
+    {
+        return $this->belongsTo(WhatsAppNumber::class, 'whatsapp_number_id');
     }
 
     public function messages(): HasMany

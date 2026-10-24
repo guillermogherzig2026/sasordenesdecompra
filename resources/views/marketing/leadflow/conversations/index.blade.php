@@ -4,6 +4,39 @@
 @include('marketing.leadflow.partials.company-selection')
 @include('marketing.leadflow.partials.campaign-selection', ['selectionRoute' => 'marketing.conversations.index'])
 
+@if($company)
+    <details class="panel pad" style="margin-bottom:16px">
+        <summary style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:12px">
+            <strong>WhatsApp Cloud API · {{ $company->name }}</strong>
+            <span class="badge {{ $cloudNumber?->last_webhook_at ? 'green' : '' }}">
+                {{ $cloudNumber?->last_webhook_at ? 'Webhook recibido' : ($cloudNumber?->hasCloudConfiguration() ? 'Esperando webhook' : ($cloudNumber?->status === 'pending_meta' ? 'Pendiente de Meta' : 'Sin configurar')) }}
+            </span>
+        </summary>
+        <div style="margin-top:16px">
+            @if($cloudNumber)
+                <p class="muted small">Número: {{ $cloudNumber->phone_number }} · Phone Number ID: {{ $cloudNumber->meta_phone_number_id }}
+                    @if($cloudNumber->last_webhook_at) · Última recepción: {{ $cloudNumber->last_webhook_at->format('d/m/Y H:i') }} @endif
+                </p>
+            @endif
+            @unless($webhookReady)
+                <p class="muted small">Faltan WHATSAPP_WEBHOOK_VERIFY_TOKEN y META_APP_SECRET en el entorno del servidor.</p>
+            @endunless
+            @if(auth()->user()->role === 'superadmin')
+                <form class="form-grid" method="post" action="{{ route('marketing.conversations.whatsapp.store') }}" autocomplete="off">
+                    @csrf
+                    <input type="hidden" name="company_id" value="{{ $company->id }}">
+                    <div class="field"><label for="wa-display-name">Nombre visible</label><input id="wa-display-name" class="input" name="display_name" value="{{ old('display_name', $cloudNumber?->display_name) }}"></div>
+                    <div class="field"><label for="wa-display-number">Número oficial</label><input id="wa-display-number" class="input" name="phone_number" value="{{ old('phone_number', $cloudNumber?->phone_number) }}" required></div>
+                    <div class="field"><label for="wa-phone-id">Phone Number ID</label><input id="wa-phone-id" class="input" name="meta_phone_number_id" value="{{ old('meta_phone_number_id', $cloudNumber?->meta_phone_number_id) }}" inputmode="numeric" required></div>
+                    <div class="field"><label for="wa-waba-id">WABA ID</label><input id="wa-waba-id" class="input" name="meta_waba_id" value="{{ old('meta_waba_id', $cloudNumber?->meta_waba_id) }}" inputmode="numeric" required></div>
+                    <div class="field full"><label for="wa-access-token">Access Token {{ $cloudNumber?->meta_access_token ? '(dejar vacío para conservar)' : '' }}</label><input id="wa-access-token" class="input" type="password" name="meta_access_token" value="" autocomplete="new-password" {{ $cloudNumber?->meta_access_token ? '' : 'required' }}></div>
+                    <div class="field full"><button class="btn primary" type="submit">Guardar conexión</button></div>
+                </form>
+            @endif
+        </div>
+    </details>
+@endif
+
 <div class="toolbar" style="justify-content:flex-end">
     <a class="btn" href="{{ route('marketing.campaigns.index') }}">Ver detalles de campaña</a>
 </div>
@@ -80,12 +113,16 @@
                     </div>
                 @endforeach
             </div>
-            <form class="chat-form" method="post" action="{{ route('marketing.conversations.messages.store', $selected) }}" enctype="multipart/form-data">
-                @csrf
-                <input class="input" name="body" placeholder="Escribe un mensaje...">
-                <button class="btn primary" type="submit">Enviar</button>
-                <input class="input" style="grid-column:1 / -1" type="file" name="file">
-            </form>
+            @if($selected->whatsapp_number_id)
+                <div class="chat-form muted">El envío por Cloud API se habilitará en la siguiente etapa.</div>
+            @else
+                <form class="chat-form" method="post" action="{{ route('marketing.conversations.messages.store', $selected) }}" enctype="multipart/form-data">
+                    @csrf
+                    <input class="input" name="body" placeholder="Escribe un mensaje...">
+                    <button class="btn primary" type="submit">Enviar</button>
+                    <input class="input" style="grid-column:1 / -1" type="file" name="file">
+                </form>
+            @endif
         @else
             <div class="panel pad"><p class="muted">Selecciona una conversación para comenzar.</p></div>
         @endif

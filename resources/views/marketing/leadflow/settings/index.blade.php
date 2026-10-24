@@ -57,9 +57,10 @@
 
         <details class="panel pad" open>
             <summary style="cursor:pointer;display:flex;align-items:center;justify-content:space-between">
-                <span style="display:flex;align-items:center;gap:16px"><span class="metric-icon">☏</span><strong>Integración de WhatsApp</strong></span>
-                <span class="badge green">{{ $company->whatsappNumbers->where('status', 'active')->count() }} números conectados</span>
+                <span style="display:flex;align-items:center;gap:16px"><span class="metric-icon">☏</span><strong>Números de WhatsApp</strong></span>
+                <span class="badge green">{{ $company->whatsappNumbers->whereNotNull('meta_phone_number_id')->count() }} Cloud API configurado</span>
             </summary>
+            <p class="muted small" style="margin-top:16px">La conexión oficial se configura en <a href="{{ route('marketing.conversations.index', ['company_id' => $company->id]) }}">Conversaciones</a>. Los números sin configuración Cloud API son registros internos y no envían mensajes por Meta.</p>
             <form method="post" action="{{ route('marketing.settings.whatsapp.store') }}" class="form-grid" style="margin-top:18px">
                 @csrf
                 <input type="hidden" name="company_id" value="{{ $company->id }}">
@@ -72,7 +73,7 @@
                     <input class="input" name="phone_number" placeholder="+52 55 1234 5678" required>
                 </div>
                 <div class="field">
-                    <label>ID de WhatsApp Business</label>
+                    <label>ID externo (referencia)</label>
                     <input class="input" name="provider_phone_id" placeholder="phone_number_id">
                 </div>
                 <div class="field">
@@ -83,7 +84,7 @@
             </form>
         </details>
 
-        <details class="panel pad">
+        <details class="panel pad" id="marketing-automations" @if(request('section') === 'automations') open @endif>
             <summary style="cursor:pointer;display:flex;align-items:center;justify-content:space-between">
                 <span style="display:flex;align-items:center;gap:16px"><span class="metric-icon">↯</span><strong>Automatizaciones</strong></span>
                 <span class="badge green">{{ $company->automationRules->where('active', true)->count() }} activas</span>
@@ -140,7 +141,7 @@
             </form>
         </details>
 
-        <details class="panel pad">
+        <details class="panel pad" id="marketing-office-hours" @if(request('section') === 'hours') open @endif>
             <summary style="cursor:pointer;display:flex;align-items:center;justify-content:space-between">
                 <span style="display:flex;align-items:center;gap:16px"><span class="metric-icon">◷</span><strong>Horarios de atención</strong></span>
                 <span class="badge green">Lun - Vie 09:00 - 18:00</span>
@@ -171,22 +172,21 @@
             </div>
         </div>
         <div class="detail-section">
-            <h3>Números activos</h3>
-            <strong style="font-size:28px">{{ $company->whatsappNumbers->where('status', 'active')->count() }}</strong>
+            <h3>Cloud API configurados</h3>
+            <strong style="font-size:28px">{{ $company->whatsappNumbers->whereNotNull('meta_phone_number_id')->count() }}</strong>
             @foreach($company->whatsappNumbers as $number)
-                <div class="detail-row"><span>{{ $number->phone_number }}</span><span class="badge {{ $number->status === 'active' ? 'green' : '' }}">{{ ucfirst($number->status) }}</span></div>
+                <div class="detail-row"><span>{{ $number->phone_number }}</span><span class="badge {{ $number->last_webhook_at ? 'green' : '' }}">{{ $number->last_webhook_at ? 'Webhook recibido' : ($number->hasCloudConfiguration() ? 'Configurado' : ($number->status === 'pending_meta' ? 'Pendiente de Meta' : 'Interno')) }}</span></div>
             @endforeach
         </div>
         <div class="detail-section">
             <h3>Webhook / API</h3>
-            <p class="muted small">Usa este token en el encabezado <strong>X-Company-Token</strong> o como Bearer Token.</p>
-            <textarea rows="3" readonly>{{ $company->api_token }}</textarea>
-            <p class="muted small">Endpoint webhook: <strong>/api/webhooks/whatsapp</strong></p>
+            <p class="muted small">Endpoint webhook: <strong>{{ url('/api/webhooks/whatsapp') }}</strong></p>
+            <p class="muted small">La URL debe ser pública y usar HTTPS para Meta.</p>
         </div>
         <div class="detail-section">
             <h3>Entorno</h3>
-            <strong class="trend">Local / Producción lista</strong>
-            <p class="muted small">La app ya incluye estructura para conectar WhatsApp Business Cloud API.</p>
+            <strong>Cloud API</strong>
+            <p class="muted small">La recepción depende de un webhook público HTTPS y de los secretos configurados en el servidor.</p>
         </div>
         <div class="panel pad" style="background:#f0fdf4">
             <strong>¿Necesitas ayuda?</strong>
